@@ -1,20 +1,20 @@
-langgraph==0.2.60
-langchain==0.3.13
-langchain-chroma==0.1.4
-langchain-community==0.3.13
-langchain-core==0.3.28
-langchain-openai==0.2.14
-langfuse
-apscheduler
-uvicorn
-gunicorn
-fastapi
-starlette
-pydantic
-pandas
-datetime
-pytz
-httpx
-requests
-python-dotenv
-lark
+# Web scraping
+playwright>=1.40.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Data processing
+pandas>=2.0.0
+
+# For future ML/Recommendation features
+streamlit>=1.41.1
+python-dotenv>=1.0.1
+langgraph>=0.2.60
+langchain-openai>=0.2.14
+langchain-chroma>=0.1.4
+langchain>=0.3.13
+langchain-community>=0.3.13
+lark>=1.2.2
+
+# Development
+ipykernel>=6.29.5
