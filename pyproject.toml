@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "happynewyear"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [
+    { include = "src" },
+    { include = "graph", from = "src" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+streamlit = "^1.41.1"
+python-dotenv = "^1.0.1"
+langgraph = "^0.2.60"
+langchain-openai = "^0.2.14"
+langchain-chroma = "^0.1.4"
+langchain = "^0.3.13"
+langchain-community = "^0.3.13"
+lark = "^1.2.2"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
