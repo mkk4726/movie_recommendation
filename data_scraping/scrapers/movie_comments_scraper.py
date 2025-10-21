@@ -52,29 +52,45 @@ class MovieCommentsScraper(BaseScraper):
         self.browser_manager._scroll_to_end(page)
     
     def _extract_all_comments(self, page: Page) -> List[Dict[str, Any]]:
-        """Extract all comment data from page."""
+        """Extract all comment data from page with optimized DOM queries."""
         comments = []
-        i = 1
         
-        while True:
+        # Get all comment elements at once (more efficient than querying one by one)
+        comment_list_xpath = '//*[@id="root"]/div[1]/section/div[2]/ul/li'
+        comment_elements = page.locator(f'xpath={comment_list_xpath}')
+        
+        count = comment_elements.count()
+        self.logger.debug(f"Found {count} comment elements")
+        
+        for i in range(count):
             try:
-                comment_data = self._extract_single_comment(page, i)
+                comment_data = self._extract_single_comment_optimized(page, i + 1)
                 
-                if not comment_data:
-                    break
-                
-                comments.append(comment_data)
-                i += 1
-                
+                if comment_data:
+                    comments.append(comment_data)
+                    
             except Exception as e:
-                self.logger.debug(f"Finished extracting comments at index {i}: {e}")
-                break
+                self.logger.debug(f"Failed to extract comment at index {i + 1}: {e}")
+                continue
         
         return comments
     
     def _extract_single_comment(self, page: Page, index: int) -> Optional[Dict[str, Any]]:
         """
-        Extract single comment data.
+        Extract single comment data (legacy method, kept for compatibility).
+        
+        Args:
+            page: Playwright page instance
+            index: Comment index (1-based)
+        
+        Returns:
+            Comment data dictionary or None if not found
+        """
+        return self._extract_single_comment_optimized(page, index)
+    
+    def _extract_single_comment_optimized(self, page: Page, index: int) -> Optional[Dict[str, Any]]:
+        """
+        Extract single comment data with optimized locator queries.
         
         Args:
             page: Playwright page instance
@@ -87,6 +103,7 @@ class MovieCommentsScraper(BaseScraper):
         custom_id_xpath = self.config.get_xpath('comment_custom_id_template', i=index)
         custom_id_locator = page.locator(custom_id_xpath)
         
+        # Check existence first (single count() call per comment)
         if custom_id_locator.count() == 0:
             return None
         
@@ -104,30 +121,32 @@ class MovieCommentsScraper(BaseScraper):
             except Exception:
                 pass  # Button might not be clickable
         
-        # Extract comment text
+        # Extract comment text - use first() to avoid extra count() call
         comment_xpath = self.config.get_xpath('comment_text_template', i=index)
-        comment_locator = page.locator(comment_xpath)
         comment_text = None
-        
-        if comment_locator.count() > 0:
-            raw_text = comment_locator.inner_text()
+        try:
+            raw_text = page.locator(comment_xpath).first.inner_text(timeout=1000)
             comment_text = self.cleaner.sanitize_for_txt(raw_text)
+        except Exception:
+            pass
         
-        # Extract rating
+        # Extract rating - use first() to avoid extra count() call
         rating_xpath = self.config.get_xpath('comment_rating_template', i=index)
-        rating_locator = page.locator(rating_xpath)
         rating = None
+        try:
+            rating_text = page.locator(rating_xpath).first.inner_text(timeout=1000)
+            rating = self.cleaner.clean_text(rating_text)
+        except Exception:
+            pass
         
-        if rating_locator.count() > 0:
-            rating = self.cleaner.clean_text(rating_locator.inner_text())
-        
-        # Extract number of likes
+        # Extract number of likes - use first() to avoid extra count() call
         likes_xpath = self.config.get_xpath('comment_likes_template', i=index)
-        likes_locator = page.locator(likes_xpath)
         n_likes = None
-        
-        if likes_locator.count() > 0:
-            n_likes = self.cleaner.clean_text(likes_locator.inner_text())
+        try:
+            likes_text = page.locator(likes_xpath).first.inner_text(timeout=1000)
+            n_likes = self.cleaner.clean_text(likes_text)
+        except Exception:
+            pass
         
         return {
             'custom_id': custom_id,

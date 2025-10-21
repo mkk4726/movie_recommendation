@@ -51,9 +51,8 @@ def main(
             
             comments = scraper.scrape(movie_id)
             
-            # Save each comment
-            for comment_data in comments:
-                storage.save_movie_comment(movie_id, comment_data)
+            # Batch save all comments at once (optimized for performance)
+            storage.save_movie_comments_batch(movie_id, comments)
             
             total_comments += len(comments)
             successful += 1

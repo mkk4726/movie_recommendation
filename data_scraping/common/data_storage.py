@@ -88,6 +88,36 @@ class DataStorage:
         
         self._append_to_txt(file_path, data_list)
     
+    def save_movie_comments_batch(self, movie_id: str, comments: List[Dict[str, Any]]) -> None:
+        """
+        Save multiple comments at once (batch operation for better performance).
+        
+        Args:
+            movie_id: Movie ID
+            comments: List of comment information dictionaries
+        """
+        if not comments:
+            return
+        
+        file_path = self.get_movie_comments_path()
+        
+        lines = []
+        for comment_data in comments:
+            data_list = [
+                str(movie_id),
+                str(comment_data.get('custom_id', '')),
+                str(comment_data.get('comment', '')),
+                str(comment_data.get('rating', '')),
+                str(comment_data.get('n_likes', '')),
+            ]
+            lines.append(self.config.DATA_SEPARATOR.join(data_list))
+        
+        # Single file operation for all comments
+        with open(file_path, 'a', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+        
+        self.logger.debug(f"Batch saved {len(comments)} comments for movie {movie_id}")
+    
     def save_custom_rating(self, custom_id: str, rating_data: Dict[str, Any]) -> None:
         """
         Save custom rating to TXT file.
@@ -235,23 +265,30 @@ class DataStorage:
     def get_missing_comment_movie_ids(self) -> List[str]:
         """
         Get movie IDs that need comment scraping.
+        Uses optimized set-based approach for better performance.
         
         Returns:
             List of movie IDs
         """
         try:
             custom_ratings = self.load_custom_rating()
-            comments = self.load_movie_comments()
             
             if custom_ratings.empty:
                 return []
             
             all_movie_ids = set(custom_ratings['MovieID'])
             
-            if not comments.empty and 'MovieID' in comments.columns:
-                scraped_movie_ids = set(comments['MovieID'])
-            else:
-                scraped_movie_ids = set()
+            # Optimized: Only read MovieID column from comments file
+            comments_file = self.get_movie_comments_path()
+            scraped_movie_ids = set()
+            
+            if os.path.exists(comments_file):
+                with open(comments_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            # First column is MovieID
+                            movie_id = line.split(self.config.DATA_SEPARATOR)[0]
+                            scraped_movie_ids.add(movie_id)
             
             missing_ids = list(all_movie_ids - scraped_movie_ids)
             
