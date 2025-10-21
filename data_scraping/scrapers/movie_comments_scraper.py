@@ -11,12 +11,13 @@ from .base_scraper import BaseScraper
 class MovieCommentsScraper(BaseScraper):
     """Scraper for movie comments and ratings."""
     
-    def scrape(self, movie_id: str) -> List[Dict[str, Any]]:
+    def scrape(self, movie_id: str, max_comments: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Scrape all comments for a movie.
         
         Args:
             movie_id: Watcha movie ID
+            max_comments: Maximum number of comments to scrape (None for all)
         
         Returns:
             List of comment dictionaries
@@ -25,6 +26,8 @@ class MovieCommentsScraper(BaseScraper):
             DataParsingError: If scraping fails
         """
         self.logger.info(f"Scraping comments for movie ID: {movie_id}")
+        if max_comments:
+            self.logger.info(f"Max comments limit: {max_comments}")
         
         url = self.config.get_comments_url(movie_id)
         comments = []
@@ -33,11 +36,11 @@ class MovieCommentsScraper(BaseScraper):
             with self.browser_manager.get_page() as page:
                 page.goto(url)
                 
-                # Scroll to load all comments
-                self._scroll_and_load(page)
+                # Scroll to load all comments (or up to max_comments)
+                self._scroll_and_load(page, max_comments)
                 
                 # Extract comments
-                comments = self._extract_all_comments(page)
+                comments = self._extract_all_comments(page, max_comments)
             
             self.logger.info(f"Successfully scraped {len(comments)} comments")
             return comments
@@ -46,13 +49,46 @@ class MovieCommentsScraper(BaseScraper):
             self.logger.error(f"Failed to scrape comments for {movie_id}: {e}")
             raise DataParsingError(f"Failed to scrape comments for {movie_id}") from e
     
-    def _scroll_and_load(self, page: Page) -> None:
-        """Scroll page to load all comments."""
-        self.logger.debug("Scrolling to load all comments")
-        self.browser_manager._scroll_to_end(page)
+    def _scroll_and_load(self, page: Page, max_comments: Optional[int] = None) -> None:
+        """
+        Scroll page to load comments.
+        
+        Args:
+            page: Playwright page instance
+            max_comments: Maximum number of comments to load (None for all)
+        """
+        if max_comments:
+            self.logger.debug(f"Scrolling to load up to {max_comments} comments")
+        else:
+            self.logger.debug("Scrolling to load all comments")
+        
+        # If no limit, scroll to end
+        if not max_comments:
+            self.browser_manager._scroll_to_end(page)
+        else:
+            # Scroll until we have enough comments or reach the end
+            comment_list_xpath = '//*[@id="root"]/div[1]/section/div[2]/ul/li'
+            for _ in range(self.config.SCROLL_MAX_RETRIES):
+                comment_elements = page.locator(f'xpath={comment_list_xpath}')
+                count = comment_elements.count()
+                
+                if count >= max_comments:
+                    break
+                
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                time.sleep(self.config.SCROLL_DELAY)
     
-    def _extract_all_comments(self, page: Page) -> List[Dict[str, Any]]:
-        """Extract all comment data from page with optimized DOM queries."""
+    def _extract_all_comments(self, page: Page, max_comments: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Extract comment data from page with optimized DOM queries.
+        
+        Args:
+            page: Playwright page instance
+            max_comments: Maximum number of comments to extract (None for all)
+        
+        Returns:
+            List of comment dictionaries
+        """
         comments = []
         
         # Get all comment elements at once (more efficient than querying one by one)
@@ -60,7 +96,12 @@ class MovieCommentsScraper(BaseScraper):
         comment_elements = page.locator(f'xpath={comment_list_xpath}')
         
         count = comment_elements.count()
-        self.logger.debug(f"Found {count} comment elements")
+        
+        # Limit count if max_comments is specified
+        if max_comments:
+            count = min(count, max_comments)
+        
+        self.logger.debug(f"Found {comment_elements.count()} comment elements, extracting {count}")
         
         for i in range(count):
             try:

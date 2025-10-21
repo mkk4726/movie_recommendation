@@ -30,6 +30,7 @@ class Config:
     # Data settings
     DATA_DIR: str = "./data"
     DATA_SEPARATOR: str = "/"  # Using '/' as delimiter (data is cleaned to remove '/')
+    MAX_COMMENTS_PER_MOVIE: int = 1000  # None means no limit
     
     # File names
     MOVIE_INFO_FILE: str = "movie_info_watcha.txt"
