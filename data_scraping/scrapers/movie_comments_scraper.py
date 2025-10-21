@@ -68,13 +68,36 @@ class MovieCommentsScraper(BaseScraper):
         else:
             # Scroll until we have enough comments or reach the end
             comment_list_xpath = '//*[@id="root"]/div[1]/section/div[2]/ul/li'
-            for _ in range(self.config.SCROLL_MAX_RETRIES):
+            previous_count = 0
+            no_change_count = 0
+            max_no_change = 3  # Stop after 3 consecutive scrolls with no new comments
+            
+            # Allow more scrolls - calculate based on max_comments (roughly 10-20 comments per scroll)
+            max_scrolls = max(50, (max_comments // 10) + 10)
+            
+            for scroll_num in range(max_scrolls):
                 comment_elements = page.locator(f'xpath={comment_list_xpath}')
                 count = comment_elements.count()
                 
+                self.logger.debug(f"Scroll {scroll_num + 1}: Found {count} comments (target: {max_comments})")
+                
+                # Check if we have enough comments
                 if count >= max_comments:
+                    self.logger.debug(f"Reached target of {max_comments} comments")
                     break
                 
+                # Check if no new comments loaded
+                if count == previous_count:
+                    no_change_count += 1
+                    if no_change_count >= max_no_change:
+                        self.logger.debug(f"No new comments after {max_no_change} scrolls, stopping")
+                        break
+                else:
+                    no_change_count = 0
+                
+                previous_count = count
+                
+                # Scroll down
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 time.sleep(self.config.SCROLL_DELAY)
     
