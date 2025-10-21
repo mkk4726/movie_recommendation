@@ -59,10 +59,10 @@ class Config:
         "comment_likes_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/ul/li[1]/button/span',
         "comment_spoiler_button_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p/button',
         
-        # User ratings page (dynamic index)
-        "user_movie_id_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/@href',
-        "user_movie_name_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/div[2]/div[1]/text()',
-        "user_movie_rating_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/div[2]/div[2]/text()',
+        # User ratings page (dynamic index) - Updated 2025-10-21 for new page structure
+        "user_movie_id_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/@href',
+        "user_movie_name_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]/text()',
+        "user_movie_rating_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]/text()',
     })
     
     # Logging settings

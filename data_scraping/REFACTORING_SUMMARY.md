@@ -195,3 +195,31 @@ df = storage.load_movie_info()
 - 테스트: 수동 테스트 완료
 - 기존 코드: legacy/ 폴더에 보관
 
+## 업데이트 이력
+
+### 2025-10-21: Custom Rating XPath 업데이트
+
+Watcha 웹사이트의 구조 변경으로 인해 사용자 평점 페이지의 XPath 선택자 업데이트
+
+**변경된 파일:**
+- `common/config.py` - XPath 선택자 업데이트
+- `scrapers/custom_rating_scraper.py` - 주석 추가
+- `run_custom_rating.py` - 주석 추가
+- `debug/debug_custom_rating.py` - 디버깅 도구 추가
+
+**업데이트된 XPath:**
+```python
+# Before
+"user_movie_id_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/@href'
+"user_movie_name_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/div[2]/div[1]/text()'
+"user_movie_rating_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/div[2]/div[2]/text()'
+
+# After (간소화된 경로)
+"user_movie_id_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/@href'
+"user_movie_name_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]/text()'
+"user_movie_rating_template": '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]/text()'
+```
+
+**디버깅 도구:**
+- `debug/debug_custom_rating.py` 추가 - XPath 선택자 테스트 및 검증 도구
+

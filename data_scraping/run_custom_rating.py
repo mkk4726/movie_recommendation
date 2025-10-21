@@ -1,4 +1,7 @@
-"""Script to scrape custom user ratings."""
+"""Script to scrape custom user ratings.
+
+Note: XPath selectors updated on 2025-10-21 to match new Watcha page structure.
+"""
 
 import time
 import argparse

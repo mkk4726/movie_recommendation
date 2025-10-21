@@ -1,4 +1,7 @@
-"""Scraper for user's custom movie ratings from Watcha."""
+"""Scraper for user's custom movie ratings from Watcha.
+
+Note: XPath selectors updated on 2025-10-21 to match new Watcha page structure.
+"""
 
 from typing import List, Dict, Any, Optional
 
