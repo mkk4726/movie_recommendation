@@ -83,17 +83,6 @@ class MovieCommentsScraper(BaseScraper):
         Returns:
             Comment data dictionary or None if not found
         """
-        # Try to click "more" button to expand comment
-        more_button_xpath = self.config.get_xpath('comment_more_button_template', i=index)
-        more_button = page.locator(more_button_xpath)
-        
-        if more_button.count() > 0:
-            try:
-                more_button.click()
-                time.sleep(0.5)
-            except Exception:
-                pass  # Button might not be clickable
-        
         # Extract custom ID (user ID)
         custom_id_xpath = self.config.get_xpath('comment_custom_id_template', i=index)
         custom_id_locator = page.locator(custom_id_xpath)
@@ -103,6 +92,17 @@ class MovieCommentsScraper(BaseScraper):
         
         href = custom_id_locator.get_attribute('href')
         custom_id = href.split('/')[-1] if href else None
+        
+        # Try to click spoiler "보기" button to reveal spoiler text
+        spoiler_button_xpath = self.config.get_xpath('comment_spoiler_button_template', i=index)
+        spoiler_button = page.locator(spoiler_button_xpath)
+        
+        if spoiler_button.count() > 0:
+            try:
+                spoiler_button.click()
+                time.sleep(0.3)
+            except Exception:
+                pass  # Button might not be clickable
         
         # Extract comment text
         comment_xpath = self.config.get_xpath('comment_text_template', i=index)

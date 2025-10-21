@@ -51,12 +51,12 @@ class Config:
         "cast_name_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[1]/text()',
         "cast_role_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[2]/text()',
         
-        # Comments page (dynamic index)
-        "comment_custom_id_template": '//*[@id="root"]/div[1]/section/section/div/div/div/ul/div[{i}]/div[1]/div[1]/a',
-        "comment_text_template": '//*[@id="root"]/div[1]/section/section/div/div/div/ul/div[{i}]/div[2]/a/div/div',
-        "comment_rating_template": '//*[@id="root"]/div[1]/section/section/div/div/div/ul/div[{i}]/div[1]/div[2]/span',
-        "comment_likes_template": '//*[@id="root"]/div[1]/section/section/div/div/div/ul/div[{i}]/div[3]/em[1]',
-        "comment_more_button_template": '//*[@id="root"]/div[1]/section/section/div/div/div/ul/div[{i}]/div[2]/a/div/span/button',
+        # Comments page (dynamic index) - Updated 2025-10-21 for new page structure
+        "comment_custom_id_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[1]',
+        "comment_text_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p',
+        "comment_rating_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[1]/header/div[2]/p',
+        "comment_likes_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/ul/li[1]/button/span',
+        "comment_spoiler_button_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p/button',
         
         # User ratings page (dynamic index)
         "user_movie_id_template": '//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li[{i}]/a/@href',
