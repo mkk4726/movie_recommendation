@@ -1,6 +1,8 @@
 """Browser management for Playwright-based scraping."""
 
 import time
+import os
+from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 from playwright.sync_api import sync_playwright, Browser, Page, BrowserContext
@@ -43,7 +45,7 @@ class BrowserManager:
     @contextmanager
     def get_page(self, browser: Optional[Browser] = None) -> Page:
         """
-        Context manager for browser page.
+        Context manager for browser page with authentication.
         
         Args:
             browser: Optional browser instance (if None, creates new one)
@@ -52,7 +54,7 @@ class BrowserManager:
             Page instance
         """
         if browser:
-            context = browser.new_context(user_agent=self.config.USER_AGENT)
+            context = self._create_context(browser)
             page = context.new_page()
             try:
                 yield page
@@ -61,13 +63,57 @@ class BrowserManager:
                 context.close()
         else:
             with self.get_browser() as browser:
-                context = browser.new_context(user_agent=self.config.USER_AGENT)
+                context = self._create_context(browser)
                 page = context.new_page()
                 try:
                     yield page
                 finally:
                     page.close()
                     context.close()
+    
+    def _create_context(self, browser: Browser) -> BrowserContext:
+        """
+        Create browser context with authentication if available.
+        
+        Args:
+            browser: Browser instance
+        
+        Returns:
+            BrowserContext with or without stored authentication
+        """
+        auth_file = Path(self.config.AUTH_STATE_FILE)
+        
+        if auth_file.exists():
+            self.logger.debug(f"Loading auth state from {auth_file}")
+            context = browser.new_context(
+                user_agent=self.config.USER_AGENT,
+                storage_state=str(auth_file)
+            )
+        else:
+            self.logger.debug("No auth state found, creating new context")
+            context = browser.new_context(user_agent=self.config.USER_AGENT)
+        
+        return context
+    
+    def save_auth_state(self, context: BrowserContext) -> None:
+        """
+        Save authentication state for future use.
+        
+        Args:
+            context: BrowserContext to save state from
+        """
+        auth_file = Path(self.config.AUTH_STATE_FILE)
+        context.storage_state(path=str(auth_file))
+        self.logger.info(f"Auth state saved to {auth_file}")
+    
+    def has_auth_state(self) -> bool:
+        """
+        Check if authentication state file exists.
+        
+        Returns:
+            True if auth state exists, False otherwise
+        """
+        return Path(self.config.AUTH_STATE_FILE).exists()
     
     def fetch_page_content(self, url: str) -> str:
         """

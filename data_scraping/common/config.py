@@ -20,6 +20,9 @@ class Config:
         "Chrome/91.0.4472.124 Safari/537.36"
     )
     
+    # Authentication settings
+    AUTH_STATE_FILE: str = "./auth_state.json"
+    
     # Scroll settings
     SCROLL_DELAY: int = 2
     SCROLL_MAX_RETRIES: int = 5
