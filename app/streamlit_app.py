@@ -8,12 +8,14 @@ from pathlib import Path
 import sys
 import pickle
 import os
+import gc
 
 # 현재 디렉토리를 path에 추가
 sys.path.append(str(Path(__file__).parent))
 
 from utils.data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
 from utils.recommender_lite import MovieRecommenderLite
+from debug_memory import get_memory_usage, print_memory_usage, memory_profiler
 
 # 페이지 설정
 st.set_page_config(
@@ -112,8 +114,20 @@ def main():
     # 헤더
     st.markdown('<h1 class="main-header">🎬 볼거 없나?</h1>', unsafe_allow_html=True)
     
+    # 메모리 모니터링 (디버그 모드)
+    debug_mode = os.getenv('DEBUG_MEMORY', 'false').lower() == 'true'
+    
+    if debug_mode:
+        mem = get_memory_usage()
+        st.sidebar.warning(f"🐛 디버그 모드")
+        st.sidebar.info(f"메모리: {mem['rss']:.0f}MB ({mem['percent']:.1f}%)")
+    
     # 데이터 로딩
     df_movies, df_ratings, df_ratings_filtered = load_all_data()
+    
+    if debug_mode:
+        mem = get_memory_usage()
+        st.sidebar.info(f"데이터 로딩 후: {mem['rss']:.0f}MB")
     
     # 사이드바
     st.sidebar.title("⚙️ 설정")
@@ -126,6 +140,14 @@ def main():
     )
     
     st.sidebar.markdown("---")
+    
+    # 메모리 정리 버튼 (디버그 모드)
+    if debug_mode:
+        if st.sidebar.button("🧹 메모리 정리"):
+            gc.collect()
+            st.sidebar.success("메모리 정리 완료!")
+            st.rerun()
+    
     st.sidebar.markdown(f"""
     ### 📊 데이터 통계
     - 전체 영화 수: **{len(df_movies):,}개**
@@ -158,9 +180,17 @@ def main():
         
         if st.button("🎬 추천 받기", key="user_rec"):
             with st.spinner("추천 영화를 찾는 중..."):
+                if debug_mode:
+                    mem_before = get_memory_usage()
+                    st.write(f"🔍 추천 시작 전: {mem_before['rss']:.0f}MB")
+                
                 recommendations = recommender.recommend_for_user(
                     selected_user, df_movies, df_ratings_filtered, n_recommendations
                 )
+                
+                if debug_mode:
+                    mem_after = get_memory_usage()
+                    st.write(f"🔍 추천 완료 후: {mem_after['rss']:.0f}MB (증가: {mem_after['rss']-mem_before['rss']:+.0f}MB)")
                 
                 if recommendations.empty:
                     st.warning("추천할 영화가 없습니다.")
@@ -223,9 +253,17 @@ def main():
                 
                 if st.button("🎬 비슷한 영화 찾기", key="movie_rec"):
                     with st.spinner("비슷한 영화를 찾는 중..."):
+                        if debug_mode:
+                            mem_before = get_memory_usage()
+                            st.write(f"🔍 검색 시작 전: {mem_before['rss']:.0f}MB")
+                        
                         similar_movies = recommender.find_similar_movies(
                             selected_movie['movie_id'], df_movies, n_recommendations, method
                         )
+                        
+                        if debug_mode:
+                            mem_after = get_memory_usage()
+                            st.write(f"🔍 검색 완료 후: {mem_after['rss']:.0f}MB (증가: {mem_after['rss']-mem_before['rss']:+.0f}MB)")
                         
                         if similar_movies.empty:
                             st.warning("유사한 영화를 찾을 수 없습니다.")
@@ -263,10 +301,18 @@ def main():
         
         if st.button("🎬 하이브리드 추천 받기", key="hybrid_rec"):
             with st.spinner("최적의 영화를 찾는 중..."):
+                if debug_mode:
+                    mem_before = get_memory_usage()
+                    st.write(f"🔍 추천 시작 전: {mem_before['rss']:.0f}MB")
+                
                 recommendations = recommender.hybrid_recommend(
                     selected_user, df_movies, df_ratings_filtered, 
                     n_recommendations, cf_weight, cb_weight
                 )
+                
+                if debug_mode:
+                    mem_after = get_memory_usage()
+                    st.write(f"🔍 추천 완료 후: {mem_after['rss']:.0f}MB (증가: {mem_after['rss']-mem_before['rss']:+.0f}MB)")
                 
                 if recommendations.empty:
                     st.warning("추천할 영화가 없습니다.")
