@@ -6,12 +6,14 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import sys
+import pickle
+import os
 
 # 현재 디렉토리를 path에 추가
 sys.path.append(str(Path(__file__).parent))
 
 from utils.data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
-from utils.recommender import MovieRecommender
+from utils.recommender_lite import MovieRecommenderLite
 
 # 페이지 설정
 st.set_page_config(
@@ -69,11 +71,24 @@ def load_all_data():
 
 @st.cache_resource
 def initialize_recommender(df_ratings_filtered, df_movies):
-    """추천 시스템 초기화"""
+    """추천 시스템 초기화 (사전 학습된 모델 로드)"""
+    model_path = Path(__file__).parent / 'models' / 'recommender_model.pkl'
+    
+    # 사전 학습된 모델이 있으면 로드
+    if model_path.exists():
+        with st.spinner("학습된 추천 모델을 로딩하는 중..."):
+            try:
+                with open(model_path, 'rb') as f:
+                    recommender = pickle.load(f)
+                st.success("✅ 모델 로드 완료!")
+                return recommender
+            except Exception as e:
+                st.warning(f"모델 로드 실패: {e}. 새로 학습합니다.")
+    
+    # 모델이 없으면 학습 (경량화 버전)
     with st.spinner("추천 시스템을 학습하는 중... (최초 1회, 약 1-2분 소요)"):
-        recommender = MovieRecommender()
+        recommender = MovieRecommenderLite()
         recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=50)
-        recommender.train_item_based(df_ratings_filtered)
         recommender.train_content_based(df_movies)
         return recommender
 
