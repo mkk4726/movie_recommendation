@@ -15,6 +15,15 @@ def get_data_path() -> Path:
     # app/utils/data_loader.py -> app/utils -> app -> project_root
     project_root = current_file.parent.parent.parent
     data_dir = project_root / 'data_scraping' / 'data'
+    
+    # 디버깅: 경로 확인
+    print(f"🔍 Current file: {current_file}")
+    print(f"🔍 Project root: {project_root}")
+    print(f"🔍 Data directory: {data_dir}")
+    print(f"🔍 Data directory exists: {data_dir.exists()}")
+    if data_dir.exists():
+        print(f"🔍 Files in data directory: {list(data_dir.glob('*.txt'))}")
+    
     return data_dir
 
 
