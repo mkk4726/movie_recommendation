@@ -10,11 +10,11 @@ import streamlit as st
 
 
 class MovieRecommenderLite:
-    """영화 추천 시스템 클래스 (Surprise SVD 기반)"""
+    """영화 추천 시스템 클래스 (Surprise SVD 기반 - 경량화)"""
     
     def __init__(self):
         self.svd_model = None
-        self.trainset = None
+        # trainset은 학습 후 삭제 (불필요)
         self.movie_to_idx = None
         self.idx_to_movie = None
         self.user_to_idx = None
@@ -22,11 +22,11 @@ class MovieRecommenderLite:
         # 컨텐츠 기반 - TF-IDF 벡터만 저장
         self.tfidf = None
         self.tfidf_matrix = None
-        self.df_ratings_train = None  # 예측용 데이터 저장
+        # df_ratings_train 제거 (불필요한 중복 데이터)
         
     @st.cache_resource
-    def train_collaborative_filtering(_self, df_ratings: pd.DataFrame, n_factors: int = 50):
-        """협업 필터링 모델 학습 (Surprise SVD)"""
+    def train_collaborative_filtering(_self, df_ratings: pd.DataFrame, n_factors: int = 20):
+        """협업 필터링 모델 학습 (Surprise SVD - 경량화)"""
         # ID 매핑
         unique_users = sorted(df_ratings['user_id'].unique())
         unique_movies = sorted(df_ratings['movie_id'].unique())
@@ -35,9 +35,6 @@ class MovieRecommenderLite:
         _self.idx_to_user = {idx: user_id for user_id, idx in _self.user_to_idx.items()}
         _self.movie_to_idx = {movie_id: idx for idx, movie_id in enumerate(unique_movies)}
         _self.idx_to_movie = {idx: movie_id for movie_id, idx in _self.movie_to_idx.items()}
-        
-        # 학습 데이터 저장 (예측용)
-        _self.df_ratings_train = df_ratings.copy()
         
         # Surprise Dataset 생성
         reader = Reader(rating_scale=(df_ratings['rating'].min(), df_ratings['rating'].max()))
@@ -49,19 +46,21 @@ class MovieRecommenderLite:
         )
         
         # 전체 데이터로 학습
-        _self.trainset = data.build_full_trainset()
+        trainset = data.build_full_trainset()
         
-        # SVD 모델 생성 및 학습
+        # SVD 모델 생성 및 학습 (경량화 파라미터)
         _self.svd_model = SVD(
-            n_factors=n_factors,
-            n_epochs=20,
+            n_factors=n_factors,  # 50 -> 20으로 축소 (메모리 절약)
+            n_epochs=15,  # 20 -> 15로 축소
             lr_all=0.005,
             reg_all=0.02,
             random_state=42,
             verbose=False
         )
         
-        _self.svd_model.fit(_self.trainset)
+        _self.svd_model.fit(trainset)
+        
+        # trainset은 학습 후 필요 없으므로 저장하지 않음 (메모리 절약)
         
         return True
     
@@ -71,8 +70,8 @@ class MovieRecommenderLite:
         # 장르와 줄거리를 결합
         df_movies['content'] = df_movies['genre'].fillna('') + ' ' + df_movies['plot'].fillna('')
         
-        # TF-IDF 벡터화
-        _self.tfidf = TfidfVectorizer(max_features=3000, stop_words=None)
+        # TF-IDF 벡터화 (경량화: 2000개 특징으로 축소)
+        _self.tfidf = TfidfVectorizer(max_features=2000, stop_words=None)
         _self.tfidf_matrix = _self.tfidf.fit_transform(df_movies['content'])
         
         return True

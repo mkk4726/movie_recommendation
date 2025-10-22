@@ -22,13 +22,13 @@ def main():
     print(f"평점 수: {len(df_ratings_filtered)}")
     print(f"사용자 수: {df_ratings_filtered['user_id'].nunique()}")
     
-    print("\n🤖 추천 시스템 학습 중 (경량화 버전)...")
+    print("\n🤖 추천 시스템 학습 중 (초경량화 버전)...")
     recommender = MovieRecommenderLite()
     
-    print("  - 협업 필터링 학습 중...")
-    recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=50)
+    print("  - 협업 필터링 학습 중 (n_factors=20)...")
+    recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=20)
     
-    print("  - 컨텐츠 기반 학습 중...")
+    print("  - 컨텐츠 기반 학습 중 (max_features=2000)...")
     recommender.train_content_based(df_movies)
     
     # 모델 저장

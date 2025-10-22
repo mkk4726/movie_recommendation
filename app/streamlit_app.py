@@ -85,10 +85,10 @@ def initialize_recommender(df_ratings_filtered, df_movies):
             except Exception as e:
                 st.warning(f"모델 로드 실패: {e}. 새로 학습합니다.")
     
-    # 모델이 없으면 학습 (경량화 버전)
+    # 모델이 없으면 학습 (초경량화 버전)
     with st.spinner("추천 시스템을 학습하는 중... (최초 1회, 약 1-2분 소요)"):
         recommender = MovieRecommenderLite()
-        recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=50)
+        recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=20)
         recommender.train_content_based(df_movies)
         return recommender
 
