@@ -17,7 +17,7 @@ from utils.recommender_lite import MovieRecommenderLite
 
 # 페이지 설정
 st.set_page_config(
-    page_title="🎬 영화 추천 시스템",
+    page_title="볼거 없나?",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -110,7 +110,7 @@ def display_movie_card(movie, score=None, score_label="예측 평점"):
 
 def main():
     # 헤더
-    st.markdown('<h1 class="main-header">🎬 영화 추천 시스템</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🎬 볼거 없나?</h1>', unsafe_allow_html=True)
     
     # 데이터 로딩
     df_movies, df_ratings, df_ratings_filtered = load_all_data()

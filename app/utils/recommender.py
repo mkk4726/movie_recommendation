@@ -1,32 +1,33 @@
 """
-영화 추천 시스템 모듈
+영화 추천 시스템 모듈 (Surprise SVD 기반)
 """
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import svds
+from surprise import SVD, Dataset, Reader
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import streamlit as st
-from typing import Tuple, Dict
 
 
 class MovieRecommender:
-    """영화 추천 시스템 클래스"""
+    """영화 추천 시스템 클래스 (Surprise SVD 기반)"""
     
     def __init__(self):
-        self.user_movie_matrix = None
-        self.predicted_ratings = None
+        self.svd_model = None
+        self.trainset = None
         self.item_similarity = None
         self.content_similarity = None
         self.movie_to_idx = None
         self.idx_to_movie = None
         self.user_to_idx = None
         self.idx_to_user = None
+        self.tfidf = None
+        self.tfidf_matrix = None
+        self.df_ratings_train = None
         
     @st.cache_resource
     def train_collaborative_filtering(_self, df_ratings: pd.DataFrame, n_factors: int = 50):
-        """협업 필터링 모델 학습 (SVD)"""
+        """협업 필터링 모델 학습 (Surprise SVD)"""
         # ID 매핑
         unique_users = sorted(df_ratings['user_id'].unique())
         unique_movies = sorted(df_ratings['movie_id'].unique())
@@ -36,39 +37,53 @@ class MovieRecommender:
         _self.movie_to_idx = {movie_id: idx for idx, movie_id in enumerate(unique_movies)}
         _self.idx_to_movie = {idx: movie_id for movie_id, idx in _self.movie_to_idx.items()}
         
-        # User-Movie 행렬 생성
-        n_users = len(unique_users)
-        n_movies = len(unique_movies)
+        # 학습 데이터 저장
+        _self.df_ratings_train = df_ratings.copy()
         
-        df_ratings['user_idx'] = df_ratings['user_id'].map(_self.user_to_idx)
-        df_ratings['movie_idx'] = df_ratings['movie_id'].map(_self.movie_to_idx)
-        
-        _self.user_movie_matrix = csr_matrix(
-            (df_ratings['rating'], (df_ratings['user_idx'], df_ratings['movie_idx'])),
-            shape=(n_users, n_movies)
+        # Surprise Dataset 생성
+        reader = Reader(rating_scale=(df_ratings['rating'].min(), df_ratings['rating'].max()))
+        data = Dataset.load_from_df(
+            df_ratings[['user_id', 'movie_id', 'rating']], 
+            reader
         )
         
-        # SVD 수행
-        matrix_dense = _self.user_movie_matrix.toarray()
-        user_ratings_mean = np.mean(matrix_dense, axis=1)
-        matrix_centered = matrix_dense - user_ratings_mean.reshape(-1, 1)
+        # 전체 데이터로 학습
+        _self.trainset = data.build_full_trainset()
         
-        U, sigma, Vt = svds(matrix_centered, k=n_factors)
-        sigma = np.diag(sigma)
+        # SVD 모델 생성 및 학습
+        _self.svd_model = SVD(
+            n_factors=n_factors,
+            n_epochs=20,
+            lr_all=0.005,
+            reg_all=0.02,
+            random_state=42,
+            verbose=False
+        )
         
-        _self.predicted_ratings = np.dot(np.dot(U, sigma), Vt) + user_ratings_mean.reshape(-1, 1)
+        _self.svd_model.fit(_self.trainset)
         
         return True
     
     @st.cache_resource
     def train_item_based(_self, df_ratings: pd.DataFrame):
-        """Item-based 협업 필터링 학습"""
-        if _self.user_movie_matrix is None:
+        """Item-based 협업 필터링 학습 (Surprise SVD 기반)"""
+        if _self.svd_model is None:
             raise ValueError("먼저 collaborative filtering을 학습해주세요")
         
+        # 영화별 평점 벡터 생성 (사용자들의 예측 평점)
+        movie_vectors = []
+        movie_ids_list = list(_self.movie_to_idx.keys())
+        
+        for movie_id in movie_ids_list:
+            movie_ratings = []
+            for user_id in _self.user_to_idx.keys():
+                pred = _self.svd_model.predict(user_id, movie_id).est
+                movie_ratings.append(pred)
+            movie_vectors.append(movie_ratings)
+        
         # Item-Item 유사도 계산
-        item_user_matrix = _self.user_movie_matrix.T
-        _self.item_similarity = cosine_similarity(item_user_matrix, dense_output=False)
+        movie_vectors = np.array(movie_vectors)
+        _self.item_similarity = cosine_similarity(movie_vectors, movie_vectors)
         
         return True
     
@@ -79,11 +94,11 @@ class MovieRecommender:
         df_movies['content'] = df_movies['genre'].fillna('') + ' ' + df_movies['plot'].fillna('')
         
         # TF-IDF 벡터화
-        tfidf = TfidfVectorizer(max_features=3000, stop_words=None)
-        tfidf_matrix = tfidf.fit_transform(df_movies['content'])
+        _self.tfidf = TfidfVectorizer(max_features=3000, stop_words=None)
+        _self.tfidf_matrix = _self.tfidf.fit_transform(df_movies['content'])
         
         # 코사인 유사도 계산
-        _self.content_similarity = cosine_similarity(tfidf_matrix, tfidf_matrix)
+        _self.content_similarity = cosine_similarity(_self.tfidf_matrix, _self.tfidf_matrix)
         
         return True
     
@@ -93,17 +108,15 @@ class MovieRecommender:
         if user_id not in self.user_to_idx:
             return pd.DataFrame()
         
-        user_idx = self.user_to_idx[user_id]
         user_ratings = df_ratings[df_ratings['user_id'] == user_id]['movie_id'].values
-        
-        # 예측 평점 가져오기
-        user_predictions = self.predicted_ratings[user_idx]
         
         # 추천 영화 목록 생성
         recommendations = []
-        for movie_idx, predicted_rating in enumerate(user_predictions):
-            movie_id = self.idx_to_movie.get(movie_idx)
-            if movie_id and movie_id not in user_ratings:
+        for movie_id in self.movie_to_idx.keys():
+            if movie_id not in user_ratings:
+                # Surprise 모델로 예측
+                predicted_rating = self.svd_model.predict(user_id, movie_id).est
+                
                 movie_info = df_movies[df_movies['movie_id'] == movie_id]
                 if not movie_info.empty:
                     recommendations.append({
@@ -137,7 +150,7 @@ class MovieRecommender:
         elif method == 'collaborative' and self.item_similarity is not None:
             idx = self.movie_to_idx.get(movie_id)
             if idx is not None:
-                similarity_scores = list(enumerate(self.item_similarity[idx].toarray().flatten()))
+                similarity_scores = list(enumerate(self.item_similarity[idx]))
             else:
                 return pd.DataFrame()
         else:
@@ -175,11 +188,7 @@ class MovieRecommender:
         if user_id not in self.user_to_idx:
             return pd.DataFrame()
         
-        user_idx = self.user_to_idx[user_id]
         user_ratings = df_ratings[df_ratings['user_id'] == user_id]['movie_id'].values
-        
-        # 협업 필터링 점수
-        cf_scores = self.predicted_ratings[user_idx]
         
         # 컨텐츠 기반 점수 계산
         cb_scores = np.zeros(len(df_movies))
@@ -203,10 +212,9 @@ class MovieRecommender:
         recommendations = []
         for movie_idx, (movie_id, movie_data) in enumerate(df_movies.iterrows()):
             if movie_data['movie_id'] not in user_ratings:
-                # CF 점수 가져오기
-                cf_movie_idx = self.movie_to_idx.get(movie_data['movie_id'])
-                if cf_movie_idx is not None and cf_movie_idx < len(cf_scores):
-                    cf_score = cf_scores[cf_movie_idx]
+                # CF 점수 가져오기 (Surprise 예측)
+                if movie_data['movie_id'] in self.movie_to_idx:
+                    cf_score = self.svd_model.predict(user_id, movie_data['movie_id']).est
                 else:
                     cf_score = 0
                 
@@ -230,4 +238,3 @@ class MovieRecommender:
             recommendations_df = recommendations_df.head(n_recommendations)
         
         return recommendations_df
-

@@ -19,7 +19,7 @@ def recommender_full(df_ratings_filtered, df_movies):
     """모든 모델이 학습된 추천 시스템 fixture"""
     rec = MovieRecommender()
     rec.train_collaborative_filtering(df_ratings_filtered, n_factors=30)
-    rec.train_item_based(df_ratings_filtered)
+    rec.train_item_based(df_ratings_filtered)  # SVD 모델 기반으로 item similarity 계산
     rec.train_content_based(df_movies)
     return rec
 
@@ -32,7 +32,8 @@ class TestCollaborativeFiltering:
         recommender = MovieRecommender()
         result = recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=20)
         assert result is True
-        assert recommender.predicted_ratings is not None
+        assert recommender.svd_model is not None
+        assert recommender.trainset is not None
         assert recommender.user_to_idx is not None
         assert recommender.movie_to_idx is not None
         
@@ -62,7 +63,7 @@ class TestItemBasedFiltering:
     
     def test_train_item_based(self, recommender, df_ratings_filtered):
         """Item-based 학습 테스트"""
-        result = recommender.train_item_based(df_ratings_filtered)
+        result = recommender.train_item_based(df_ratings_filtered)  # SVD 모델 기반 item similarity
         assert result is True
         assert recommender.item_similarity is not None
 
