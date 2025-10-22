@@ -50,6 +50,9 @@ scraper.log
 .env
 .env.local
 
+# Authentication files
+auth_state.json
+
 # Poetry
 poetry.lock
 
