@@ -8,10 +8,22 @@ from typing import Tuple, Dict
 import streamlit as st
 
 
+def get_data_path() -> Path:
+    """데이터 디렉토리 경로를 반환 (로컬/배포 환경 모두 호환)"""
+    # 현재 파일의 위치를 기준으로 프로젝트 루트를 찾음
+    current_file = Path(__file__).resolve()
+    # app/utils/data_loader.py -> app/utils -> app -> project_root
+    project_root = current_file.parent.parent.parent
+    data_dir = project_root / 'data_scraping' / 'data'
+    return data_dir
+
+
 @st.cache_data
-def load_movie_data(data_path: str = '../data_scraping/data/') -> pd.DataFrame:
+def load_movie_data(data_path: str = None) -> pd.DataFrame:
     """영화 정보 데이터 로딩"""
     movie_info = []
+    if data_path is None:
+        data_path = get_data_path()
     file_path = Path(data_path) / 'movie_info_watcha.txt'
     
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -43,9 +55,11 @@ def load_movie_data(data_path: str = '../data_scraping/data/') -> pd.DataFrame:
 
 
 @st.cache_data
-def load_ratings_data(data_path: str = '../data_scraping/data/') -> pd.DataFrame:
+def load_ratings_data(data_path: str = None) -> pd.DataFrame:
     """사용자 평점 데이터 로딩"""
     ratings = []
+    if data_path is None:
+        data_path = get_data_path()
     file_path = Path(data_path) / 'custom_movie_rating.txt'
     
     with open(file_path, 'r', encoding='utf-8') as f:
