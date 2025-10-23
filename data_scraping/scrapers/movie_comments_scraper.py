@@ -67,10 +67,10 @@ class MovieCommentsScraper(BaseScraper):
             self.browser_manager._scroll_to_end(page)
         else:
             # Scroll until we have enough comments or reach the end
-            comment_list_xpath = '/html/body/main/div[1]/section/div[2]/ul/li'
+            comment_list_xpath = self.config.get_xpath('comment_list')
             previous_count = 0
             no_change_count = 0
-            max_no_change = 3  # Stop after 3 consecutive scrolls with no new comments
+            max_no_change = 8  # Stop after 8 consecutive scrolls with no new comments (increased for better lazy loading)
             
             # Allow more scrolls - calculate based on max_comments (roughly 10-20 comments per scroll)
             max_scrolls = max(50, (max_comments // 10) + 10)
@@ -115,7 +115,7 @@ class MovieCommentsScraper(BaseScraper):
         comments = []
         
         # Get all comment elements at once (more efficient than querying one by one)
-        comment_list_xpath = '/html/body/main/div[1]/section/div[2]/ul/li'
+        comment_list_xpath = self.config.get_xpath('comment_list')
         comment_elements = page.locator(f'xpath={comment_list_xpath}')
         
         count = comment_elements.count()
@@ -165,7 +165,7 @@ class MovieCommentsScraper(BaseScraper):
         """
         # Extract custom ID (user ID)
         custom_id_xpath = self.config.get_xpath('comment_custom_id_template', i=index)
-        custom_id_locator = page.locator(custom_id_xpath)
+        custom_id_locator = page.locator(f'xpath={custom_id_xpath}')
         
         # Check existence first (single count() call per comment)
         if custom_id_locator.count() == 0:
@@ -176,7 +176,7 @@ class MovieCommentsScraper(BaseScraper):
         
         # Try to click spoiler "보기" button to reveal spoiler text
         spoiler_button_xpath = self.config.get_xpath('comment_spoiler_button_template', i=index)
-        spoiler_button = page.locator(spoiler_button_xpath)
+        spoiler_button = page.locator(f'xpath={spoiler_button_xpath}')
         
         if spoiler_button.count() > 0:
             try:
@@ -189,7 +189,7 @@ class MovieCommentsScraper(BaseScraper):
         comment_xpath = self.config.get_xpath('comment_text_template', i=index)
         comment_text = None
         try:
-            raw_text = page.locator(comment_xpath).first.inner_text(timeout=1000)
+            raw_text = page.locator(f'xpath={comment_xpath}').first.inner_text(timeout=1000)
             comment_text = self.cleaner.sanitize_for_txt(raw_text)
         except Exception:
             pass
@@ -198,7 +198,7 @@ class MovieCommentsScraper(BaseScraper):
         rating_xpath = self.config.get_xpath('comment_rating_template', i=index)
         rating = None
         try:
-            rating_text = page.locator(rating_xpath).first.inner_text(timeout=1000)
+            rating_text = page.locator(f'xpath={rating_xpath}').first.inner_text(timeout=1000)
             rating = self.cleaner.clean_text(rating_text)
         except Exception:
             pass
@@ -207,7 +207,7 @@ class MovieCommentsScraper(BaseScraper):
         likes_xpath = self.config.get_xpath('comment_likes_template', i=index)
         n_likes = None
         try:
-            likes_text = page.locator(likes_xpath).first.inner_text(timeout=1000)
+            likes_text = page.locator(f'xpath={likes_xpath}').first.inner_text(timeout=1000)
             n_likes = self.cleaner.clean_text(likes_text)
         except Exception:
             pass

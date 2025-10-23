@@ -35,13 +35,13 @@ def debug_comments():
         print("Testing NEW selectors for comments:")
         print("="*80)
         
-        # New XPath selectors (홈페이지 구조 변경 반영)
+        # XPath selectors from config.py (Updated 2025-10-23)
         new_xpaths = {
-            'user_id': '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[1]',
-            'text': '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p',
-            'rating': '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[1]/header/div[2]/p',
-            'likes': '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/ul/li[1]/button/span',
-            'spoiler_button': '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p/button'
+            'user_id': config.XPATHS['comment_custom_id_template'],
+            'text': config.XPATHS['comment_text_template'],
+            'rating': config.XPATHS['comment_rating_template'],
+            'likes': config.XPATHS['comment_likes_template'],
+            'spoiler_button': config.XPATHS['comment_spoiler_button_template']
         }
         
         print("\nTesting first 3 comments with new XPaths:")
@@ -52,7 +52,7 @@ def debug_comments():
             
             # Test user ID
             user_xpath = new_xpaths['user_id'].format(i=i)
-            user_elem = page.locator(user_xpath)
+            user_elem = page.locator(f"xpath={user_xpath}")
             print(f"User ID link: {user_elem.count()} found")
             if user_elem.count() > 0:
                 href = user_elem.get_attribute('href')
@@ -61,7 +61,7 @@ def debug_comments():
             
             # Test spoiler button first (if exists, click it)
             spoiler_xpath = new_xpaths['spoiler_button'].format(i=i)
-            spoiler_btn = page.locator(spoiler_xpath)
+            spoiler_btn = page.locator(f"xpath={spoiler_xpath}")
             if spoiler_btn.count() > 0:
                 print(f"Spoiler button: Found! Clicking...")
                 try:
@@ -72,7 +72,7 @@ def debug_comments():
             
             # Test comment text
             text_xpath = new_xpaths['text'].format(i=i)
-            text_elem = page.locator(text_xpath)
+            text_elem = page.locator(f"xpath={text_xpath}")
             print(f"Comment text: {text_elem.count()} found")
             if text_elem.count() > 0:
                 text = text_elem.inner_text()
@@ -80,7 +80,7 @@ def debug_comments():
             
             # Test rating
             rating_xpath = new_xpaths['rating'].format(i=i)
-            rating_elem = page.locator(rating_xpath)
+            rating_elem = page.locator(f"xpath={rating_xpath}")
             print(f"Rating: {rating_elem.count()} found")
             if rating_elem.count() > 0:
                 rating = rating_elem.inner_text()
@@ -88,7 +88,7 @@ def debug_comments():
             
             # Test likes
             likes_xpath = new_xpaths['likes'].format(i=i)
-            likes_elem = page.locator(likes_xpath)
+            likes_elem = page.locator(f"xpath={likes_xpath}")
             print(f"Likes: {likes_elem.count()} found")
             if likes_elem.count() > 0:
                 likes = likes_elem.inner_text()
