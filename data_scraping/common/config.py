@@ -39,18 +39,18 @@ class Config:
     
     # XPath configurations
     XPATHS: Dict[str, str] = field(default_factory=lambda: {
-        # Movie info page
-        "movie_title": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/h1/text()',
-        "movie_basic_info": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/div[2]/text()',
-        "movie_additional_info": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/div[3]/text()',
-        "movie_synopsis": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[2]/section[1]/div[2]/section[3]/p/text()',
-        "movie_avg_rating": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[2]/section[1]/div[2]/section[1]/div[2]/div/div[1]/text()',
-        "movie_n_rating": '//*[@id="root"]/div[1]/section/div/div[2]/div/div/div[2]/section[1]/div[2]/section[1]/div[2]/div/div[2]/text()',
-        "movie_n_comments": '/html/body/div[1]/div[1]/section/div/div[2]/section/section[2]/header/span/text()',
+        # Movie info page - Updated 2025-10-23 for new page structure (Playwright compatible - no /text())
+        "movie_title": '/html/body/main/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/h1',
+        "movie_basic_info": '/html/body/main/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/div[2]',
+        "movie_additional_info": '/html/body/main/div[1]/section/div/div[2]/div/div/div[1]/div[2]/div/div[3]',
+        "movie_synopsis": '/html/body/main/div[1]/section/div/div[2]/div/div/div[2]/section[1]/div[2]/section[3]/p',
+        "movie_avg_rating": 'text=/평균/',  # Will extract from "평균 3.8(1,358명)" format
+        "movie_n_rating": 'text=/평균/',  # Will extract from "평균 3.8(1,358명)" format
+        "movie_n_comments": '/html/body/main/div[1]/section/div/div[2]/section/section[3]/header/span',
         
         # Cast and crew (dynamic index)
-        "cast_name_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[1]/text()',
-        "cast_role_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[2]/text()',
+        "cast_name_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[1]',
+        "cast_role_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[2]',
         
         # Comments page (dynamic index) - Updated 2025-10-21 for new page structure
         "comment_custom_id_template": '//*[@id="root"]/div[1]/section/div[2]/ul/li[{i}]/article/a[1]',

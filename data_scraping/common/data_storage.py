@@ -46,23 +46,35 @@ class DataStorage:
         """
         file_path = self.get_movie_info_path()
         
-        # Convert cast_production list to string (semicolon separated)
-        cast_str = '; '.join([f"{name}({role})" for name, role in movie_data.get('cast_production', [])])
+        # Convert cast_production list to string (Python list format like the old data)
+        cast_list = movie_data.get('cast_production', [])
+        cast_str = str(cast_list) if cast_list else ''
+        
+        # Helper function to clean text (remove newlines and extra whitespace)
+        def clean_text(value):
+            if value is None or value == 'None':
+                return ''
+            text = str(value)
+            # Replace newlines and tabs with space
+            text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            # Remove extra whitespace
+            text = ' '.join(text.split())
+            return text
         
         # Prepare data in order
         data_list = [
-            str(movie_data.get('movie_id', '')),
-            str(movie_data.get('title', '')),
-            str(movie_data.get('year', '')),
-            str(movie_data.get('genre', '')),
-            str(movie_data.get('country', '')),
-            str(movie_data.get('runtime', '')),
-            str(movie_data.get('age', '')),
-            cast_str,
-            str(movie_data.get('synopsis', '')),
-            str(movie_data.get('avg_rating', '')),
-            str(movie_data.get('n_rating', '')),
-            str(movie_data.get('n_comments', '')),
+            clean_text(movie_data.get('movie_id', '')),
+            clean_text(movie_data.get('title', '')),
+            clean_text(movie_data.get('year', '')),
+            clean_text(movie_data.get('genre', '')),
+            clean_text(movie_data.get('country', '')),
+            clean_text(movie_data.get('runtime', '')),
+            clean_text(movie_data.get('age', '')),
+            cast_str,  # Cast is already formatted, don't clean
+            clean_text(movie_data.get('synopsis', '')),
+            clean_text(movie_data.get('avg_rating', '')),
+            clean_text(movie_data.get('n_rating', '')),
+            clean_text(movie_data.get('n_comments', '')),
         ]
         
         self._append_to_txt(file_path, data_list)

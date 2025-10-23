@@ -1,7 +1,7 @@
 """Data cleaning utilities for scraped content."""
 
 import re
-from typing import Optional
+from typing import Optional, List, Tuple
 
 
 class DataCleaner:
@@ -176,4 +176,90 @@ class DataCleaner:
         
         items = line.split('·')
         return [item.strip() for item in items if item.strip()]
+    
+    @staticmethod
+    def parse_cast_info(cast_text: str) -> List[Tuple[str, str]]:
+        """
+        Parse cast information from new format.
+        
+        Args:
+            cast_text: Cast information in format "이름(역할); 이름(역할); ..."
+        
+        Returns:
+            List of (name, role) tuples
+        """
+        if not cast_text:
+            return []
+        
+        cast_list = []
+        # Split by semicolon
+        cast_items = cast_text.split(';')
+        
+        for item in cast_items:
+            item = item.strip()
+            if not item:
+                continue
+            
+            # Extract name and role from "이름(역할)" format
+            match = re.match(r'^([^(]+)\(([^)]+)\)$', item)
+            if match:
+                name = match.group(1).strip()
+                role = match.group(2).strip()
+                cast_list.append((name, role))
+        
+        return cast_list
+    
+    @staticmethod
+    def parse_runtime_new(runtime_text: str) -> Optional[str]:
+        """
+        Parse runtime from new format (just numbers).
+        
+        Args:
+            runtime_text: Runtime text (e.g., "105", "90")
+        
+        Returns:
+            Runtime in minutes as string, or None if parsing fails
+        """
+        if not runtime_text:
+            return None
+        
+        # Extract number
+        runtime = DataCleaner.extract_number(runtime_text)
+        if runtime:
+            return str(int(runtime))
+        
+        return None
+    
+    @staticmethod
+    def parse_rating_text(rating_text: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Parse rating text in format "평균 3.8(1,358명)".
+        
+        Args:
+            rating_text: Rating text containing average and count
+        
+        Returns:
+            Tuple of (avg_rating, rating_count) or (None, None) if parsing fails
+        """
+        if not rating_text:
+            return None, None
+        
+        avg_rating = None
+        rating_count = None
+        
+        try:
+            # Extract average rating: "평균 3.8(1,358명)" -> "3.8"
+            rating_match = re.search(r'평균\s+(\d+\.\d+)', rating_text)
+            if rating_match:
+                avg_rating = rating_match.group(1)
+            
+            # Extract rating count: "평균 3.8(1,358명)" -> "1358"
+            count_match = re.search(r'\((\d+(?:,\d+)*)명\)', rating_text)
+            if count_match:
+                rating_count = count_match.group(1).replace(',', '')
+        
+        except Exception:
+            pass
+        
+        return avg_rating, rating_count
 
