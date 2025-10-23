@@ -7,11 +7,12 @@ from pathlib import Path
 import sys
 import pickle
 
-# 현재 디렉토리를 path에 추가
-sys.path.append(str(Path(__file__).parent))
+# 프로젝트 루트를 path에 추가
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
 
-from utils.data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
-from utils.recommender_lite import MovieRecommenderLite
+from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
+from streamlit_recommender import MovieRecommender
 
 # 페이지 설정
 st.set_page_config(
@@ -70,7 +71,7 @@ def load_all_data():
 @st.cache_resource
 def initialize_recommender(df_ratings_filtered, df_movies):
     """추천 시스템 초기화 (사전 학습된 모델 로드)"""
-    model_path = Path(__file__).parent / 'models' / 'recommender_model.pkl'
+    model_path = project_root / 'modeling' / 'models' / 'pkls' / 'recommender_model.pkl'
     
     # 사전 학습된 모델이 있으면 로드
     if model_path.exists():
@@ -85,7 +86,7 @@ def initialize_recommender(df_ratings_filtered, df_movies):
     
     # 모델이 없으면 학습 (초경량화 버전)
     with st.spinner("추천 시스템을 학습하는 중... (최초 1회, 약 1-2분 소요)"):
-        recommender = MovieRecommenderLite()
+        recommender = MovieRecommender()
         recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=20)
         recommender.train_content_based(df_movies)
         return recommender

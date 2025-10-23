@@ -14,64 +14,6 @@ class IDMapping:
     idx_to_movie: Dict[int, str]
 
 
-def load_data(
-    data_path: str = '../../data_scraping/data/',
-    filename: str = 'custom_movie_rating.txt',
-    verbose: bool = True
-) -> pd.DataFrame:
-    """
-    사용자 평점 데이터를 파일에서 로딩하는 함수
-    
-    Args:
-        data_path: 데이터 파일이 위치한 디렉토리 경로
-        filename: 로딩할 파일명
-        verbose: 로딩 정보 출력 여부
-        
-    Returns:
-        평점 데이터프레임 (columns: user_id, movie_id, movie_title, rating)
-        
-    Raises:
-        FileNotFoundError: 파일이 존재하지 않을 경우
-        ValueError: 데이터가 비어있을 경우
-    """
-    file_path = Path(data_path) / filename
-    
-    if not file_path.exists():
-        raise FileNotFoundError(f"파일을 찾을 수 없습니다: {file_path}")
-    
-    if verbose:
-        print("\n사용자 평점 데이터 로딩 중...")
-    
-    ratings = []
-    with open(file_path, 'r', encoding='utf-8') as f:
-        for line_num, line in enumerate(f, 1):
-            parts = line.strip().split('/')
-            if len(parts) >= 4:
-                try:
-                    ratings.append({
-                        'user_id': parts[0],
-                        'movie_id': parts[1],
-                        'movie_title': parts[2],
-                        'rating': float(parts[3])
-                    })
-                except ValueError as e:
-                    if verbose:
-                        print(f"경고: {line_num}번 라인 파싱 실패 - {e}")
-                    continue
-    
-    if not ratings:
-        raise ValueError("로딩된 평점 데이터가 없습니다.")
-    
-    df_ratings = pd.DataFrame(ratings)
-    
-    if verbose:
-        print(f"평점 데이터: {len(df_ratings):,}개")
-        print(f"고유 사용자 수: {df_ratings['user_id'].nunique():,}명")
-        print(f"고유 영화 수: {df_ratings['movie_id'].nunique():,}개")
-    
-    return df_ratings
-
-
 def filter_by_min_counts(
     df: pd.DataFrame,
     min_user_ratings: int = 30,
@@ -291,3 +233,9 @@ def get_movie_id(
             return None
     
     return result.iloc[0]['movie_id']
+
+
+def search_movies(df_movies: pd.DataFrame, query: str, limit: int = 10) -> pd.DataFrame:
+    """영화 제목으로 검색"""
+    result = df_movies[df_movies['title'].str.contains(query, case=False, na=False)]
+    return result.head(limit)

@@ -1,24 +1,21 @@
 """
-데이터 로딩 및 전처리 유틸리티
+데이터 로딩 및 전처리 유틸리티 (Streamlit 데코레이터 없는 깔끔한 버전)
+데이터 로드 하는 부분만, 전처리 등은 모두 modeling에 하도록
 """
 import pandas as pd
-import numpy as np
 from pathlib import Path
-from typing import Tuple, Dict
-import streamlit as st
 
 
 def get_data_path() -> Path:
     """데이터 디렉토리 경로를 반환 (로컬/배포 환경 모두 호환)"""
     # 현재 파일의 위치를 기준으로 프로젝트 루트를 찾음
     current_file = Path(__file__).resolve()
-    # app/utils/data_loader.py -> app/utils -> app -> project_root
+    # data_scraping/common/data_loader.py -> data_scraping/common -> data_scraping -> project_root
     project_root = current_file.parent.parent.parent
     data_dir = project_root / 'data_scraping' / 'data'
     return data_dir
 
 
-@st.cache_data
 def load_movie_data(data_path: str = None) -> pd.DataFrame:
     """영화 정보 데이터 로딩"""
     movie_info = []
@@ -54,7 +51,6 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
     return df_movies
 
 
-@st.cache_data
 def load_ratings_data(data_path: str = None) -> pd.DataFrame:
     """사용자 평점 데이터 로딩"""
     ratings = []
@@ -82,26 +78,5 @@ def load_ratings_data(data_path: str = None) -> pd.DataFrame:
     return df_ratings
 
 
-def filter_data(df: pd.DataFrame, 
-                min_user_ratings: int = 30, 
-                min_movie_ratings: int = 10) -> pd.DataFrame:
-    """Cold start 문제 해결을 위한 데이터 필터링"""
-    user_counts = df.groupby('user_id').size()
-    movie_counts = df.groupby('movie_id').size()
-    
-    valid_users = user_counts[user_counts >= min_user_ratings].index
-    valid_movies = movie_counts[movie_counts >= min_movie_ratings].index
-    
-    df_filtered = df[
-        (df['user_id'].isin(valid_users)) & 
-        (df['movie_id'].isin(valid_movies))
-    ].copy()
-    
-    return df_filtered
 
-
-def search_movies(df_movies: pd.DataFrame, query: str, limit: int = 10) -> pd.DataFrame:
-    """영화 제목으로 검색"""
-    result = df_movies[df_movies['title'].str.contains(query, case=False, na=False)]
-    return result.head(limit)
 
