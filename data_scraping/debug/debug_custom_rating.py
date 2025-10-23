@@ -1,9 +1,9 @@
 """Debug script to test custom rating selectors.
 
-New XPath selectors (updated 2025-10-21):
-- movie_id: //*[@id="root"]/div[1]/section/section/ul/li[{i}]/a (href 속성 추출)
-- movie_name: //*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]
-- rating: //*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]
+New XPath selectors (updated 2025-10-23):
+- movie_id: /html/body/main/div[1]/section/section/ul/li[{i}]/a (href 속성 추출)
+- movie_name: /html/body/main/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]
+- rating: /html/body/main/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]
 """
 
 import sys
@@ -41,30 +41,19 @@ def debug_custom_rating():
         print("Testing NEW selectors for custom user ratings:")
         print("="*80)
         
-        # New XPath selectors (simplified)
+        # New XPath selectors (updated for new page structure)
         new_xpaths = {
-            'movie_id': '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a',
-            'movie_name': '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]',
-            'rating': '//*[@id="root"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]',
+            'movie_id': '/html/body/main/div[1]/section/section/ul/li[{i}]/a',
+            'movie_name': '/html/body/main/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]',
+            'rating': '/html/body/main/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]',
         }
         
-        # Also show old XPath from config for comparison
-        old_xpaths = {
-            'movie_id': config.get_xpath('user_movie_id_template'),
-            'movie_name': config.get_xpath('user_movie_name_template'),
-            'rating': config.get_xpath('user_movie_rating_template'),
-        }
-        
-        print("\n[OLD XPath templates from config:]")
-        for key, value in old_xpaths.items():
-            print(f"  {key}: {value}")
-        
-        print("\n[NEW XPath templates being tested:]")
+        print("\n[XPath templates being tested:]")
         for key, value in new_xpaths.items():
             print(f"  {key}: {value}")
         
         print("\n" + "="*80)
-        print("Testing first 5 ratings with NEW XPaths:")
+        print("Testing first 5 ratings:")
         print("="*80)
         
         for i in range(1, 6):
@@ -110,13 +99,9 @@ def debug_custom_rating():
         print("Counting total ratings on page:")
         print("="*80)
         
-        # Try OLD xpath
-        old_total = page.locator('xpath=//*[@id="root"]/div[1]/section/section/div[1]/section/div[1]/div/ul/li').count()
-        print(f"Total rating items found (OLD XPath): {old_total}")
-        
-        # Try NEW xpath
-        new_total = page.locator('xpath=//*[@id="root"]/div[1]/section/section/ul/li').count()
-        print(f"Total rating items found (NEW XPath): {new_total}")
+        # Count total ratings
+        total = page.locator('xpath=/html/body/main/div[1]/section/section/ul/li').count()
+        print(f"Total rating items found: {total}")
         
         # Test: Get the actual HTML structure
         print("\n" + "="*80)
@@ -136,10 +121,7 @@ def debug_custom_rating():
         print("\n" + "="*80)
         print("Testing Complete!")
         print("="*80)
-        print("\nIf NEW XPath selectors work correctly, update config.py:")
-        print("  user_movie_id_template: '//*[@id=\"root\"]/div[1]/section/section/ul/li[{i}]/a/@href'")
-        print("  user_movie_name_template: '//*[@id=\"root\"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[1]/text()'")
-        print("  user_movie_rating_template: '//*[@id=\"root\"]/div[1]/section/section/ul/li[{i}]/a/div[2]/div[2]/text()'")
+        print("\nXPath selectors are already updated in config.py!")
         print("\nPress Enter to close...")
         input()
 

@@ -2,7 +2,7 @@
 
 import time
 from typing import List, Dict, Any, Optional
-from playwright.sync_api import Page
+from playwright.sync_api import Page  # type: ignore
 
 from common.exceptions import DataParsingError
 from .base_scraper import BaseScraper
@@ -67,7 +67,7 @@ class MovieCommentsScraper(BaseScraper):
             self.browser_manager._scroll_to_end(page)
         else:
             # Scroll until we have enough comments or reach the end
-            comment_list_xpath = '//*[@id="root"]/div[1]/section/div[2]/ul/li'
+            comment_list_xpath = '/html/body/main/div[1]/section/div[2]/ul/li'
             previous_count = 0
             no_change_count = 0
             max_no_change = 3  # Stop after 3 consecutive scrolls with no new comments
@@ -115,7 +115,7 @@ class MovieCommentsScraper(BaseScraper):
         comments = []
         
         # Get all comment elements at once (more efficient than querying one by one)
-        comment_list_xpath = '//*[@id="root"]/div[1]/section/div[2]/ul/li'
+        comment_list_xpath = '/html/body/main/div[1]/section/div[2]/ul/li'
         comment_elements = page.locator(f'xpath={comment_list_xpath}')
         
         count = comment_elements.count()
