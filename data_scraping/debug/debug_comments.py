@@ -1,5 +1,12 @@
 """Debug script to test comment selectors."""
 
+import sys
+import time
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import time
 from common import Config
 from common.browser_manager import BrowserManager

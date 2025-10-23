@@ -162,12 +162,13 @@ class DataStorage:
         with open(file_path, 'a', encoding='utf-8') as f:
             f.write(line)
     
-    def _read_txt(self, file_path: str) -> List[List[str]]:
+    def _read_txt(self, file_path: str, expected_columns: int = None) -> List[List[str]]:
         """
         Read TXT file and parse rows.
         
         Args:
             file_path: Path to TXT file
+            expected_columns: Expected number of columns (optional)
         
         Returns:
             List of rows (each row is a list of values)
@@ -178,9 +179,16 @@ class DataStorage:
             return rows
         
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
                 if line.strip():
-                    rows.append(line.strip().split(self.config.DATA_SEPARATOR))
+                    row = line.strip().split(self.config.DATA_SEPARATOR)
+                    
+                    # 컬럼 수가 맞지 않는 행은 건너뛰기
+                    if expected_columns is not None and len(row) != expected_columns:
+                        self.logger.warning(f"Skipping line {line_num}: expected {expected_columns} columns, got {len(row)}")
+                        continue
+                    
+                    rows.append(row)
         
         return rows
     
@@ -197,12 +205,13 @@ class DataStorage:
             self.logger.warning(f"Movie info file not found: {file_path}")
             return pd.DataFrame()
         
-        rows = self._read_txt(file_path)
-        
         columns = [
             'MovieID', 'Title', 'Year', 'Genre', 'Country', 'Runtime', 
             'Age', 'Cast_Production', 'Synopsis', 'Avg_Rating', 'N_Rating', 'N_Comments'
         ]
+        
+        # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
+        rows = self._read_txt(file_path, expected_columns=len(columns))
         
         return pd.DataFrame(rows, columns=columns)
     
@@ -219,9 +228,10 @@ class DataStorage:
             self.logger.warning(f"Movie comments file not found: {file_path}")
             return pd.DataFrame()
         
-        rows = self._read_txt(file_path)
-        
         columns = ['MovieID', 'CustomID', 'Comment', 'Rating', 'N_Likes']
+        
+        # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
+        rows = self._read_txt(file_path, expected_columns=len(columns))
         
         return pd.DataFrame(rows, columns=columns)
     
@@ -238,9 +248,10 @@ class DataStorage:
             self.logger.warning(f"Custom rating file not found: {file_path}")
             return pd.DataFrame()
         
-        rows = self._read_txt(file_path)
-        
         columns = ['CustomID', 'MovieID', 'MovieName', 'Rating']
+        
+        # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
+        rows = self._read_txt(file_path, expected_columns=len(columns))
         
         return pd.DataFrame(rows, columns=columns)
     

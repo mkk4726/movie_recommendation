@@ -175,7 +175,10 @@ class DataCleaner:
             return []
         
         items = line.split('·')
-        return [item.strip() for item in items if item.strip()]
+        # 각 항목에서 '/'를 띄어쓰기로 변경 (장르 내부의 '/' 처리)
+        # 예: "코미디/드라마" -> "코미디 드라마"
+        # 빈 문자열도 유지 (Age 등이 없을 수 있음)
+        return [item.strip().replace('/', ' ') for item in items]
     
     @staticmethod
     def parse_cast_info(cast_text: str) -> List[Tuple[str, str]]:
