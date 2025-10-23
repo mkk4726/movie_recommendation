@@ -26,6 +26,7 @@ class Config:
     # Scroll settings
     SCROLL_DELAY: int = 2
     SCROLL_MAX_RETRIES: int = 5
+    SCROLL_NO_CHANGE_LIMIT: int = 3  # Stop scrolling after N consecutive scrolls with no new content
     
     # Data settings
     DATA_DIR: str = "./data"
@@ -53,6 +54,7 @@ class Config:
         "cast_role_template": '//*[@id="content_credits"]/section/div[1]/ul/li[{i}]/a/div[2]/div[1]/div[2]',
         
         # Comments page (dynamic index) - Updated 2025-10-23 for new page structure
+        "comment_list": '/html/body/main/div[1]/section/div[2]/ul/li',
         "comment_custom_id_template": '/html/body/main/div[1]/section/div[2]/ul/li[{i}]/article/a[1]',
         "comment_text_template": '/html/body/main/div[1]/section/div[2]/ul/li[{i}]/article/a[2]/p',
         "comment_rating_template": '/html/body/main/div[1]/section/div[2]/ul/li[{i}]/article/a[1]/header/div[2]/p',

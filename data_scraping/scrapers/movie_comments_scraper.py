@@ -70,7 +70,7 @@ class MovieCommentsScraper(BaseScraper):
             comment_list_xpath = self.config.get_xpath('comment_list')
             previous_count = 0
             no_change_count = 0
-            max_no_change = 8  # Stop after 8 consecutive scrolls with no new comments (increased for better lazy loading)
+            max_no_change = self.config.SCROLL_NO_CHANGE_LIMIT
             
             # Allow more scrolls - calculate based on max_comments (roughly 10-20 comments per scroll)
             max_scrolls = max(50, (max_comments // 10) + 10)
