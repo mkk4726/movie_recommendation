@@ -3,6 +3,7 @@ SVD 기반 영화 추천 시스템 파이프라인
 """
 import pickle
 import logging
+import yaml
 from pathlib import Path
 from typing import Tuple, Optional
 from dataclasses import dataclass
@@ -33,6 +34,35 @@ class ModelConfig:
     min_user_ratings: int = 30
     min_movie_ratings: int = 10
     rating_scale: Tuple[float, float] = (0.5, 5.0)
+    
+    @classmethod
+    def from_yaml(cls, yaml_path: Optional[str] = None) -> 'ModelConfig':
+        """
+        YAML 파일에서 설정을 로드하여 ModelConfig 객체 생성
+        
+        Args:
+            yaml_path: YAML 파일 경로 (None이면 기본 경로 사용)
+            
+        Returns:
+            ModelConfig 객체
+        """
+        # 기본 경로 설정
+        if yaml_path is None:
+            yaml_path = Path(__file__).parent / 'config.yaml'
+        else:
+            yaml_path = Path(yaml_path)
+        
+        # YAML 파일 읽기
+        logger.info(f"📄 설정 파일 로드: {yaml_path}")
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            config_dict = yaml.safe_load(f)
+        
+        # rating_scale이 리스트로 로드되므로 튜플로 변환
+        if 'rating_scale' in config_dict:
+            config_dict['rating_scale'] = tuple(config_dict['rating_scale'])
+        
+        logger.info("✅ 설정 로드 완료")
+        return cls(**config_dict)
 
 
 @dataclass
@@ -430,6 +460,10 @@ class SVDRecommenderPipeline:
             로드된 SVDRecommenderPipeline 객체
         """
         logger.info(f"📂 모델 로딩 중: {filepath}")
+        
+        # 파일 크기 확인
+        size_mb = Path(filepath).stat().st_size / (1024 * 1024)
+        logger.info(f"  - 파일 크기: {size_mb:.2f} MB")
         
         with open(filepath, 'rb') as f:
             model_data = pickle.load(f)

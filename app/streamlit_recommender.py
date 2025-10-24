@@ -10,11 +10,11 @@ class MovieRecommender(_MovieRecommender):
     """Streamlit용 추천 시스템 클래스 (캐싱 적용)"""
     
     @st.cache_resource
-    def train_collaborative_filtering(self, df_ratings, n_factors: int = 20):
-        """협업 필터링 모델 학습 (Streamlit 캐싱 적용)"""
-        return super().train_collaborative_filtering(df_ratings, n_factors)
+    def load_svd_pipeline(_self, filepath: str):
+        """SVD 파이프라인 로드 (Streamlit 캐싱 적용)"""
+        return super(MovieRecommender, _self).load_svd_pipeline(filepath)
     
     @st.cache_resource
-    def train_content_based(self, df_movies):
+    def train_content_based(_self, df_movies):
         """컨텐츠 기반 필터링 학습 (Streamlit 캐싱 적용)"""
-        return super().train_content_based(df_movies)
+        return super(MovieRecommender, _self).train_content_based(df_movies)

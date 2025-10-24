@@ -15,17 +15,8 @@ logger = logging.getLogger(__name__)
 def main():
     logger.info("🚀 SVD 추천 시스템 파이프라인 테스트")
     
-    # 모델 설정 (테스트용으로 작은 파라미터 사용)
-    config = ModelConfig(
-        n_factors=20,  # 빠른 학습을 위해 축소
-        n_epochs=10,   # 빠른 학습을 위해 축소
-        lr_all=0.005,
-        reg_all=0.02,
-        test_size=0.2,
-        min_user_ratings=30,
-        min_movie_ratings=10,
-        verbose=True
-    )
+    # YAML 파일에서 모델 설정 로드
+    config = ModelConfig.from_yaml()
     
     # 파이프라인 생성 및 전체 실행
     pipeline = SVDRecommenderPipeline(config)

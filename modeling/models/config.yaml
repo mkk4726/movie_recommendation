@@ -1,0 +1,23 @@
+# SVD 모델 설정
+# 파이프라인 실행 시 이 파일의 설정을 읽어와서 사용합니다.
+
+# SVD 알고리즘 하이퍼파라미터
+n_factors: 15         # 잠재 요인(latent factor)의 개수
+n_epochs: 10           # 학습 반복 횟수
+lr_all: 0.005          # 학습률 (learning rate)
+reg_all: 0.02          # 정규화 계수 (regularization)
+
+# 실행 설정
+random_state: 42       # 랜덤 시드 (재현성을 위해)
+verbose: true          # 학습 과정 출력 여부
+
+# 데이터 분할 및 필터링
+test_size: 0.2         # 테스트 데이터 비율
+min_user_ratings: 30   # 사용자당 최소 평점 개수
+min_movie_ratings: 10  # 영화당 최소 평점 개수
+
+# 평점 범위
+rating_scale:
+  - 0.5
+  - 5.0
+

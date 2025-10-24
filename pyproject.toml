@@ -19,6 +19,7 @@ langchain-chroma = "^0.1.4"
 langchain = "^0.3.13"
 langchain-community = "^0.3.13"
 lark = "^1.2.2"
+pyyaml = "^6.0.1"
 
 
 [tool.poetry.group.dev.dependencies]
