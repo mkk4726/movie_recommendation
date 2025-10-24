@@ -34,7 +34,7 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
                     'genre': parts[3],
                     'country': parts[4],
                     'runtime': parts[5],
-                    'rating': parts[6],
+                    'age_rating': parts[6],
                     'cast': parts[7],
                     'plot': parts[8],
                     'avg_score': parts[9],
