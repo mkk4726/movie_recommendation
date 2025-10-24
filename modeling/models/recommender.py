@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-class MovieRecommenderLite:
+class MovieRecommender:
     """영화 추천 시스템 클래스 (Surprise SVD 기반 - 경량화)"""
     
     def __init__(self):

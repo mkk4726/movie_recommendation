@@ -9,21 +9,25 @@ import numpy as np
 # 경로 추가
 sys.path.append(str(Path(__file__).parent))
 
-from utils.data_loader import load_movie_data, load_ratings_data, filter_data
-from utils.recommender_lite import MovieRecommenderLite
+from utils.data import filter_by_min_counts
+from models.recommender import MovieRecommender
+
+# 데이터 로더 import
+sys.path.append(str(Path(__file__).parent.parent))
+from data_scraping.common.data_loader import load_movie_data, load_ratings_data
 
 def main():
     print("📊 데이터 로딩 중...")
     df_movies = load_movie_data()
     df_ratings = load_ratings_data()
-    df_ratings_filtered = filter_data(df_ratings, min_user_ratings=30, min_movie_ratings=10)
+    df_ratings_filtered = filter_by_min_counts(df_ratings, min_user_ratings=30, min_movie_ratings=10, verbose=False)
     
     print(f"영화 수: {len(df_movies)}")
     print(f"평점 수: {len(df_ratings_filtered)}")
     print(f"사용자 수: {df_ratings_filtered['user_id'].nunique()}")
     
     print("\n🤖 추천 시스템 학습 중 (초경량화 버전)...")
-    recommender = MovieRecommenderLite()
+    recommender = MovieRecommender()
     
     print("  - 협업 필터링 학습 중 (n_factors=20)...")
     recommender.train_collaborative_filtering(df_ratings_filtered, n_factors=20)
@@ -32,8 +36,8 @@ def main():
     recommender.train_content_based(df_movies)
     
     # 모델 저장
-    model_dir = Path(__file__).parent / 'models'
-    model_dir.mkdir(exist_ok=True)
+    model_dir = Path(__file__).parent / 'models' / 'pkls'
+    model_dir.mkdir(parents=True, exist_ok=True)
     
     model_path = model_dir / 'recommender_model.pkl'
     
