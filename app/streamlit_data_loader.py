@@ -2,6 +2,13 @@
 Streamlit용 데이터 로더 wrapper
 Streamlit 데코레이터를 적용한 버전
 """
+import sys
+from pathlib import Path
+
+# 프로젝트 루트를 path에 추가
+project_root = Path(__file__).parent.parent.resolve()
+sys.path.append(str(project_root))
+
 import streamlit as st
 from data_scraping.common.data_loader import (
     load_movie_data as _load_movie_data,

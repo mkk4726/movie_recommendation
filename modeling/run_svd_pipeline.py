@@ -45,7 +45,7 @@ def main():
     df_movies = load_movie_data()
     
     # 첫 번째 사용자에게 추천
-    user_id = loaded_pipeline.df_preprocessed['user_id'].iloc[0]
+    user_id = loaded_pipeline.df_filtered['user_id'].iloc[0]
     logger.info(f"사용자 ID: {user_id}")
     
     top_watched, recommendations = loaded_pipeline.recommend_for_user(

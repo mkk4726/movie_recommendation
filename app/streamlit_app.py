@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 # 프로젝트 루트를 path에 추가
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.resolve()
 sys.path.append(str(project_root))
 
 from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
@@ -91,21 +91,27 @@ def load_all_data():
 
 @st.cache_resource
 def initialize_recommender(df_movies):
-    """추천 시스템 초기화 (사전 학습된 SVD 파이프라인 로드)"""
+    """추천 시스템 초기화 (사전 학습된 모델 로드)"""
     svd_pipeline_path = project_root / 'modeling' / 'models' / 'pkls' / 'trained_svd_pipeline.pkl'
+    item_based_path = project_root / 'modeling' / 'models' / 'pkls' / 'trained_item_based.pkl'
     
-    # SVD 파이프라인이 없으면 에러
+    # SVD 파이프라인 확인
     if not svd_pipeline_path.exists():
         st.error("❌ SVD 파이프라인이 없습니다. 먼저 modeling/run_svd_pipeline.py를 실행해주세요.")
         st.stop()
     
+    # Item-Based 모델 확인
+    if not item_based_path.exists():
+        st.error("❌ Item-Based 모델이 없습니다. 먼저 modeling/run_item_based_pipeline.py를 실행해주세요.")
+        st.stop()
+    
     with st.spinner("추천 모델을 로딩하는 중..."):
         try:
-            # MovieRecommender 생성 및 SVD 파이프라인 로드
-            recommender = MovieRecommender(str(svd_pipeline_path))
-            
-            # Content-based 모델 학습 (빠름)
-            recommender.train_content_based(df_movies)
+            # MovieRecommender 생성 및 모델 로드
+            recommender = MovieRecommender(
+                svd_pipeline_path=str(svd_pipeline_path),
+                item_based_path=str(item_based_path)
+            )
             
             st.success("✅ 모델 로드 완료!")
             return recommender
@@ -125,11 +131,11 @@ def display_movie_card(movie, score=None, score_label="예측 평점", show_plot
     year = int(movie['year']) if pd.notna(movie.get('year')) else 'N/A'
     genre = movie.get('genre', 'N/A') if pd.notna(movie.get('genre')) else 'N/A'
     country = movie.get('country', 'N/A') if pd.notna(movie.get('country')) else 'N/A'
-    runtime = f"{int(movie['runtime'])}분" if pd.notna(movie.get('runtime')) else 'N/A'
+    runtime = f"{movie['runtime']}분" if pd.notna(movie.get('runtime')) else 'N/A'
     age_rating = movie.get('age_rating', 'N/A') if pd.notna(movie.get('age_rating')) else 'N/A'
     avg_score = f"{movie['avg_score']:.1f}/5.0" if pd.notna(movie.get('avg_score')) else 'N/A'
     popularity = f"{movie['popularity']:.0f}" if pd.notna(movie.get('popularity')) else 'N/A'
-    review_count = f"{int(movie['review_count']):,}개" if pd.notna(movie.get('review_count')) else 'N/A'
+    review_count = f"{movie['review_count']}개" if pd.notna(movie.get('review_count')) else 'N/A'
     
     # 왓챠피디아 링크
     movie_id = movie.get('movie_id', '')
@@ -172,7 +178,7 @@ def main():
     # 추천 방식 선택
     recommendation_type = st.sidebar.selectbox(
         "추천 방식 선택",
-        ["🎯 사용자 기반 추천", "🎞️ 영화 기반 추천"]
+        ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천"]
     )
     
     st.sidebar.markdown("---")
@@ -242,25 +248,13 @@ def main():
     
     elif recommendation_type == "🎞️ 영화 기반 추천":
         st.header("🎞️ 영화 기반 추천")
-        st.markdown("좋아하는 영화와 비슷한 영화를 찾아드립니다.")
+        st.markdown("좋아하는 영화와 비슷한 영화를 찾아드립니다. (Item-Based CF 사용)")
         
         # 영화 검색
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            search_query = st.text_input(
-                "영화 제목을 검색하세요",
-                placeholder="예: 타이타닉, 어벤져스, 기생충..."
-            )
-        
-        with col2:
-            similarity_method = st.selectbox(
-                "유사도 방법",
-                ["컨텐츠 기반", "협업 필터링"],
-                help="컨텐츠 기반: 장르, 줄거리 유사도\n협업 필터링: 사용자 평점 패턴 유사도"
-            )
-        
-        method = 'content' if similarity_method == "컨텐츠 기반" else 'collaborative'
+        search_query = st.text_input(
+            "영화 제목을 검색하세요",
+            placeholder="예: 타이타닉, 어벤져스, 기생충..."
+        )
         
         if search_query:
             search_results = search_movies(df_movies, search_query, limit=10)
@@ -289,7 +283,7 @@ def main():
                 if st.button("🎬 비슷한 영화 찾기", key="movie_rec"):
                     with st.spinner("비슷한 영화를 찾는 중..."):
                         similar_movies = recommender.find_similar_movies(
-                            selected_movie['movie_id'], df_movies, n_recommendations, method
+                            selected_movie['movie_id'], df_movies, n_recommendations
                         )
                         
                         if similar_movies.empty:
@@ -299,7 +293,7 @@ def main():
                             
                             st.markdown("---")
                             st.markdown("### 🎁 비슷한 영화 추천")
-                            st.markdown(f"*{similarity_method} 방식으로 찾은 유사한 영화 {len(similar_movies)}개*")
+                            st.markdown(f"*평점 패턴 기반으로 찾은 유사한 영화 {len(similar_movies)}개*")
                             
                             for idx, row in enumerate(similar_movies.iterrows(), 1):
                                 _, movie = row

@@ -13,9 +13,15 @@ from surprise import SVD, Dataset, Reader, accuracy
 from surprise.model_selection import train_test_split
 
 import sys
-sys.path.append(str(Path(__file__).parent.parent.parent))
+
+# 프로젝트 루트를 sys.path에 추가
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from data_scraping.common.data_loader import load_ratings_data, load_movie_data
-from modeling.utils.data import filter_by_min_counts, preprocess_id_mapping, IDMapping
+from modeling.utils.data import filter_by_min_counts
+from modeling.utils.file_utils import format_file_size
 
 # Logger 설정
 logger = logging.getLogger(__name__)
@@ -57,12 +63,18 @@ class ModelConfig:
         with open(yaml_path, 'r', encoding='utf-8') as f:
             config_dict = yaml.safe_load(f)
         
+        # svd 섹션 추출
+        if 'svd' not in config_dict:
+            raise ValueError("config.yaml 파일에 'svd' 섹션이 없습니다.")
+        
+        svd_config = config_dict['svd']
+        
         # rating_scale이 리스트로 로드되므로 튜플로 변환
-        if 'rating_scale' in config_dict:
-            config_dict['rating_scale'] = tuple(config_dict['rating_scale'])
+        if 'rating_scale' in svd_config:
+            svd_config['rating_scale'] = tuple(svd_config['rating_scale'])
         
         logger.info("✅ 설정 로드 완료")
-        return cls(**config_dict)
+        return cls(**svd_config)
 
 
 @dataclass
@@ -110,8 +122,6 @@ class SVDRecommenderPipeline:
         # 데이터
         self.df_raw = None
         self.df_filtered = None
-        self.df_preprocessed = None
-        self.id_mapping: Optional[IDMapping] = None
         
         # Surprise 데이터셋 및 모델
         self.surprise_data = None
@@ -159,15 +169,15 @@ class SVDRecommenderPipeline:
         
         return self.df_raw
     
-    def preprocess_data(self, df: Optional[pd.DataFrame] = None) -> Tuple[pd.DataFrame, IDMapping]:
+    def preprocess_data(self, df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         """
-        데이터 전처리 (필터링 + ID 매핑)
+        데이터 전처리 (필터링)
         
         Args:
             df: 전처리할 데이터프레임 (None이면 self.df_raw 사용)
             
         Returns:
-            전처리된 데이터프레임과 ID 매핑 정보
+            전처리된 데이터프레임
         """
         if df is None:
             df = self.df_raw
@@ -185,26 +195,20 @@ class SVDRecommenderPipeline:
             verbose=True
         )
         
-        # ID 매핑
-        self.df_preprocessed, self.id_mapping = preprocess_id_mapping(
-            self.df_filtered,
-            verbose=True
-        )
-        
-        return self.df_preprocessed, self.id_mapping
+        return self.df_filtered
     
     def prepare_surprise_dataset(self, df: Optional[pd.DataFrame] = None) -> Dataset:
         """
         Surprise 라이브러리용 데이터셋 준비
         
         Args:
-            df: 사용할 데이터프레임 (None이면 self.df_preprocessed 사용)
+            df: 사용할 데이터프레임 (None이면 self.df_filtered 사용)
             
         Returns:
             Surprise Dataset 객체
         """
         if df is None:
-            df = self.df_preprocessed
+            df = self.df_filtered
             
         if df is None:
             raise ValueError("데이터를 먼저 전처리해주세요. preprocess_data() 실행 필요")
@@ -387,15 +391,15 @@ class SVDRecommenderPipeline:
         if self.svd_model is None:
             raise ValueError("모델을 먼저 학습해주세요. train() 실행 필요")
         
-        if user_id not in self.df_preprocessed['user_id'].values:
+        if user_id not in self.df_filtered['user_id'].values:
             raise ValueError(f"사용자 ID '{user_id}'를 찾을 수 없습니다.")
         
         # 사용자가 본 영화
-        user_ratings = self.df_preprocessed[self.df_preprocessed['user_id'] == user_id]
+        user_ratings = self.df_filtered[self.df_filtered['user_id'] == user_id]
         watched_movie_ids = set(user_ratings['movie_id'])
         
         # 사용자가 보지 않은 영화에 대해 예측
-        all_movie_ids = set(self.df_preprocessed['movie_id'].unique())
+        all_movie_ids = set(self.df_filtered['movie_id'].unique())
         unseen_movie_ids = all_movie_ids - watched_movie_ids
         
         predictions = []
@@ -431,22 +435,22 @@ class SVDRecommenderPipeline:
         model_data = {
             'config': self.config,
             'svd_model': self.svd_model,
-            'id_mapping': self.id_mapping,
             'metrics': self.metrics,
-            'df_preprocessed': self.df_preprocessed,
+            'df_filtered': self.df_filtered,
         }
         
         # 디렉토리 생성
-        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         
         # 모델 저장
-        logger.info(f"💾 모델 저장 중: {filepath}")
         with open(filepath, 'wb') as f:
             pickle.dump(model_data, f)
         
-        # 파일 크기 확인
-        size_mb = Path(filepath).stat().st_size / (1024 * 1024)
-        logger.info(f"✅ 모델 저장 완료! (크기: {size_mb:.2f} MB)")
+        # 파일 크기 출력
+        file_size = format_file_size(filepath)
+        logger.info(f"✅ 모델 저장 완료: {filepath}")
+        logger.info(f"📦 파일 크기: {file_size}")
         
     @classmethod
     def load_model(cls, filepath: str) -> 'SVDRecommenderPipeline':
@@ -459,11 +463,23 @@ class SVDRecommenderPipeline:
         Returns:
             로드된 SVDRecommenderPipeline 객체
         """
-        logger.info(f"📂 모델 로딩 중: {filepath}")
+        filepath = Path(filepath)
         
-        # 파일 크기 확인
-        size_mb = Path(filepath).stat().st_size / (1024 * 1024)
-        logger.info(f"  - 파일 크기: {size_mb:.2f} MB")
+        if not filepath.exists():
+            raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {filepath}")
+        
+        # 파일 크기 출력
+        file_size = format_file_size(filepath)
+        logger.info(f"📂 모델 로드 중: {filepath}")
+        logger.info(f"📦 파일 크기: {file_size}")
+        
+        # pickle 파일의 모듈 경로 호환성을 위한 alias 추가
+        import sys
+        import modeling.models.svd as svd_module
+        import modeling.models.item_based as item_based_module
+        sys.modules['models.svd'] = svd_module
+        sys.modules['models.item_based'] = item_based_module
+        sys.modules['models'] = sys.modules['modeling.models']
         
         with open(filepath, 'rb') as f:
             model_data = pickle.load(f)
@@ -471,11 +487,10 @@ class SVDRecommenderPipeline:
         # 파이프라인 객체 생성
         pipeline = cls(config=model_data['config'])
         pipeline.svd_model = model_data['svd_model']
-        pipeline.id_mapping = model_data['id_mapping']
-        pipeline.metrics = model_data['metrics']
-        pipeline.df_preprocessed = model_data['df_preprocessed']
+        pipeline.metrics = model_data.get('metrics', None)
+        pipeline.df_filtered = model_data.get('df_filtered', None)
         
-        logger.info("✅ 모델 로딩 완료!")
+        logger.info("✅ 모델 로드 완료")
         if pipeline.metrics:
             logger.info(f"  - Test RMSE: {pipeline.metrics.test_rmse:.4f}")
             logger.info(f"  - Test MAE: {pipeline.metrics.test_mae:.4f}")
@@ -551,7 +566,7 @@ if __name__ == "__main__":
     df_movies = load_movie_data()
     
     # 특정 사용자에게 추천
-    user_id = pipeline.df_preprocessed['user_id'].iloc[0]
+    user_id = pipeline.df_filtered['user_id'].iloc[0]
     top_watched, recommendations = pipeline.recommend_for_user(user_id, df_movies, n=5)
     
     logger.info("🎬 자주 본 영화 (내가 직접 본 영화 중 평점 상위):")
