@@ -53,6 +53,11 @@ scraper.log
 # Authentication files
 auth_state.json
 
+# Firebase service account keys
+*firebase-adminsdk*.json
+firebase-service-account*.json
+service-account*.json
+
 # Poetry
 poetry.lock
 
