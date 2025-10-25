@@ -9,8 +9,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
 
-from firebase_config import get_firebase_manager, FirestoreCollections
-from firebase_auth import get_current_user_uid, require_firebase_auth
+from .firebase_config import get_firebase_manager, FirestoreCollections
+from .firebase_auth import get_current_user_uid, require_firebase_auth
 
 # Logger 설정
 logger = logging.getLogger(__name__)

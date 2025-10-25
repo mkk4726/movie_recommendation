@@ -1,5 +1,5 @@
 """
-영화 추천 시스템 Streamlit 앱
+영화 추천 시스템 Streamlit 앱 (Firebase 통합)
 """
 import streamlit as st
 import pandas as pd
@@ -12,6 +12,11 @@ sys.path.append(str(project_root))
 
 from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
 from streamlit_recommender import MovieRecommender
+
+# Firebase 사용자 시스템 import
+from user_system.firebase_config import init_firebase, setup_firebase_config
+from user_system.firebase_auth import show_firebase_auth_ui, require_firebase_auth
+from user_system.firebase_firestore import FirestoreManager
 
 # 페이지 설정
 st.set_page_config(
@@ -168,6 +173,26 @@ def main():
     # 헤더
     st.markdown('<h1 class="main-header">🎬 볼거 없나?</h1>', unsafe_allow_html=True)
     
+    # Firebase 초기화 (선택사항)
+    firebase_available = setup_firebase_config()
+    
+    # Firebase 인증 UI (선택사항)
+    if firebase_available:
+        st.sidebar.title("👤 사용자 인증")
+        st.sidebar.markdown("---")
+        show_firebase_auth_ui()
+    else:
+        st.sidebar.title("👤 사용자 인증")
+        st.sidebar.markdown("---")
+        st.sidebar.info("Firebase 설정이 필요합니다.")
+        st.sidebar.markdown("""
+        **Firebase 설정 방법:**
+        1. Firebase Console에서 프로젝트 생성
+        2. Authentication 활성화
+        3. 서비스 계정 키 다운로드
+        4. 프로젝트 루트에 키 파일 배치
+        """)
+    
     # 데이터 로딩
     df_movies, df_ratings, df_ratings_filtered = load_all_data()
     
@@ -176,10 +201,17 @@ def main():
     st.sidebar.markdown("---")
     
     # 추천 방식 선택
-    recommendation_type = st.sidebar.selectbox(
-        "추천 방식 선택",
-        ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천"]
-    )
+    if firebase_available:
+        recommendation_type = st.sidebar.selectbox(
+            "추천 방식 선택",
+            ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천", "⭐ 내 평점 관리"]
+        )
+    else:
+        recommendation_type = st.sidebar.selectbox(
+            "추천 방식 선택",
+            ["🎞️ 영화 기반 추천"]
+        )
+        st.sidebar.info("💡 사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다.")
     
     st.sidebar.markdown("---")
     
@@ -195,56 +227,205 @@ def main():
     recommender = initialize_recommender(df_movies)
     
     # 메인 컨텐츠
-    if recommendation_type == "🎯 사용자 기반 추천":
+    if recommendation_type == "⭐ 내 평점 관리":
+        st.header("⭐ 내 영화 평점 관리")
+        st.markdown("본 영화에 대한 평점을 입력하고 관리하세요.")
+        
+        # Firebase 사용 가능 여부 확인
+        if not firebase_available:
+            st.error("❌ Firebase가 설정되지 않았습니다.")
+            st.info("평점 관리를 사용하려면 Firebase 설정이 필요합니다.")
+            return
+        
+        try:
+            # 사용자 인증 확인
+            user = require_firebase_auth()
+            if not user:
+                st.error("로그인이 필요합니다.")
+                st.info("평점 관리를 사용하려면 로그인해주세요.")
+                return
+            
+            # Firestore 매니저 초기화
+            firestore_manager = FirestoreManager()
+            
+            # 영화 검색 및 평점 입력
+            st.subheader("🎬 영화 평점 입력")
+            search_query = st.text_input(
+                "평점을 입력할 영화를 검색하세요",
+                placeholder="예: 타이타닉, 어벤져스, 기생충..."
+            )
+            
+            if search_query and search_query.strip():
+                try:
+                    search_results = search_movies(df_movies, search_query, limit=10)
+                    
+                    if not search_results.empty:
+                        selected_movie_title = st.selectbox(
+                            "영화를 선택하세요",
+                            search_results['title'].tolist()
+                        )
+                        
+                        selected_movie = search_results[search_results['title'] == selected_movie_title].iloc[0]
+                        
+                        # 선택한 영화 정보 표시
+                        st.markdown("### 📽️ 선택한 영화")
+                        display_movie_card(selected_movie, show_plot=True)
+                        
+                        # 평점 입력
+                        st.markdown("### ⭐ 평점 입력")
+                        col1, col2 = st.columns([1, 1])
+                        
+                        with col1:
+                            rating = st.slider(
+                                "평점을 선택하세요",
+                                min_value=0.5,
+                                max_value=5.0,
+                                step=0.5,
+                                value=3.0,
+                                format="%.1f"
+                            )
+                        
+                        with col2:
+                            st.write("")
+                            st.write("")
+                            if st.button("💾 평점 저장", type="primary"):
+                                try:
+                                    # Firestore에 평점 저장
+                                    success = firestore_manager.add_user_rating(
+                                        user['uid'],
+                                        selected_movie['movie_id'],
+                                        rating
+                                    )
+                                    
+                                    if success:
+                                        st.success(f"평점이 저장되었습니다! ({rating}/5.0)")
+                                    else:
+                                        st.error("평점 저장에 실패했습니다.")
+                                except Exception as e:
+                                    st.error(f"평점 저장 중 오류가 발생했습니다: {e}")
+                    else:
+                        st.info("검색 결과가 없습니다. 다른 키워드로 검색해보세요.")
+                except Exception as e:
+                    st.error("검색 중 오류가 발생했습니다. 다시 시도해주세요.")
+            
+            # 내 평점 목록
+            st.markdown("---")
+            st.subheader("📋 내 평점 목록")
+            
+            try:
+                # 사용자의 평점 목록 조회
+                user_ratings = firestore_manager.get_user_ratings(user['uid'])
+                
+                if user_ratings:
+                    st.success(f"총 {len(user_ratings)}개의 평점이 있습니다.")
+                    
+                    # 평점 목록 표시
+                    for rating in user_ratings[:10]:  # 최근 10개만 표시
+                        movie_id = rating['movie_id']
+                        rating_value = rating['rating']
+                        
+                        # 영화 정보 찾기
+                        movie_info = df_movies[df_movies['movie_id'] == movie_id]
+                        if not movie_info.empty:
+                            movie = movie_info.iloc[0]
+                            title = movie.get('title', 'N/A')
+                            
+                            col1, col2, col3 = st.columns([3, 1, 1])
+                            with col1:
+                                st.write(f"**{title}**")
+                            with col2:
+                                st.write(f"⭐ {rating_value}/5.0")
+                            with col3:
+                                if st.button("🗑️", key=f"delete_{rating['id']}"):
+                                    # 평점 삭제 기능 (구현 필요)
+                                    st.info("평점 삭제 기능은 곧 추가될 예정입니다.")
+                else:
+                    st.info("아직 입력한 평점이 없습니다. 위에서 영화를 검색하여 평점을 입력해보세요!")
+                    
+            except Exception as e:
+                st.error(f"평점 목록 조회 중 오류가 발생했습니다: {e}")
+        
+        except Exception as e:
+            st.error(f"사용자 인증 오류: {e}")
+    
+    elif recommendation_type == "🎯 사용자 기반 추천":
         st.header("🎯 사용자 기반 추천")
         st.markdown("특정 사용자의 과거 평점을 분석하여 맞춤형 영화를 추천합니다.")
         
-        col1, col2 = st.columns([3, 1])
+        # Firebase 사용 가능 여부 확인
+        if not firebase_available:
+            st.error("❌ Firebase가 설정되지 않았습니다.")
+            st.info("사용자 기반 추천을 사용하려면 Firebase 설정이 필요합니다.")
+            return
         
-        with col1:
-            # 사용자 목록
-            user_list = df_ratings_filtered['user_id'].unique()[:100]  # 처음 100명만
-            selected_user = st.selectbox(
-                "사용자를 선택하세요",
-                user_list,
-                help="추천을 받을 사용자를 선택하세요"
-            )
-        
-        with col2:
-            n_recommendations = st.slider("추천 개수", 5, 20, 10)
-        
-        if st.button("🎬 추천 받기", key="user_rec"):
-            with st.spinner("추천 영화를 찾는 중..."):
-                top_watched, recommendations = recommender.recommend_for_user(
-                    selected_user, df_movies, n_recommendations
+        # 로그인된 사용자 확인
+        try:
+            user = require_firebase_auth()
+            if not user:
+                st.error("로그인이 필요합니다.")
+                st.info("사용자 기반 추천을 받으려면 로그인해주세요.")
+                return
+            
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                # 사용자 선택 옵션
+                user_option = st.radio(
+                    "추천 받을 사용자 선택",
+                    ["👤 나 (현재 로그인된 사용자)", "👥 다른 사용자"],
+                    help="추천을 받을 사용자를 선택하세요"
                 )
                 
-                if recommendations.empty:
-                    st.warning("추천할 영화가 없습니다.")
+                if user_option == "👤 나 (현재 로그인된 사용자)":
+                    selected_user = user['uid']
+                    st.info(f"현재 사용자: {user.get('display_name', 'User')}")
                 else:
-                    st.success(f"**{n_recommendations}개**의 영화를 추천합니다!")
-                    
-                    # 사용자가 재밌게 본 영화 표시
-                    st.markdown("### 🌟 이 사용자가 재밌게 본 영화")
-                    st.markdown(f"*사용자의 높은 평점 순 상위 {len(top_watched)}개*")
-                    
-                    for idx, row in enumerate(top_watched.iterrows(), 1):
-                        _, movie = row
-                        # title 또는 movie_title 컬럼 사용
-                        movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
-                        st.markdown(f"#### {idx}. {movie_title}")
-                        display_movie_card(movie, movie['rating'], "내 평점", show_plot=False)
-                    
-                    st.markdown("---")
-                    st.markdown("### 🎁 AI 추천 영화")
-                    st.markdown(f"*아직 안 본 영화 중 예상 평점이 높은 순 {len(recommendations)}개*")
-                    
-                    for idx, row in enumerate(recommendations.iterrows(), 1):
-                        _, movie = row
-                        # title 또는 movie_title 컬럼 사용
-                        movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
-                        st.markdown(f"#### {idx}. {movie_title}")
-                        display_movie_card(movie, movie['predicted_rating'], "예측 평점", show_plot=True)
+                    # 기존 데이터의 사용자 목록
+                    user_list = df_ratings_filtered['user_id'].unique()[:100]  # 처음 100명만
+                    selected_user = st.selectbox(
+                        "사용자를 선택하세요",
+                        user_list,
+                        help="추천을 받을 사용자를 선택하세요"
+                    )
+            
+            with col2:
+                n_recommendations = st.slider("추천 개수", 5, 20, 10)
+        
+            if st.button("🎬 추천 받기", key="user_rec"):
+                with st.spinner("추천 영화를 찾는 중..."):
+                    top_watched, recommendations = recommender.recommend_for_user(
+                        selected_user, df_movies, n_recommendations
+                    )
+                
+                    if recommendations.empty:
+                        st.warning("추천할 영화가 없습니다.")
+                    else:
+                        st.success(f"**{n_recommendations}개**의 영화를 추천합니다!")
+                        
+                        # 사용자가 재밌게 본 영화 표시
+                        st.markdown("### 🌟 이 사용자가 재밌게 본 영화")
+                        st.markdown(f"*사용자의 높은 평점 순 상위 {len(top_watched)}개*")
+                        
+                        for idx, row in enumerate(top_watched.iterrows(), 1):
+                            _, movie = row
+                            # title 또는 movie_title 컬럼 사용
+                            movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
+                            st.markdown(f"#### {idx}. {movie_title}")
+                            display_movie_card(movie, movie['rating'], "내 평점", show_plot=False)
+                        
+                        st.markdown("---")
+                        st.markdown("### 🎁 AI 추천 영화")
+                        st.markdown(f"*아직 안 본 영화 중 예상 평점이 높은 순 {len(recommendations)}개*")
+                        
+                        for idx, row in enumerate(recommendations.iterrows(), 1):
+                            _, movie = row
+                            # title 또는 movie_title 컬럼 사용
+                            movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
+                            st.markdown(f"#### {idx}. {movie_title}")
+                            display_movie_card(movie, movie['predicted_rating'], "예측 평점", show_plot=True)
+        
+        except Exception as e:
+            st.error(f"사용자 인증 오류: {e}")
     
     elif recommendation_type == "🎞️ 영화 기반 추천":
         st.header("🎞️ 영화 기반 추천")

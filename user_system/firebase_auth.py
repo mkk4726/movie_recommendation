@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import json
 
-from firebase_config import get_firebase_manager, FirestoreCollections
+from .firebase_config import get_firebase_manager, FirestoreCollections
 
 # Logger 설정
 logger = logging.getLogger(__name__)
@@ -144,6 +144,17 @@ class FirebaseAuthManager:
         try:
             db, auth = self._get_firebase_services()
             
+            # 먼저 이메일 중복 체크
+            try:
+                existing_user = auth.get_user_by_email(email)
+                # 사용자가 이미 존재하는 경우
+                st.error("❌ 이미 존재하는 이메일입니다.")
+                st.info("다른 이메일을 사용하거나 로그인을 시도해주세요.")
+                return False
+            except Exception:
+                # 사용자가 존재하지 않는 경우 (정상)
+                pass
+            
             # Firebase Auth에 사용자 생성
             user_record = auth.create_user(
                 email=email,
@@ -184,28 +195,14 @@ class FirebaseAuthManager:
             try:
                 user_record = auth.get_user_by_email(email)
                 
-                # 세션 상태 설정
-                st.session_state.user_uid = user_record.uid
-                st.session_state.is_logged_in = True
-                st.session_state.firebase_user = {
-                    'uid': user_record.uid,
-                    'email': user_record.email,
-                    'display_name': user_record.display_name
-                }
-                
-                # 사용자 프로필이 없으면 생성
-                if not self.get_current_user():
-                    self.create_user_profile(
-                        user_record.uid, 
-                        user_record.email, 
-                        user_record.display_name
-                    )
-                
-                logger.info(f"✅ 로그인 성공: {user_record.email}")
-                return True
+                # 사용자가 존재하는 경우에만 로그인 성공
+                # 실제 비밀번호 검증은 Firebase Web SDK에서만 가능
+                return False
                 
             except Exception as e:
                 logger.error(f"사용자를 찾을 수 없습니다: {e}")
+                st.error("❌ 로그인에 실패했습니다.")
+                st.info("이메일이 등록되지 않았거나 비밀번호가 틀렸습니다. 회원가입을 먼저 해주세요.")
                 return False
                 
         except Exception as e:
@@ -306,7 +303,7 @@ def show_firebase_auth_ui():
         st.subheader("🔐 로그인 / 회원가입")
         
         # 탭으로 로그인/회원가입 구분
-        tab1, tab2, tab3 = st.tabs(["로그인", "회원가입", "데모"])
+        tab1, tab2 = st.tabs(["로그인", "회원가입"])
         
         with tab1:
             st.markdown("### 📧 이메일 로그인")
@@ -343,33 +340,13 @@ def show_firebase_auth_ui():
                         else:
                             if auth_manager.signup_with_email(signup_email, signup_password, signup_display_name):
                                 st.success("회원가입 성공! 자동으로 로그인되었습니다.")
+                                st.balloons()  # 축하 애니메이션
                                 st.rerun()
                             else:
                                 st.error("회원가입에 실패했습니다. 이미 존재하는 이메일일 수 있습니다.")
                     else:
                         st.warning("모든 필수 항목을 입력해주세요.")
         
-        with tab3:
-            st.markdown("### 🎮 데모 로그인")
-            st.info("테스트용 데모 계정으로 로그인합니다.")
-            
-            if st.button("데모 로그인", type="primary"):
-                if auth_manager.login_with_custom_token("demo_token"):
-                    st.success("데모 로그인 성공!")
-                    st.rerun()
-                else:
-                    st.error("로그인에 실패했습니다.")
-        
-        st.markdown("---")
-        st.info("""
-        **Firebase Authentication 사용법:**
-        
-        1. **Firebase Console**에서 Authentication 활성화
-        2. **이메일/비밀번호** 인증 방법 활성화
-        3. **Firebase Web SDK**를 사용하여 클라이언트 사이드 인증 구현
-        
-        현재는 Firebase Admin SDK를 사용한 서버 사이드 인증을 지원합니다.
-        """)
 
 
 def require_firebase_auth():

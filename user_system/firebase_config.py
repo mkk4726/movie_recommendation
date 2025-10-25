@@ -50,7 +50,7 @@ class FirebaseManager:
                 for path in possible_paths:
                     if path.exists():
                         service_account_path = str(path)
-                        logger.info(f"✅ Firebase 서비스 계정 키 파일 발견: {service_account_path}")
+                        # logger.info(f"✅ Firebase 서비스 계정 키 파일 발견: {service_account_path}")
                         break
             
             if not service_account_path or not os.path.exists(service_account_path):
@@ -213,13 +213,13 @@ def setup_firebase_config():
     for path in possible_paths:
         if path.exists():
             service_account_path = str(path)
-            st.sidebar.success(f"✅ 서비스 계정 키 파일 발견: {path.name}")
+            # st.sidebar.success(f"✅ 서비스 계정 키 파일 발견: {path.name}")
             break
     
     # 자동으로 Firebase 초기화 시도
     if service_account_path:
         if init_firebase(service_account_path):
-            st.sidebar.success("✅ Firebase 연결 성공!")
+            st.sidebar.success("✅ Firebase 연결됨")
             return True
         else:
             st.sidebar.error("❌ Firebase 연결 실패")
@@ -243,7 +243,7 @@ def setup_firebase_config():
         
         # Firebase 초기화 시도
         if init_firebase(temp_path):
-            st.sidebar.success("✅ Firebase 연결 성공!")
+            st.sidebar.success("✅ Firebase 연결됨")
             return True
         else:
             st.sidebar.error("❌ Firebase 연결 실패")
