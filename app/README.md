@@ -76,6 +76,20 @@ cd app
 streamlit run streamlit_app.py --server.port 8501
 ```
 
+#### 배포할 떄 사용하는 명령어
+
+```bash
+nohup cloudflared tunnel run my-streamlit-tunnel > ~/cloudflared.log 2>&1 &
+nohup streamlit run app.py > ~/streamlit.log 2>&1 &
+nohup caffeinate > /dev/null 2>&1 &
+```
+
+- 💡 맥 절전 X
+- 🌐 Cloudflare 항상 연결
+- 🧠 Streamlit 지속 실행
+- 🔒 터미널 닫아도 계속 유지
+
+
 ### 3. 포트 포워딩 설정 (macOS)
 ```bash
 # Cloudflare Tunnel 사용 (권장)
@@ -97,6 +111,9 @@ cloudflared tunnel route dns my-streamlit-tunnel movie.mingyuprojects.dev
 # 6. 터널 실행
 cloudflared tunnel run my-streamlit-tunnel
 
+# 7. 터널 조회
+cloudflared tunnel list
+
 # 또는 ngrok 사용
 brew install ngrok
 ngrok http 8501
@@ -114,22 +131,4 @@ sudo pfctl -f /etc/pf.conf
 - 내부 IP: 맥의 로컬 IP
 - 내부 포트: 8501
 - 프로토콜: TCP
-
-### 6. 도메인 연결 확인
-```bash
-# 도메인 연결 테스트
-curl -I http://your-domain.com:8501
-```
-
-### 7. HTTPS 설정 (선택사항)
-```bash
-# Let's Encrypt 인증서 생성
-brew install certbot
-sudo certbot certonly --standalone -d your-domain.com
-```
-
-## 주의사항
-- 로컬 실행 시 보안에 주의하세요
-- 프로덕션 환경에서는 적절한 인증 및 보안 설정을 추가하세요
-- Cloudflare Tunnel을 사용하면 더 안전하고 간편합니다
 
