@@ -53,3 +53,83 @@ streamlit run streamlit_app.py
 - `streamlit_recommender.py`: 추천 시스템 래퍼 (Streamlit 캐싱 적용)
 - `streamlit_data_loader.py`: 데이터 로더 (Streamlit 캐싱 적용)
 - `requirements.txt`: 필요한 패키지 목록
+
+
+# 서비스 서빙
+
+## Cloudflare 도메인 연결 및 로컬 실행
+
+### 1. Cloudflare 도메인 설정
+1. Cloudflare에서 구매한 도메인을 Cloudflare DNS에 연결
+2. DNS 레코드 설정:
+   - Type: A
+   - Name: @ (루트 도메인) 또는 원하는 서브도메인
+   - IPv4 address: 로컬 IP 주소 (예: 192.168.1.100)
+   - Proxy status: DNS only (주황색 구름 비활성화)
+
+### 2. 로컬 Streamlit 실행
+```bash
+# 앱 디렉토리로 이동
+cd app
+
+# Streamlit 실행 (포트 8501)
+streamlit run streamlit_app.py --server.port 8501
+```
+
+### 3. 포트 포워딩 설정 (macOS)
+```bash
+# Cloudflare Tunnel 사용 (권장)
+# 1. Cloudflare Tunnel 설치
+brew install cloudflared
+
+# 2. Cloudflare에 로그인
+cloudflared tunnel login
+
+# 3. 터널 생성
+cloudflared tunnel create movie-recommendation
+
+# 4. 터널 실행
+cloudflared tunnel --url http://localhost:8501 run movie-recommendation
+
+# 5. DNS 라우팅 설정 (터널을 도메인에 연결)
+cloudflared tunnel route dns my-streamlit-tunnel movie.mingyuprojects.dev
+
+# 6. 터널 실행
+cloudflared tunnel run my-streamlit-tunnel
+
+# 또는 ngrok 사용
+brew install ngrok
+ngrok http 8501
+```
+
+### 4. 방화벽 설정 (macOS)
+```bash
+# 방화벽에서 포트 8501 허용
+sudo pfctl -f /etc/pf.conf
+```
+
+### 5. 라우터 포트 포워딩
+라우터 관리 페이지에서:
+- 외부 포트: 8501 (또는 원하는 포트)
+- 내부 IP: 맥의 로컬 IP
+- 내부 포트: 8501
+- 프로토콜: TCP
+
+### 6. 도메인 연결 확인
+```bash
+# 도메인 연결 테스트
+curl -I http://your-domain.com:8501
+```
+
+### 7. HTTPS 설정 (선택사항)
+```bash
+# Let's Encrypt 인증서 생성
+brew install certbot
+sudo certbot certonly --standalone -d your-domain.com
+```
+
+## 주의사항
+- 로컬 실행 시 보안에 주의하세요
+- 프로덕션 환경에서는 적절한 인증 및 보안 설정을 추가하세요
+- Cloudflare Tunnel을 사용하면 더 안전하고 간편합니다
+
