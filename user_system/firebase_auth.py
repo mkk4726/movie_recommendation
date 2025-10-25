@@ -8,6 +8,7 @@ from datetime import datetime
 import json
 
 from .firebase_config import get_firebase_manager, FirestoreCollections
+from streamlit_cookies_manager import EncryptedCookieManager
 
 # Logger 설정
 logger = logging.getLogger(__name__)
@@ -20,6 +21,11 @@ class FirebaseAuthManager:
         self.firebase_manager = get_firebase_manager()
         self.db = None
         self.auth = None
+        # 쿠키 매니저 초기화
+        self.cookies = EncryptedCookieManager(
+            password="movie_recommendation_secret_key_2024",
+            prefix="firebase_"
+        )
     
     def _get_firebase_services(self):
         """Firebase 서비스 가져오기"""
@@ -35,6 +41,11 @@ class FirebaseAuthManager:
     
     def init_session_state(self):
         """세션 상태 초기화"""
+        # 쿠키가 준비되지 않았으면 대기
+        if not self.cookies.ready():
+            st.stop()
+        
+        # 세션 상태 초기화 (기존 값이 있으면 유지)
         if 'firebase_user' not in st.session_state:
             st.session_state.firebase_user = None
         if 'user_uid' not in st.session_state:
@@ -43,10 +54,17 @@ class FirebaseAuthManager:
             st.session_state.is_logged_in = False
         if 'user_profile' not in st.session_state:
             st.session_state.user_profile = None
+        if 'auth_token' not in st.session_state:
+            st.session_state.auth_token = None
+        
+        # 쿠키에서 세션 복원
+        self._restore_session_from_cookies()
     
     def is_logged_in(self) -> bool:
         """로그인 상태 확인"""
-        return st.session_state.get('is_logged_in', False)
+        is_logged_in = st.session_state.get('is_logged_in', False)
+        logger.info(f"로그인 상태 확인: {is_logged_in}")
+        return is_logged_in
     
     def get_current_user(self) -> Optional[Dict[str, Any]]:
         """현재 로그인된 사용자 정보 반환"""
@@ -208,6 +226,15 @@ class FirebaseAuthManager:
                     'display_name': user_record.display_name
                 }
                 
+                # 데모용 토큰 생성 및 저장
+                demo_token = f"demo_token_{user_record.uid}"
+                st.session_state.auth_token = demo_token
+                
+                # 쿠키에 인증 정보 저장 (세션 지속성)
+                self.cookies['auth_token'] = demo_token
+                self.cookies['user_uid'] = user_record.uid
+                self.cookies.save()
+                
                 # 사용자 프로필이 없으면 생성
                 if not self.get_current_user():
                     self.create_user_profile(
@@ -247,6 +274,14 @@ class FirebaseAuthManager:
                     'display_name': 'Demo User'
                 }
                 
+                # 토큰 저장
+                st.session_state.auth_token = custom_token
+                
+                # 쿠키에 인증 정보 저장 (세션 지속성)
+                self.cookies['auth_token'] = custom_token
+                self.cookies['user_uid'] = demo_uid
+                self.cookies.save()
+                
                 # 사용자 프로필이 없으면 생성
                 if not self.get_current_user():
                     self.create_user_profile(demo_uid, 'demo@example.com', 'Demo User')
@@ -261,13 +296,88 @@ class FirebaseAuthManager:
             logger.error(f"로그인 실패: {e}")
             return False
     
+    def _restore_session_from_cookies(self):
+        """쿠키에서 세션 복원"""
+        try:
+            # 이미 로그인되어 있으면 스킵
+            if st.session_state.get('is_logged_in', False):
+                logger.info("이미 로그인되어 있음")
+                return
+            
+            # 쿠키에서 인증 정보 확인
+            auth_token = self.cookies.get('auth_token')
+            user_uid = self.cookies.get('user_uid')
+            
+            logger.info(f"쿠키에서 토큰 확인: {auth_token}, UID: {user_uid}")
+            
+            # 쿠키에 인증 정보가 있는 경우
+            if auth_token and user_uid:
+                logger.info(f"쿠키에서 토큰 발견: {auth_token}, UID: {user_uid}")
+                
+                # 토큰이 유효한지 확인
+                if auth_token.startswith('demo_token_') and user_uid:
+                    logger.info(f"유효한 토큰으로 자동 로그인 시도: {auth_token}")
+                    
+                    # 세션 상태 복원
+                    st.session_state.auth_token = auth_token
+                    st.session_state.user_uid = user_uid
+                    st.session_state.is_logged_in = True
+                    
+                    # 사용자 정보 복원
+                    try:
+                        db, _ = self._get_firebase_services()
+                        user_doc = db.collection('users').document(user_uid).get()
+                        if user_doc.exists:
+                            user_data = user_doc.to_dict()
+                            st.session_state.firebase_user = {
+                                'uid': user_uid,
+                                'email': user_data.get('email', ''),
+                                'display_name': user_data.get('display_name', 'User')
+                            }
+                            logger.info("✅ Firestore에서 사용자 정보 복원 성공")
+                        else:
+                            # 기본 사용자 정보 설정
+                            st.session_state.firebase_user = {
+                                'uid': user_uid,
+                                'email': 'user@example.com',
+                                'display_name': 'User'
+                            }
+                            logger.info("✅ 기본 사용자 정보로 설정")
+                    except Exception as e:
+                        logger.warning(f"사용자 정보 복원 실패: {e}")
+                        # 기본 사용자 정보로 설정
+                        st.session_state.firebase_user = {
+                            'uid': user_uid,
+                            'email': 'user@example.com',
+                            'display_name': 'User'
+                        }
+                        logger.info("✅ 기본 사용자 정보로 설정")
+                    
+                    logger.info("✅ 쿠키 기반 자동 로그인 성공")
+                else:
+                    logger.info(f"유효하지 않은 토큰: {auth_token}")
+            else:
+                logger.info("쿠키에 인증 정보 없음")
+            
+        except Exception as e:
+            logger.warning(f"쿠키 기반 세션 복원 실패: {e}")
+    
+
     def logout(self):
         """사용자 로그아웃"""
+        # 쿠키 삭제
+        if 'auth_token' in self.cookies:
+            del self.cookies['auth_token']
+        if 'user_uid' in self.cookies:
+            del self.cookies['user_uid']
+        self.cookies.save()
+        
         # 세션 상태 초기화
         st.session_state.firebase_user = None
         st.session_state.user_uid = None
         st.session_state.is_logged_in = False
         st.session_state.user_profile = None
+        st.session_state.auth_token = None
         
         logger.info("✅ 로그아웃 완료")
     
