@@ -22,10 +22,9 @@ class FirebaseAuthManager:
         self.db = None
         self.auth = None
         # 쿠키 매니저 초기화 (전역 인스턴스 사용)
-        self.cookies = cookies or EncryptedCookieManager(
-            password="movie_recommendation_secret_key_2024",
-            prefix="firebase_"
-        )
+        if cookies is None:
+            raise ValueError("cookies 매개변수가 필요합니다. 전역 쿠키 인스턴스를 전달해주세요.")
+        self.cookies = cookies
     
     def _get_firebase_services(self):
         """Firebase 서비스 가져오기"""
@@ -400,6 +399,9 @@ class FirebaseAuthManager:
 
 def show_firebase_auth_ui(cookies=None):
     """Firebase 인증 UI 표시 (사이드바 버전)"""
+    if cookies is None:
+        raise ValueError("cookies 매개변수가 필요합니다. 전역 쿠키 인스턴스를 전달해주세요.")
+    
     auth_manager = FirebaseAuthManager(cookies=cookies)
     auth_manager.init_session_state()
     
@@ -464,6 +466,9 @@ def show_firebase_auth_ui(cookies=None):
 
 def require_firebase_auth(cookies=None):
     """Firebase 인증 필수 데코레이터"""
+    if cookies is None:
+        raise ValueError("cookies 매개변수가 필요합니다. 전역 쿠키 인스턴스를 전달해주세요.")
+    
     auth_manager = FirebaseAuthManager(cookies=cookies)
     auth_manager.init_session_state()
     
