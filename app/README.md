@@ -80,7 +80,7 @@ streamlit run streamlit_app.py --server.port 8501
 
 ```bash
 nohup cloudflared tunnel run my-streamlit-tunnel > ~/cloudflared.log 2>&1 &
-nohup streamlit run app.py > ~/streamlit.log 2>&1 &
+nohup streamlit run app/streamlit_app.py > ~/streamlit.log 2>&1 &
 nohup caffeinate > /dev/null 2>&1 &
 ```
 
