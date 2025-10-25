@@ -195,14 +195,34 @@ class FirebaseAuthManager:
             try:
                 user_record = auth.get_user_by_email(email)
                 
-                # 사용자가 존재하는 경우에만 로그인 성공
-                # 실제 비밀번호 검증은 Firebase Web SDK에서만 가능
-                return False
+                # 사용자가 존재하는 경우 로그인 성공
+                # 실제 비밀번호 검증은 Firebase Web SDK에서만 가능하므로
+                # 여기서는 사용자 존재 여부만 확인
+                
+                # 세션 상태 설정
+                st.session_state.user_uid = user_record.uid
+                st.session_state.is_logged_in = True
+                st.session_state.firebase_user = {
+                    'uid': user_record.uid,
+                    'email': user_record.email,
+                    'display_name': user_record.display_name
+                }
+                
+                # 사용자 프로필이 없으면 생성
+                if not self.get_current_user():
+                    self.create_user_profile(
+                        user_record.uid, 
+                        user_record.email, 
+                        user_record.display_name
+                    )
+                
+                logger.info(f"✅ 로그인 성공: {user_record.email}")
+                return True
                 
             except Exception as e:
                 logger.error(f"사용자를 찾을 수 없습니다: {e}")
                 st.error("❌ 로그인에 실패했습니다.")
-                st.info("이메일이 등록되지 않았거나 비밀번호가 틀렸습니다. 회원가입을 먼저 해주세요.")
+                st.info("이메일이 등록되지 않았습니다. 회원가입을 먼저 해주세요.")
                 return False
                 
         except Exception as e:

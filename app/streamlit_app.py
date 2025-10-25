@@ -314,13 +314,13 @@ def main():
             
             try:
                 # 사용자의 평점 목록 조회
-                user_ratings = firestore_manager.get_user_ratings(user['uid'])
+                user_ratings_df = firestore_manager.get_user_ratings(user['uid'])
                 
-                if user_ratings:
-                    st.success(f"총 {len(user_ratings)}개의 평점이 있습니다.")
+                if not user_ratings_df.empty:
+                    st.success(f"총 {len(user_ratings_df)}개의 평점이 있습니다.")
                     
                     # 평점 목록 표시
-                    for rating in user_ratings[:10]:  # 최근 10개만 표시
+                    for idx, rating in user_ratings_df.head(10).iterrows():  # 최근 10개만 표시
                         movie_id = rating['movie_id']
                         rating_value = rating['rating']
                         
@@ -336,7 +336,7 @@ def main():
                             with col2:
                                 st.write(f"⭐ {rating_value}/5.0")
                             with col3:
-                                if st.button("🗑️", key=f"delete_{rating['id']}"):
+                                if st.button("🗑️", key=f"delete_{rating.get('id', idx)}"):
                                     # 평점 삭제 기능 (구현 필요)
                                     st.info("평점 삭제 기능은 곧 추가될 예정입니다.")
                 else:
