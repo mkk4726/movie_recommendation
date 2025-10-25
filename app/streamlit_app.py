@@ -12,6 +12,7 @@ sys.path.append(str(project_root))
 
 from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
 from streamlit_recommender import MovieRecommender
+from cold_start.show_random_movies import get_random_popular_movies
 
 # Firebase 사용자 시스템 import
 from user_system.firebase_config import init_firebase, setup_firebase_config
@@ -259,52 +260,130 @@ def main():
             # Firestore 매니저 초기화
             firestore_manager = FirestoreManager()
             
-            # 영화 검색 및 평점 입력
+            # 평점 입력 방식 선택
             st.subheader("🎬 영화 평점 입력")
-            search_query = st.text_input(
-                "평점을 입력할 영화를 검색하세요",
-                placeholder="예: 타이타닉, 어벤져스, 기생충..."
+            input_method = st.radio(
+                "평점 입력 방식 선택",
+                ["🔍 검색", "🎲 탐색"],
+                help="영화를 찾는 방식을 선택하세요"
             )
             
-            if search_query and search_query.strip():
-                try:
-                    search_results = search_movies(df_movies, search_query, limit=10)
+            if input_method == "🔍 검색":
+                # 영화 검색 및 평점 입력
+                search_query = st.text_input(
+                    "평점을 입력할 영화를 검색하세요",
+                    placeholder="예: 타이타닉, 어벤져스, 기생충..."
+                )
+            
+                if search_query and search_query.strip():
+                    try:
+                        search_results = search_movies(df_movies, search_query, limit=10)
+                        
+                        if not search_results.empty:
+                            selected_movie_title = st.selectbox(
+                                "영화를 선택하세요",
+                                search_results['title'].tolist()
+                            )
+                            
+                            selected_movie = search_results[search_results['title'] == selected_movie_title].iloc[0]
+                            
+                            # 선택한 영화 정보 표시
+                            st.markdown("### 📽️ 선택한 영화")
+                            display_movie_card(selected_movie, show_plot=True)
+                            
+                            # 평점 입력
+                            st.markdown("### ⭐ 평점 입력")
+                            col1, col2 = st.columns([1, 1])
+                            
+                            with col1:
+                                rating = st.slider(
+                                    "평점을 선택하세요",
+                                    min_value=0.5,
+                                    max_value=5.0,
+                                    step=0.5,
+                                    value=3.0,
+                                    format="%.1f"
+                                )
+                            
+                            with col2:
+                                st.write("")
+                                st.write("")
+                                if st.button("💾 평점 저장", type="primary"):
+                                    try:
+                                        # Firestore에 평점 저장
+                                        success = firestore_manager.add_user_rating(
+                                            user['uid'],
+                                            selected_movie['movie_id'],
+                                            rating
+                                        )
+                                        
+                                        if success:
+                                            st.success(f"평점이 저장되었습니다! ({rating}/5.0)")
+                                        else:
+                                            st.error("평점 저장에 실패했습니다.")
+                                    except Exception as e:
+                                        st.error(f"평점 저장 중 오류가 발생했습니다: {e}")
+                        else:
+                            st.info("검색 결과가 없습니다. 다른 키워드로 검색해보세요.")
+                    except Exception as e:
+                        st.error("검색 중 오류가 발생했습니다. 다시 시도해주세요.")
+            
+            elif input_method == "🎲 탐색":
+                # 랜덤 영화 탐색
+                st.markdown("인기 있는 영화들을 랜덤하게 탐색해보세요.")
+                
+                # 세션 상태 초기화
+                if 'explored_movie_ids' not in st.session_state:
+                    st.session_state.explored_movie_ids = set()
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    n_movies = st.slider("표시할 영화 개수", 5, 20, 10)
+                with col2:
+                    if st.button("🎲 새로운 영화 탐색", type="primary"):
+                        # 새로운 영화들 가져오기
+                        try:
+                            random_movies, remaining_ids = get_random_popular_movies(
+                                df_ratings, df_movies, n_movies, 
+                                exclude_movie_ids=list(st.session_state.explored_movie_ids)
+                            )
+                            st.session_state.current_exploration = random_movies
+                            st.session_state.explored_movie_ids.update(random_movies['movie_id'].tolist())
+                        except Exception as e:
+                            st.error(f"영화 탐색 중 오류가 발생했습니다: {e}")
+                
+                # 현재 탐색 중인 영화들 표시
+                if 'current_exploration' in st.session_state and not st.session_state.current_exploration.empty:
+                    st.markdown("### 🎬 탐색 중인 영화들")
+                    st.markdown(f"*총 {len(st.session_state.current_exploration)}개의 영화*")
                     
-                    if not search_results.empty:
-                        selected_movie_title = st.selectbox(
-                            "영화를 선택하세요",
-                            search_results['title'].tolist()
-                        )
-                        
-                        selected_movie = search_results[search_results['title'] == selected_movie_title].iloc[0]
-                        
-                        # 선택한 영화 정보 표시
-                        st.markdown("### 📽️ 선택한 영화")
-                        display_movie_card(selected_movie, show_plot=True)
+                    for idx, (_, movie) in enumerate(st.session_state.current_exploration.iterrows(), 1):
+                        st.markdown(f"#### {idx}. {movie.get('title', 'N/A')}")
+                        display_movie_card(movie, show_plot=True)
                         
                         # 평점 입력
-                        st.markdown("### ⭐ 평점 입력")
-                        col1, col2 = st.columns([1, 1])
+                        col_rating1, col_rating2, col_rating3 = st.columns([2, 1, 1])
                         
-                        with col1:
+                        with col_rating1:
                             rating = st.slider(
-                                "평점을 선택하세요",
+                                f"평점을 선택하세요",
                                 min_value=0.5,
                                 max_value=5.0,
                                 step=0.5,
                                 value=3.0,
-                                format="%.1f"
+                                format="%.1f",
+                                key=f"rating_{movie['movie_id']}"
                             )
                         
-                        with col2:
+                        with col_rating2:
                             st.write("")
                             st.write("")
-                            if st.button("💾 평점 저장", type="primary"):
+                            if st.button("💾 저장", key=f"save_{movie['movie_id']}"):
                                 try:
                                     # Firestore에 평점 저장
                                     success = firestore_manager.add_user_rating(
                                         user['uid'],
-                                        selected_movie['movie_id'],
+                                        movie['movie_id'],
                                         rating
                                     )
                                     
@@ -314,10 +393,16 @@ def main():
                                         st.error("평점 저장에 실패했습니다.")
                                 except Exception as e:
                                     st.error(f"평점 저장 중 오류가 발생했습니다: {e}")
-                    else:
-                        st.info("검색 결과가 없습니다. 다른 키워드로 검색해보세요.")
-                except Exception as e:
-                    st.error("검색 중 오류가 발생했습니다. 다시 시도해주세요.")
+                        
+                        with col_rating3:
+                            st.write("")
+                            st.write("")
+                            if st.button("⏭️ 건너뛰기", key=f"skip_{movie['movie_id']}"):
+                                st.info("영화를 건너뛰었습니다.")
+                        
+                        st.markdown("---")
+                else:
+                    st.info("🎲 '새로운 영화 탐색' 버튼을 눌러서 영화를 탐색해보세요!")
             
             # 내 평점 목록
             st.markdown("---")
