@@ -13,7 +13,6 @@ sys.path.append(str(project_root))
 from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
 from streamlit_recommender import MovieRecommender
 from cold_start.show_random_movies import get_random_popular_movies
-from modeling.utils.data_integration import DataIntegrator
 
 # Firebase 사용자 시스템 import
 from user_system.firebase_config import init_firebase, setup_firebase_config
@@ -155,7 +154,7 @@ def display_movie_card(movie, score=None, score_label="예측 평점", show_plot
         <div class="movie-info">
             📅 개봉년도: {year} | 🎭 장르: {genre} | 🌍 국가: {country}<br>
             ⏱️ 러닝타임: {runtime} | 🔞 관람등급: {age_rating}<br>
-            ⭐ 평균 평점: {avg_score} | 🔥 인기점수: {popularity} | 💬 리뷰수: {review_count}{score_text}<br>
+            ⭐ 평균 평점: {avg_score} | 💬 리뷰수: {review_count}{score_text}<br>
             <a href="{watcha_link}" target="_blank" style="color: #FFD700;">🔗 왓챠피디아에서 보기</a>
         </div>
     </div>
@@ -494,38 +493,18 @@ def main():
                         top_watched, recommendations = recommender.recommend_for_user(
                             selected_user, df_movies, n_recommendations
                         )
-                    except KeyError as e:
-                        if "나 (현재 로그인된 사용자)" in user_option:
-                            st.warning("⚠️ 아직 학습되기 전입니다.")
-                            st.info("""
-                            **개인화 추천을 받으려면:**
-                            1. 영화 평점을 더 많이 입력해주세요
-                            2. 최소 10개 이상의 평점이 필요합니다
-                            3. 평점 관리 탭에서 영화를 검색하여 평점을 입력해보세요
-                            
-                            **📚 학습 시스템 안내:**
-                            - 10개 이상 평점을 입력하시면 추후 학습에 반영됩니다
-                            - 학습 주기는 **1주일**입니다
-                            - 매주 새로운 평점 데이터로 추천 모델이 업데이트됩니다
-                            - 더 많은 평점을 입력할수록 더 정확한 추천을 받을 수 있습니다
-                            """)
-                            return
-                        else:
-                            st.error(f"추천 생성 중 오류가 발생했습니다: {e}")
-                            return
                     except Exception as e:
                         error_msg = str(e)
                         if "나 (현재 로그인된 사용자)" in user_option and ("찾을 수 없습니다" in error_msg or "KeyError" in error_msg):
                             st.warning("⚠️ 아직 학습되기 전입니다.")
                             st.info("""
-                            **개인화 추천을 받으려면:**
+                            **더 좋은 개인화 추천을 받으려면:**
                             1. 영화 평점을 더 많이 입력해주세요
                             2. 최소 10개 이상의 평점이 필요합니다
                             3. 평점 관리 탭에서 영화를 검색하여 평점을 입력해보세요
                             
                             **📚 학습 시스템 안내:**
-                            - 10개 이상 평점을 입력하시면 추후 학습에 반영됩니다
-                            - 학습 주기는 **1주일**입니다
+                            - 학습 주기는 **1주일**입니다 (입력하신 데이터는 1주일 이내에 학습될 예정입니다)
                             - 매주 새로운 평점 데이터로 추천 모델이 업데이트됩니다
                             - 더 많은 평점을 입력할수록 더 정확한 추천을 받을 수 있습니다
                             """)
@@ -539,16 +518,14 @@ def main():
                     else:
                         st.success(f"**{n_recommendations}개**의 영화를 추천합니다!")
                         
-                        # 사용자가 재밌게 본 영화 표시
-                        st.markdown("### 🌟 이 사용자가 재밌게 본 영화")
-                        st.markdown(f"*사용자의 높은 평점 순 상위 {len(top_watched)}개*")
-                        
-                        for idx, row in enumerate(top_watched.iterrows(), 1):
-                            _, movie = row
-                            # title 또는 movie_title 컬럼 사용
-                            movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
-                            st.markdown(f"#### {idx}. {movie_title}")
-                            display_movie_card(movie, movie['rating'], "내 평점", show_plot=False)
+                        # 사용자가 재밌게 본 영화 표시 (토글로 접을 수 있게)
+                        with st.expander(f"🌟 이 사용자가 재밌게 본 영화 (상위 {len(top_watched)}개)", expanded=False):
+                            for idx, row in enumerate(top_watched.iterrows(), 1):
+                                _, movie = row
+                                # title 또는 movie_title 컬럼 사용
+                                movie_title = movie.get('title') if pd.notna(movie.get('title')) else movie.get('movie_title', 'N/A')
+                                st.markdown(f"#### {idx}. {movie_title}")
+                                display_movie_card(movie, movie['rating'], "내 평점", show_plot=True)
                         
                         st.markdown("---")
                         st.markdown("### 🎁 AI 추천 영화")

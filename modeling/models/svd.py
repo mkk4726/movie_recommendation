@@ -129,9 +129,7 @@ class SVDRecommenderPipeline:
             config: 모델 설정 (None이면 기본값 사용)
         """
         self.config = config or ModelConfig()
-        self.df_filtered = None
-        self.df_firebase = None
-        self.trained_user_ids = None
+        self.df_seen_data = None
         self.svd_model = None        
         self.metrics: Optional[EvaluationMetrics] = None
         
@@ -330,15 +328,15 @@ class SVDRecommenderPipeline:
         if self.svd_model is None:
             raise ValueError("모델을 먼저 학습해주세요. train() 실행 필요")
 
-        if user_id not in self.trained_user_ids:
+        if user_id not in self.df_seen_data['user_id'].values:
             raise ValueError(f"사용자 ID '{user_id}'를 찾을 수 없습니다.")
         
         # 사용자가 본 영화
-        user_ratings = self.df_filtered[self.df_filtered['user_id'] == user_id]
+        user_ratings = self.df_seen_data[self.df_seen_data['user_id'] == user_id]
         watched_movie_ids = set(user_ratings['movie_id'])
         
         # 사용자가 보지 않은 영화에 대해 예측
-        all_movie_ids = set(self.df_filtered['movie_id'].unique())
+        all_movie_ids = set(self.df_seen_data['movie_id'].unique())
         unseen_movie_ids = all_movie_ids - watched_movie_ids
         
         predictions = []
@@ -375,8 +373,7 @@ class SVDRecommenderPipeline:
             'config': self.config,
             'svd_model': self.svd_model,
             'metrics': self.metrics,
-            'df_filtered': self.df_filtered,
-            'trained_user_ids': self.trained_user_ids
+            'df_seen_data': self.df_seen_data,
         }
         
         # 디렉토리 생성
@@ -428,8 +425,7 @@ class SVDRecommenderPipeline:
         pipeline = cls(config=model_data['config'])
         pipeline.svd_model = model_data['svd_model']
         pipeline.metrics = model_data.get('metrics', None)
-        pipeline.df_filtered = model_data.get('df_filtered', None)
-        pipeline.trained_user_ids = model_data.get('trained_user_ids', [])
+        pipeline.df_seen_data = model_data.get('df_seen_data', None)
         
         logger.info("✅ 모델 로드 완료")
         if pipeline.metrics:
@@ -451,14 +447,7 @@ class SVDRecommenderPipeline:
         logger.info("🚀 SVD 추천 시스템 파이프라인 시작")
         logger.info("=" * 60)
 
-        self.df_filtered = filtered_data
-        self.df_firebase = firebase_data
-        
-        trained_user_ids = []
-        trained_user_ids.extend(filtered_data['user_id'].values.tolist())
-        trained_user_ids.extend(firebase_data['user_id'].values.tolist())
-
-        self.trained_user_ids = trained_user_ids
+        self.df_seen_data = pd.concat([filtered_data, firebase_data])
 
         filtered_data, firebase_data = self.prepare_surprise_dataset(filtered_data), self.prepare_surprise_dataset(firebase_data)
 
