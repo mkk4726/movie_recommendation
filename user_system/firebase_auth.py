@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 class FirebaseAuthManager:
     """Firebase Authentication 관리 클래스"""
     
-    def __init__(self):
+    def __init__(self, cookies=None):
         self.firebase_manager = get_firebase_manager()
         self.db = None
         self.auth = None
-        # 쿠키 매니저 초기화
-        self.cookies = EncryptedCookieManager(
+        # 쿠키 매니저 초기화 (전역 인스턴스 사용)
+        self.cookies = cookies or EncryptedCookieManager(
             password="movie_recommendation_secret_key_2024",
             prefix="firebase_"
         )
@@ -398,9 +398,9 @@ class FirebaseAuthManager:
             return 0
 
 
-def show_firebase_auth_ui():
+def show_firebase_auth_ui(cookies=None):
     """Firebase 인증 UI 표시 (사이드바 버전)"""
-    auth_manager = FirebaseAuthManager()
+    auth_manager = FirebaseAuthManager(cookies=cookies)
     auth_manager.init_session_state()
     
     # 사이드바에서 UI 렌더링
@@ -462,9 +462,9 @@ def show_firebase_auth_ui():
         
 
 
-def require_firebase_auth():
+def require_firebase_auth(cookies=None):
     """Firebase 인증 필수 데코레이터"""
-    auth_manager = FirebaseAuthManager()
+    auth_manager = FirebaseAuthManager(cookies=cookies)
     auth_manager.init_session_state()
     
     if not auth_manager.is_logged_in():
@@ -495,7 +495,13 @@ if __name__ == "__main__":
     # 테스트 코드
     st.title("Firebase Authentication 테스트")
     
-    auth_manager = FirebaseAuthManager()
+    # 전역 CookieManager 생성
+    test_cookies = EncryptedCookieManager(
+        password="movie_recommendation_secret_key_2024",
+        prefix="firebase_"
+    )
+    
+    auth_manager = FirebaseAuthManager(cookies=test_cookies)
     auth_manager.init_session_state()
     
     if auth_manager.is_logged_in():
@@ -505,4 +511,4 @@ if __name__ == "__main__":
             st.rerun()
     else:
         st.info("로그인이 필요합니다.")
-        show_firebase_auth_ui()
+        show_firebase_auth_ui(cookies=test_cookies)

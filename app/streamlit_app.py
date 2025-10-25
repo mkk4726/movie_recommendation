@@ -17,6 +17,7 @@ from streamlit_recommender import MovieRecommender
 from user_system.firebase_config import init_firebase, setup_firebase_config
 from user_system.firebase_auth import show_firebase_auth_ui, require_firebase_auth
 from user_system.firebase_firestore import FirestoreManager
+from streamlit_cookies_manager import EncryptedCookieManager
 
 # 페이지 설정
 st.set_page_config(
@@ -25,6 +26,17 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# 전역 CookieManager 인스턴스 생성 (앱 전체에서 한 번만 생성)
+# 주의: @st.cache_resource 사용 금지 - EncryptedCookieManager는 내부적으로 Streamlit 위젯을 생성함
+global_cookies = EncryptedCookieManager(
+    password="movie_recommendation_secret_key_2024",
+    prefix="firebase_"
+)
+
+# 쿠키가 준비되지 않았으면 대기
+if not global_cookies.ready():
+    st.stop()
 
 # 커스텀 CSS
 st.markdown("""
@@ -179,7 +191,7 @@ def main():
 
     st.sidebar.markdown("---")
     if firebase_available:
-        show_firebase_auth_ui()
+        show_firebase_auth_ui(cookies=global_cookies)
     else:
         st.sidebar.info("Firebase 설정이 필요합니다.")
     
@@ -238,7 +250,7 @@ def main():
         
         try:
             # 사용자 인증 확인
-            user = require_firebase_auth()
+            user = require_firebase_auth(cookies=global_cookies)
             if not user:
                 st.error("로그인이 필요합니다.")
                 st.info("평점 관리를 사용하려면 로그인해주세요.")
