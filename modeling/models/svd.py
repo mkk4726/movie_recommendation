@@ -129,18 +129,10 @@ class SVDRecommenderPipeline:
             config: 모델 설정 (None이면 기본값 사용)
         """
         self.config = config or ModelConfig()
-        
-        # 데이터
-        self.df_raw = None
         self.df_filtered = None
-        
-        # Surprise 데이터셋 및 모델
-        self.surprise_data = None
-        self.trainset = None
-        self.testset = None
-        self.svd_model = None
-        
-        # 평가 지표
+        self.df_firebase = None
+        self.trained_user_ids = None
+        self.svd_model = None        
         self.metrics: Optional[EvaluationMetrics] = None
         
     def predict(self, user_id:str, movie_id:str) -> float:
@@ -159,56 +151,8 @@ class SVDRecommenderPipeline:
         
         prediction = self.svd_model.predict(user_id, movie_id)
         return prediction.est
-        
-    def load_data(self, data_path: Optional[str] = None) -> pd.DataFrame:
-        """
-        평점 데이터를 로딩합니다.
-        
-        Args:
-            data_path: 데이터 경로 (None이면 기본 경로 사용)
-            
-        Returns:
-            로딩된 평점 데이터프레임
-        """
-        logger.info("📊 데이터 로딩 중...")
-        self.df_raw = load_ratings_data(data_path)
-        
-        logger.info("✅ 데이터 로딩 완료")
-        logger.info(f"  - 사용자 수: {self.df_raw['user_id'].nunique():,}명")
-        logger.info(f"  - 영화 수: {self.df_raw['movie_id'].nunique():,}개")
-        logger.info(f"  - 평점 수: {len(self.df_raw):,}개")
-        
-        return self.df_raw
-    
-    def preprocess_data(self, df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-        """
-        데이터 전처리 (필터링)
-        
-        Args:
-            df: 전처리할 데이터프레임 (None이면 self.df_raw 사용)
-            
-        Returns:
-            전처리된 데이터프레임
-        """
-        if df is None:
-            df = self.df_raw
-            
-        if df is None:
-            raise ValueError("데이터를 먼저 로드해주세요. load_data() 실행 필요")
-        
-        logger.info("🔧 데이터 전처리 중...")
-        
-        # 필터링
-        self.df_filtered = filter_by_min_counts(
-            df,
-            min_user_ratings=self.config.min_user_ratings,
-            min_movie_ratings=self.config.min_movie_ratings,
-            verbose=True
-        )
-        
-        return self.df_filtered
-    
-    def prepare_surprise_dataset(self, df: Optional[pd.DataFrame] = None) -> Dataset:
+
+    def prepare_surprise_dataset(self, df: pd.DataFrame) -> Dataset:
         """
         Surprise 라이브러리용 데이터셋 준비
         
@@ -217,13 +161,7 @@ class SVDRecommenderPipeline:
             
         Returns:
             Surprise Dataset 객체
-        """
-        if df is None:
-            df = self.df_filtered
-            
-        if df is None:
-            raise ValueError("데이터를 먼저 전처리해주세요. preprocess_data() 실행 필요")
-        
+        """        
         logger.info("=== Surprise Dataset 준비 ===")
         
         # Reader 객체 생성 (평점 범위 지정)
@@ -240,61 +178,53 @@ class SVDRecommenderPipeline:
         logger.info(f"  - 평점 범위: {self.config.rating_scale[0]} ~ {self.config.rating_scale[1]}")
         
         return self.surprise_data
-    
-    def split_train_test(self) -> Tuple:
+                
+    def split_train_test(self, data: Dataset, firebase_data: Dataset) -> Tuple[Dataset, Dataset]:
         """
         Train/Test 데이터 분할
         
         Returns:
             (trainset, testset) 튜플
         """
-        if self.surprise_data is None:
-            raise ValueError("Surprise 데이터셋을 먼저 준비해주세요. prepare_surprise_dataset() 실행 필요")
-        
+       
         logger.info(f"=== Train/Test Split (test_size={self.config.test_size}) ===")
-        
-        self.trainset, self.testset = train_test_split(
-            self.surprise_data,
+
+        trainset, testset = train_test_split(
+            data,
             test_size=self.config.test_size,
             random_state=self.config.random_state
         )
+
+        def dataset_to_df(dataset: Dataset) -> pd.DataFrame:
+            df = pd.DataFrame(dataset.raw_ratings, columns=["user_id", "movie_id", "rating", "timestamp"])
+            return df.drop(columns=["timestamp"], errors="ignore")
+
+        df_train = dataset_to_df(data)
+        df_firebase = dataset_to_df(firebase_data)
+        df_train_merged = pd.concat([df_train, df_firebase], ignore_index=True)
+        train_dataset = self.prepare_surprise_dataset(df_train_merged)
+        trainset = train_dataset.build_full_trainset()
         
         logger.info("✅ 데이터 분할 완료")
-        logger.info(f"  - Train set size: {self.trainset.n_ratings:,}")
-        logger.info(f"  - Test set size: {len(self.testset):,}")
+        logger.info(f"  - Train set size: {trainset.n_ratings:,}")
+        logger.info(f"  - Test set size: {len(testset):,}")
         logger.info("Train set 통계:")
-        logger.info(f"  - 사용자 수: {self.trainset.n_users:,}")
-        logger.info(f"  - 영화 수: {self.trainset.n_items:,}")
-        logger.info(f"  - 평점 수: {self.trainset.n_ratings:,}")
-        logger.info(f"  - 전체 셀 수: {self.trainset.n_users * self.trainset.n_items:,}")
-        sparsity = (1 - self.trainset.n_ratings / (self.trainset.n_users * self.trainset.n_items)) * 100
+        logger.info(f"  - 사용자 수: {trainset.n_users:,}")
+        logger.info(f"  - 영화 수: {trainset.n_items:,}")
+        logger.info(f"  - 평점 수: {trainset.n_ratings:,}")
+        logger.info(f"  - 전체 셀 수: {trainset.n_users * trainset.n_items:,}")
+        sparsity = (1 - trainset.n_ratings / (trainset.n_users * trainset.n_items)) * 100
         logger.info(f"  - Train Sparsity: {sparsity:.2f}%")
         
-        # User-Item Overlap 확인
-        train_users = set(self.trainset._raw2inner_id_users.keys())
-        train_items = set(self.trainset._raw2inner_id_items.keys())
-        test_users = set([uid for (uid, _, _) in self.testset])
-        test_items = set([iid for (_, iid, _) in self.testset])
-        
-        user_overlap = len(train_users & test_users) / len(test_users) * 100
-        item_overlap = len(train_items & test_items) / len(test_items) * 100
-        
-        logger.info("[User/Item Overlap between Train and Test set]")
-        logger.info(f"  - Test set 사용자 중, Train set에서 본 사용자 비율: {user_overlap:.2f}% ({len(train_users & test_users)}/{len(test_users)})")
-        logger.info(f"  - Test set 아이템 중, Train set에서 본 아이템 비율: {item_overlap:.2f}% ({len(train_items & test_items)}/{len(test_items)})")
-        
-        return self.trainset, self.testset
+        return trainset, testset
     
-    def train(self) -> SVD:
+    def train(self, trainset: Dataset) -> SVD:
         """
         SVD 모델 학습
         
         Returns:
             학습된 SVD 모델
-        """
-        if self.trainset is None:
-            raise ValueError("Train set을 먼저 준비해주세요. split_train_test() 실행 필요")
-        
+        """        
         logger.info("=== SVD 모델 학습 ===")
         
         # SVD 하이퍼파라미터 출력
@@ -318,13 +248,13 @@ class SVDRecommenderPipeline:
             verbose=self.config.verbose
         )
         
-        self.svd_model.fit(self.trainset)
+        self.svd_model.fit(trainset)
         
         logger.info("✅ 학습 완료!")
         
         return self.svd_model
     
-    def evaluate(self) -> EvaluationMetrics:
+    def evaluate(self, trainset: Dataset, testset: Dataset):
         """
         모델 평가 (Train/Test RMSE, MAE)
         
@@ -338,22 +268,22 @@ class SVDRecommenderPipeline:
         
         # Test set 평가
         logger.info("Test set 평가:")
-        test_predictions = self.svd_model.test(self.testset)
+        test_predictions = self.svd_model.test(testset)
         test_rmse = accuracy.rmse(test_predictions, verbose=True)
         test_mae = accuracy.mae(test_predictions, verbose=True)
         
         # Train set 평가 (overfitting 확인용)
         logger.info("Train set 평가:")
-        train_testset = self.trainset.build_testset()
+        train_testset = trainset.build_testset()
         train_predictions = self.svd_model.test(train_testset)
         train_rmse = accuracy.rmse(train_predictions, verbose=True)
         train_mae = accuracy.mae(train_predictions, verbose=True)
         
         # User-Item Overlap 계산
-        train_users = set(self.trainset._raw2inner_id_users.keys())
-        train_items = set(self.trainset._raw2inner_id_items.keys())
-        test_users = set([uid for (uid, _, _) in self.testset])
-        test_items = set([iid for (_, iid, _) in self.testset])
+        train_users = set(trainset._raw2inner_id_users.keys())
+        train_items = set(trainset._raw2inner_id_items.keys())
+        test_users = set([uid for (uid, _, _) in testset])
+        test_items = set([iid for (_, iid, _) in testset])
         
         user_overlap = len(train_users & test_users) / len(test_users) * 100
         item_overlap = len(train_items & test_items) / len(test_items) * 100
@@ -377,9 +307,7 @@ class SVDRecommenderPipeline:
             logger.info("✅ Train과 Test 성능이 비슷합니다. 적절한 일반화가 이루어졌습니다.")
         else:
             logger.info("✅ Train과 Test 성능 차이가 적절한 수준입니다.")
-        
-        return self.metrics
-    
+            
     def recommend_for_user(
         self,
         user_id: str,
@@ -401,8 +329,8 @@ class SVDRecommenderPipeline:
         """
         if self.svd_model is None:
             raise ValueError("모델을 먼저 학습해주세요. train() 실행 필요")
-        
-        if user_id not in self.df_filtered['user_id'].values:
+
+        if user_id not in self.trained_user_ids:
             raise ValueError(f"사용자 ID '{user_id}'를 찾을 수 없습니다.")
         
         # 사용자가 본 영화
@@ -448,6 +376,7 @@ class SVDRecommenderPipeline:
             'svd_model': self.svd_model,
             'metrics': self.metrics,
             'df_filtered': self.df_filtered,
+            'trained_user_ids': self.trained_user_ids
         }
         
         # 디렉토리 생성
@@ -500,6 +429,7 @@ class SVDRecommenderPipeline:
         pipeline.svd_model = model_data['svd_model']
         pipeline.metrics = model_data.get('metrics', None)
         pipeline.df_filtered = model_data.get('df_filtered', None)
+        pipeline.trained_user_ids = model_data.get('trained_user_ids', [])
         
         logger.info("✅ 모델 로드 완료")
         if pipeline.metrics:
@@ -508,7 +438,7 @@ class SVDRecommenderPipeline:
         
         return pipeline
     
-    def run_full_pipeline(self, data_path: Optional[str] = None) -> EvaluationMetrics:
+    def run_full_pipeline(self, filtered_data: pd.DataFrame, firebase_data: pd.DataFrame):
         """
         전체 파이프라인 실행 (데이터 로딩 -> 전처리 -> 학습 -> 평가)
         
@@ -520,30 +450,28 @@ class SVDRecommenderPipeline:
         """
         logger.info("🚀 SVD 추천 시스템 파이프라인 시작")
         logger.info("=" * 60)
+
+        self.df_filtered = filtered_data
+        self.df_firebase = firebase_data
         
-        # 1. 데이터 로딩
-        self.load_data(data_path)
-        
-        # 2. 데이터 전처리
-        self.preprocess_data()
-        
-        # 3. Surprise 데이터셋 준비
-        self.prepare_surprise_dataset()
-        
-        # 4. Train/Test 분할
-        self.split_train_test()
+        trained_user_ids = []
+        trained_user_ids.extend(filtered_data['user_id'].values.tolist())
+        trained_user_ids.extend(firebase_data['user_id'].values.tolist())
+
+        self.trained_user_ids = trained_user_ids
+
+        filtered_data, firebase_data = self.prepare_surprise_dataset(filtered_data), self.prepare_surprise_dataset(firebase_data)
+
+        trainset, testset = self.split_train_test(data=filtered_data, firebase_data=firebase_data)
         
         # 5. 모델 학습
-        self.train()
+        self.train(trainset)
         
         # 6. 모델 평가
-        metrics = self.evaluate()
+        self.evaluate(trainset, testset)
         
         logger.info("=" * 60)
         logger.info("✅ 파이프라인 완료!")
-        
-        return metrics
-
 
 # 간단한 사용 예시
 if __name__ == "__main__":

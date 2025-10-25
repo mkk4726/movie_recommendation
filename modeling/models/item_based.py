@@ -107,68 +107,50 @@ class ItemBasedRecommender:
         self.config = config or ItemBasedConfig()
         self.item_similarity_matrix = None
         self.id_mapping = None
-        self.df_mapped = None
-        self.n_users = None
-        self.n_movies = None
         
         if self.config.verbose:
             logger.info("✅ ItemBasedRecommender 초기화 완료")
             logger.info(str(self.config))
     
-    def fit(self, df_ratings: Optional[pd.DataFrame] = None):
+    def fit(self, df_filtered:pd.DataFrame = None):
         """
         학습 데이터로 아이템 유사도 행렬 생성
         
         Args:
-            df_ratings: 평점 데이터프레임 (None이면 자동 로드)
+            df_filtered: 평점 데이터프레임 (None이면 자동 로드)
         """
         logger.info("\n" + "="*50)
         logger.info("📊 Item-Based CF 학습 시작")
         logger.info("="*50)
-        
-        # 1. 데이터 로딩
-        if df_ratings is None:
-            logger.info("\n[1/4] 데이터 로딩 중...")
-            df_ratings = load_ratings_data()
-        
-        # 2. 데이터 필터링
-        logger.info("\n[2/4] 데이터 필터링 중...")
-        df_filtered = filter_by_min_counts(
-            df_ratings,
-            min_user_ratings=self.config.min_user_ratings,
-            min_movie_ratings=self.config.min_movie_ratings,
-            verbose=self.config.verbose
-        )
-        
-        # 3. ID 매핑
-        logger.info("\n[3/4] ID 매핑 중...")
-        self.df_mapped, self.id_mapping = preprocess_id_mapping(
+                        
+        logger.info("ID 매핑 중...")
+        df_mapped, self.id_mapping = preprocess_id_mapping(
             df_filtered,
             verbose=self.config.verbose
         )
         
-        self.n_users = self.df_mapped['user_idx'].nunique()
-        self.n_movies = self.df_mapped['movie_idx'].nunique()
-        
         # 4. 유사도 행렬 생성
-        logger.info("\n[4/4] 아이템 유사도 행렬 생성 중...")
-        self._build_similarity_matrix()
+        logger.info("아이템 유사도 행렬 생성 중...")
+        self._build_similarity_matrix(df_mapped)
         
         logger.info("\n" + "="*50)
         logger.info("✅ 학습 완료!")
         logger.info("="*50)
     
-    def _build_similarity_matrix(self):
+    def _build_similarity_matrix(self, df_mapped: pd.DataFrame):
         """아이템 간 유사도 행렬 생성"""
-        logger.info(f"사용자-아이템 행렬 생성 중... ({self.n_users} x {self.n_movies})")
+        n_users = df_mapped['user_idx'].nunique()
+        n_movies = df_mapped['movie_idx'].nunique()
+
+        logger.info(f"사용자-아이템 행렬 생성 중... ({n_users} x {n_movies})")
         
         # User-Item 행렬 생성 (Sparse Matrix)
         user_item_matrix = csr_matrix(
             (
-                self.df_mapped['rating'].values,
-                (self.df_mapped['user_idx'].values, self.df_mapped['movie_idx'].values)
+                df_mapped['rating'].values,
+                (df_mapped['user_idx'].values, df_mapped['movie_idx'].values)
             ),
-            shape=(self.n_users, self.n_movies)
+            shape=(n_users, n_movies)
         )
         
         # Item-User 행렬 (전치)
@@ -321,45 +303,6 @@ class ItemBasedRecommender:
         
         return result_df.reset_index(drop=True)
     
-    def recommend_by_title(
-        self,
-        movie_title: str,
-        top_n: int = 10,
-        return_scores: bool = False
-    ) -> pd.DataFrame:
-        """
-        영화 제목으로 유사한 영화 추천
-        
-        Args:
-            movie_title: 영화 제목
-            top_n: 추천할 영화 개수
-            return_scores: 유사도 점수 포함 여부
-        
-        Returns:
-            추천 영화 정보 DataFrame
-        """
-        # 영화 제목으로 ID 찾기
-        from modeling.utils.data import find_movie_id_by_title
-        
-        movie_df = load_movie_data()
-        searched_df = find_movie_id_by_title(movie_title, self.df_mapped)
-        
-        if searched_df is None or len(searched_df) == 0:
-            logger.warning(f"❌ 영화 '{movie_title}'를 찾을 수 없습니다.")
-            return None
-        
-        # 여러 개 검색되면 첫 번째 선택
-        if len(searched_df) > 1:
-            logger.warning("⚠️ 여러 영화가 검색되었습니다. 첫 번째 영화를 사용합니다.")
-            searched_df = pd.merge(searched_df, movie_df, on='movie_id', how='left')
-            logger.info("\n검색된 영화들:")
-            logger.info(searched_df[['movie_id', 'movie_title']].to_string(index=False))
-        
-        movie_id = searched_df.iloc[0]['movie_id']
-        logger.info(f"\n선택된 영화: {movie_id}")
-        
-        return self.recommend(movie_id, top_n, return_scores)
-    
     def save(self, filepath: str):
         """
         학습된 모델 저장
@@ -376,10 +319,7 @@ class ItemBasedRecommender:
         model_data = {
             'config': self.config,
             'item_similarity_matrix': self.item_similarity_matrix,
-            'id_mapping': self.id_mapping,
-            'df_mapped': self.df_mapped,
-            'n_users': self.n_users,
-            'n_movies': self.n_movies
+            'id_mapping': self.id_mapping
         }
         
         with open(filepath, 'wb') as f:
@@ -426,9 +366,6 @@ class ItemBasedRecommender:
         recommender = cls(config=model_data['config'])
         recommender.item_similarity_matrix = model_data['item_similarity_matrix']
         recommender.id_mapping = model_data.get('id_mapping', None)
-        recommender.df_mapped = model_data.get('df_mapped', None)
-        recommender.n_users = model_data.get('n_users', None)
-        recommender.n_movies = model_data.get('n_movies', None)
         
         logger.info("✅ 모델 로드 완료")
         return recommender
