@@ -41,6 +41,9 @@ class ModelConfig:
     min_movie_ratings: int = 10
     rating_scale: Tuple[float, float] = (0.5, 5.0)
     
+    # 데이터 통합 설정
+    use_integrated_data: bool = False
+    
     @classmethod
     def from_yaml(cls, yaml_path: Optional[str] = None) -> 'ModelConfig':
         """
@@ -72,6 +75,14 @@ class ModelConfig:
         # rating_scale이 리스트로 로드되므로 튜플로 변환
         if 'rating_scale' in svd_config:
             svd_config['rating_scale'] = tuple(svd_config['rating_scale'])
+        
+        # 데이터 통합 설정 추출 (svd 섹션에서 직접 읽기)
+        use_integrated_data = svd_config.get('use_integrated_data', False)
+        
+        # 데이터 통합 설정을 svd_config에 추가
+        svd_config.update({
+            'use_integrated_data': use_integrated_data
+        })
         
         logger.info("✅ 설정 로드 완료")
         return cls(**svd_config)

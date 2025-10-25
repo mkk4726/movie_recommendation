@@ -13,6 +13,7 @@ sys.path.append(str(project_root))
 from streamlit_data_loader import load_movie_data, load_ratings_data, filter_data, search_movies
 from streamlit_recommender import MovieRecommender
 from cold_start.show_random_movies import get_random_popular_movies
+from modeling.utils.data_integration import DataIntegrator
 
 # Firebase 사용자 시스템 import
 from user_system.firebase_config import init_firebase, setup_firebase_config
@@ -201,13 +202,13 @@ def main():
     if firebase_available:
         recommendation_type = st.sidebar.selectbox(
             "추천 방식 선택",
-            ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천", "⭐ 내 평점 관리"],
+            ["🔍 영화 검색", "🎞️ 영화 기반 추천", "🎯 사용자 기반 추천", "⭐ 내 평점 관리", "🎲 탐색", "🔄 데이터 통합 & 모델 재학습"],
             help="원하는 추천 방식을 선택하세요"
         )
     else:
         recommendation_type = st.sidebar.selectbox(
             "추천 방식 선택",
-            ["🎞️ 영화 기반 추천"],
+            ["🔍 영화 검색", "🎞️ 영화 기반 추천", "🎲 탐색"],
             help="사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다"
         )
         st.sidebar.info("💡 사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다.")
@@ -624,6 +625,121 @@ def main():
             except Exception as e:
                 st.error("검색 중 오류가 발생했습니다. 다시 시도해주세요.")
                 st.error(f"오류 상세: {str(e)}")
+    
+    elif recommendation_type == "🔄 데이터 통합 & 모델 재학습":
+        st.header("🔄 데이터 통합 & 모델 재학습")
+        st.markdown("Firebase 사용자 상호작용 데이터와 기존 데이터를 통합하여 모델을 재학습합니다.")
+        
+        # Firebase 사용 가능 여부 확인
+        if not firebase_available:
+            st.error("❌ Firebase가 설정되지 않았습니다.")
+            st.info("데이터 통합을 사용하려면 Firebase 설정이 필요합니다.")
+            return
+        
+        # 데이터 통합 설정
+        st.subheader("📊 데이터 통합 설정")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            min_user_ratings = st.slider("최소 사용자 평점 수", 5, 50, 10)
+        with col2:
+            min_movie_ratings = st.slider("최소 영화 평점 수", 3, 20, 5)
+        
+        # 데이터 통합 실행
+        if st.button("🔄 데이터 통합 실행", type="primary"):
+            try:
+                with st.spinner("데이터 통합을 진행하는 중..."):
+                    integrator = DataIntegrator()
+                    
+                    # 1. 기존 데이터 로드
+                    st.info("📥 기존 데이터를 로드하는 중...")
+                    original_data = integrator.load_original_data()
+                    st.success(f"기존 데이터: {len(original_data)}개 평점")
+                    
+                    # 2. Firebase 데이터 로드
+                    st.info("📥 Firebase 데이터를 로드하는 중...")
+                    firebase_data = integrator.load_firebase_data()
+                    st.success(f"Firebase 데이터: {len(firebase_data)}개 평점")
+                    
+                    # 3. 데이터 통합
+                    st.info("🔗 데이터를 통합하는 중...")
+                    integrated_data = integrator.integrate_data(original_data, firebase_data)
+                    st.success(f"통합된 데이터: {len(integrated_data)}개 평점")
+                    
+                    # 4. 데이터 필터링
+                    st.info("🔍 데이터를 필터링하는 중...")
+                    filtered_data = integrator.filter_data(
+                        integrated_data, min_user_ratings, min_movie_ratings
+                    )
+                    st.success(f"필터링된 데이터: {len(filtered_data)}개 평점")
+                    
+                    # 5. 통계 정보 표시
+                    stats = integrator.get_data_statistics(filtered_data)
+                    
+                    st.markdown("### 📈 통합된 데이터 통계")
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("총 평점 수", f"{stats['total_ratings']:,}")
+                    with col2:
+                        st.metric("고유 사용자", f"{stats['unique_users']:,}")
+                    with col3:
+                        st.metric("고유 영화", f"{stats['unique_movies']:,}")
+                    with col4:
+                        st.metric("평균 평점", f"{stats['avg_rating']:.2f}")
+                    
+                    # 평점 분포 차트
+                    if stats['rating_distribution']:
+                        st.markdown("### 📊 평점 분포")
+                        rating_df = pd.DataFrame(
+                            list(stats['rating_distribution'].items()),
+                            columns=['평점', '개수']
+                        )
+                        st.bar_chart(rating_df.set_index('평점'))
+                    
+                    # 세션 상태에 저장
+                    st.session_state.integrated_data = filtered_data
+                    st.session_state.integration_stats = stats
+                    
+                    st.success("✅ 데이터 통합이 완료되었습니다!")
+                    
+            except Exception as e:
+                st.error(f"데이터 통합 중 오류가 발생했습니다: {e}")
+        
+        # 모델 재학습
+        if 'integrated_data' in st.session_state and not st.session_state.integrated_data.empty:
+            st.markdown("---")
+            st.subheader("🤖 모델 재학습")
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.info("통합된 데이터로 추천 모델을 재학습할 수 있습니다.")
+            with col2:
+                if st.button("🚀 모델 재학습 시작", type="primary"):
+                    try:
+                        with st.spinner("모델을 재학습하는 중..."):
+                            # 여기에 모델 재학습 코드를 추가할 수 있습니다
+                            st.info("모델 재학습 기능은 곧 추가될 예정입니다.")
+                            st.info("현재는 데이터 통합만 지원합니다.")
+                    except Exception as e:
+                        st.error(f"모델 재학습 중 오류가 발생했습니다: {e}")
+            
+            # 통합된 데이터 미리보기
+            st.markdown("### 📋 통합된 데이터 미리보기")
+            preview_data = st.session_state.integrated_data.head(10)
+            st.dataframe(preview_data)
+            
+            # 데이터 다운로드
+            if st.button("💾 통합된 데이터 다운로드"):
+                csv = st.session_state.integrated_data.to_csv(index=False)
+                st.download_button(
+                    label="CSV 파일 다운로드",
+                    data=csv,
+                    file_name="integrated_ratings.csv",
+                    mime="text/csv"
+                )
+        else:
+            st.info("먼저 데이터 통합을 실행해주세요.")
     
     # Footer
     st.markdown("---")

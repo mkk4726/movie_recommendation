@@ -37,6 +37,9 @@ class ItemBasedConfig:
     top_k: int = 50  # 각 영화당 유지할 상위 K개의 유사 영화
     verbose: bool = True
     
+    # 데이터 통합 설정
+    use_integrated_data: bool = False
+    
     def __str__(self):
         return f"""
 === Item-Based CF 설정 ===
@@ -72,6 +75,14 @@ Top-K 유사도: {self.top_k}
             raise ValueError("config.yaml 파일에 'item_based' 섹션이 없습니다.")
         
         item_based_config = config_dict['item_based']
+        
+        # 데이터 통합 설정 추출 (item_based 섹션에서 직접 읽기)
+        use_integrated_data = item_based_config.get('use_integrated_data', False)
+        
+        # 데이터 통합 설정을 item_based_config에 추가
+        item_based_config.update({
+            'use_integrated_data': use_integrated_data
+        })
         
         logger.info("✅ 설정 로드 완료")
         return cls(**item_based_config)

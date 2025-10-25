@@ -24,6 +24,9 @@ svd:
   rating_scale:
     - 0.5
     - 5.0
+  
+  # 데이터 통합 설정
+  use_integrated_data: True  # Firebase 통합 데이터 사용 여부
 
 # ========================================
 # Item-Based Collaborative Filtering 설정
@@ -38,4 +41,7 @@ item_based:
   
   # 실행 설정
   verbose: true         # 학습 과정 출력 여부
+  
+  # 데이터 통합 설정
+  use_integrated_data: True  # Firebase 통합 데이터 사용 여부
 

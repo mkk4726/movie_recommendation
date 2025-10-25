@@ -276,6 +276,89 @@ class FirestoreManager:
             logger.error(f"❌ 평점 삭제 실패: {e}")
             return False
 
+    def get_all_user_ratings(self) -> pd.DataFrame:
+        """모든 사용자의 평점 데이터 조회 (모델 학습용)"""
+        try:
+            db = self._get_firestore()
+            
+            # 모든 평점 데이터 조회
+            ratings_ref = db.collection(FirestoreCollections.USER_RATINGS)
+            docs = ratings_ref.stream()
+            
+            ratings_data = []
+            for doc in docs:
+                data = doc.to_dict()
+                data['id'] = doc.id
+                ratings_data.append(data)
+            
+            if not ratings_data:
+                return pd.DataFrame()
+            
+            # DataFrame으로 변환
+            df = pd.DataFrame(ratings_data)
+            
+            # 데이터 타입 변환
+            if 'rating' in df.columns:
+                df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+            if 'created_at' in df.columns:
+                df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce')
+            
+            # 필요한 컬럼만 선택 (기존 데이터와 호환)
+            required_columns = ['user_id', 'movie_id', 'rating']
+            if all(col in df.columns for col in required_columns):
+                df = df[required_columns]
+            else:
+                logger.warning("필수 컬럼이 없습니다. 전체 데이터를 반환합니다.")
+            
+            return df
+            
+        except Exception as e:
+            logger.error(f"모든 사용자 평점 조회 중 오류: {e}")
+            return pd.DataFrame()
+
+    def get_user_interaction_stats(self) -> Dict[str, Any]:
+        """사용자 상호작용 통계 조회"""
+        try:
+            db = self._get_firestore()
+            
+            # 전체 평점 수
+            ratings_ref = db.collection(FirestoreCollections.USER_RATINGS)
+            total_ratings = len(list(ratings_ref.stream()))
+            
+            # 고유 사용자 수
+            users_ref = db.collection(FirestoreCollections.USER_RATINGS)
+            docs = users_ref.stream()
+            unique_users = set()
+            for doc in docs:
+                data = doc.to_dict()
+                if 'user_id' in data:
+                    unique_users.add(data['user_id'])
+            
+            # 고유 영화 수
+            unique_movies = set()
+            docs = users_ref.stream()
+            for doc in docs:
+                data = doc.to_dict()
+                if 'movie_id' in data:
+                    unique_movies.add(data['movie_id'])
+            
+            return {
+                'total_ratings': total_ratings,
+                'unique_users': len(unique_users),
+                'unique_movies': len(unique_movies),
+                'avg_ratings_per_user': total_ratings / len(unique_users) if unique_users else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"사용자 상호작용 통계 조회 중 오류: {e}")
+            return {
+                'total_ratings': 0,
+                'unique_users': 0,
+                'unique_movies': 0,
+                'avg_ratings_per_user': 0
+            }
+
+
 
 class RatingUI:
     """Firebase 기반 영화 평점 UI 클래스"""
@@ -462,6 +545,8 @@ class RatingUI:
                 st.rerun()
 
 
+
+
 def show_firebase_rating_main_page():
     """Firebase 기반 평점 메인 페이지"""
     rating_ui = RatingUI()
@@ -496,6 +581,9 @@ def show_firebase_rating_main_page():
         - **보안**: Firebase 보안 규칙으로 데이터 보호
         - **오프라인**: 네트워크 없이도 작동
         """)
+
+
+
 
 
 if __name__ == "__main__":
