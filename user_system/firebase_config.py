@@ -197,7 +197,7 @@ class DocumentSchemas:
 # Firebase 설정 도우미 함수들
 def setup_firebase_config():
     """Firebase 설정 도우미"""
-    st.sidebar.markdown("### 🔥 Firebase 설정")
+    # st.sidebar.markdown("### 🔥 Firebase 설정")
     
     # 먼저 자동으로 서비스 계정 키 파일 찾기
     project_root = Path(__file__).parent.parent.resolve()
@@ -219,36 +219,11 @@ def setup_firebase_config():
     # 자동으로 Firebase 초기화 시도
     if service_account_path:
         if init_firebase(service_account_path):
-            st.sidebar.success("✅ Firebase 연결됨")
             return True
         else:
-            st.sidebar.error("❌ Firebase 연결 실패")
-    
-    # 자동으로 찾지 못한 경우 파일 업로드 옵션 제공
-    st.sidebar.warning("⚠️ 서비스 계정 키 파일을 찾을 수 없습니다.")
-    
-    # 서비스 계정 키 파일 업로드
-    uploaded_file = st.sidebar.file_uploader(
-        "Firebase 서비스 계정 키 파일",
-        type=['json'],
-        help="Firebase Console에서 다운로드한 서비스 계정 키 파일을 업로드하세요."
-    )
-    
-    if uploaded_file:
-        # 임시 파일로 저장
-        temp_path = f"/tmp/firebase-service-account-{st.session_state.get('session_id', 'default')}.json"
-        
-        with open(temp_path, 'wb') as f:
-            f.write(uploaded_file.getvalue())
-        
-        # Firebase 초기화 시도
-        if init_firebase(temp_path):
-            st.sidebar.success("✅ Firebase 연결됨")
-            return True
-        else:
-            st.sidebar.error("❌ Firebase 연결 실패")
             return False
     
+    # 자동으로 찾지 못한 경우
     return False
 
 

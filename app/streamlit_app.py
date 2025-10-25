@@ -95,35 +95,24 @@ def load_all_data():
 
 
 @st.cache_resource
-def initialize_recommender(df_movies):
-    """추천 시스템 초기화 (사전 학습된 모델 로드)"""
+def load_recommender_models():
+    """모델 로드 (UI 없이 순수 로직만)"""
     svd_pipeline_path = project_root / 'modeling' / 'models' / 'pkls' / 'trained_svd_pipeline.pkl'
     item_based_path = project_root / 'modeling' / 'models' / 'pkls' / 'trained_item_based.pkl'
     
-    # SVD 파이프라인 확인
+    # 파일 존재 확인
     if not svd_pipeline_path.exists():
-        st.error("❌ SVD 파이프라인이 없습니다. 먼저 modeling/run_svd_pipeline.py를 실행해주세요.")
-        st.stop()
+        raise FileNotFoundError("❌ SVD 파이프라인이 없습니다. 먼저 modeling/run_svd_pipeline.py를 실행해주세요.")
     
-    # Item-Based 모델 확인
     if not item_based_path.exists():
-        st.error("❌ Item-Based 모델이 없습니다. 먼저 modeling/run_item_based_pipeline.py를 실행해주세요.")
-        st.stop()
+        raise FileNotFoundError("❌ Item-Based 모델이 없습니다. 먼저 modeling/run_item_based_pipeline.py를 실행해주세요.")
     
-    with st.spinner("추천 모델을 로딩하는 중..."):
-        try:
-            # MovieRecommender 생성 및 모델 로드
-            recommender = MovieRecommender(
-                svd_pipeline_path=str(svd_pipeline_path),
-                item_based_path=str(item_based_path)
-            )
-            
-            st.success("✅ 모델 로드 완료!")
-            return recommender
-        except Exception as e:
-            st.error(f"❌ 모델 로드 실패: {e}")
-            st.stop()
-
+    # 모델 로드
+    recommender = MovieRecommender(
+        svd_pipeline_path=str(svd_pipeline_path),
+        item_based_path=str(item_based_path)
+    )
+    return recommender
 
 def display_movie_card(movie, score=None, score_label="예측 평점", show_plot=True):
     """영화 카드 디스플레이 (풍부한 메타데이터 포함)"""
@@ -176,55 +165,65 @@ def main():
     # Firebase 초기화 (선택사항)
     firebase_available = setup_firebase_config()
     
-    # Firebase 인증 UI (선택사항)
-    if firebase_available:
-        st.sidebar.title("👤 사용자 인증")
-        st.sidebar.markdown("---")
-        show_firebase_auth_ui()
-    else:
-        st.sidebar.title("👤 사용자 인증")
-        st.sidebar.markdown("---")
-        st.sidebar.info("Firebase 설정이 필요합니다.")
-        st.sidebar.markdown("""
-        **Firebase 설정 방법:**
-        1. Firebase Console에서 프로젝트 생성
-        2. Authentication 활성화
-        3. 서비스 계정 키 다운로드
-        4. 프로젝트 루트에 키 파일 배치
-        """)
-    
     # 데이터 로딩
     df_movies, df_ratings, df_ratings_filtered = load_all_data()
     
-    # 사이드바
-    st.sidebar.title("⚙️ 설정")
-    st.sidebar.markdown("---")
     
-    # 추천 방식 선택
+
+    st.sidebar.markdown("### 🔥 Firebase 설정")
+    if firebase_available:
+        st.sidebar.success("✅ Firebase 연결됨")
+    else:
+        st.sidebar.error("❌ Firebase 연결 실패")
+        st.sidebar.info("Firebase 설정이 필요합니다.")
+
+    st.sidebar.markdown("---")
+    if firebase_available:
+        show_firebase_auth_ui()
+    else:
+        st.sidebar.info("Firebase 설정이 필요합니다.")
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🎯 추천 방식")
     if firebase_available:
         recommendation_type = st.sidebar.selectbox(
             "추천 방식 선택",
-            ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천", "⭐ 내 평점 관리"]
+            ["🎞️ 영화 기반 추천", "🎯 사용자 기반 추천", "⭐ 내 평점 관리"],
+            help="원하는 추천 방식을 선택하세요"
         )
     else:
         recommendation_type = st.sidebar.selectbox(
             "추천 방식 선택",
-            ["🎞️ 영화 기반 추천"]
+            ["🎞️ 영화 기반 추천"],
+            help="사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다"
         )
         st.sidebar.info("💡 사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다.")
     
     st.sidebar.markdown("---")
-    
+    st.sidebar.markdown("### 📊 데이터 통계")
     st.sidebar.markdown(f"""
-    ### 📊 데이터 통계
     - 전체 영화 수: **{len(df_movies):,}개**
     - 전체 평점 수: **{len(df_ratings):,}개**
     - 사용자 수: **{df_ratings['user_id'].nunique():,}명**
     - 평균 평점: **{df_ratings['rating'].mean():.2f}/5.0**
     """)
     
-    # 추천 시스템 초기화
-    recommender = initialize_recommender(df_movies)
+    # 추천 시스템 초기화 (사이드바 UI와 함께)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 추천 모델 로드 상태")
+    
+    try:
+        with st.sidebar:
+            with st.spinner("모델을 불러오는 중..."):
+                recommender = load_recommender_models()
+                st.success("✅ 모델 로드 완료!")
+                st.caption("모델이 성공적으로 초기화되었습니다.")
+    except FileNotFoundError as e:
+        st.sidebar.error(str(e))
+        st.stop()
+    except Exception as e:
+        st.sidebar.error(f"❌ 모델 로드 실패: {e}")
+        st.stop()
     
     # 메인 컨텐츠
     if recommendation_type == "⭐ 내 평점 관리":
@@ -393,9 +392,49 @@ def main():
         
             if st.button("🎬 추천 받기", key="user_rec"):
                 with st.spinner("추천 영화를 찾는 중..."):
-                    top_watched, recommendations = recommender.recommend_for_user(
-                        selected_user, df_movies, n_recommendations
-                    )
+                    try:
+                        top_watched, recommendations = recommender.recommend_for_user(
+                            selected_user, df_movies, n_recommendations
+                        )
+                    except KeyError as e:
+                        if "나 (현재 로그인된 사용자)" in user_option:
+                            st.warning("⚠️ 아직 학습되기 전입니다.")
+                            st.info("""
+                            **개인화 추천을 받으려면:**
+                            1. 영화 평점을 더 많이 입력해주세요
+                            2. 최소 10개 이상의 평점이 필요합니다
+                            3. 평점 관리 탭에서 영화를 검색하여 평점을 입력해보세요
+                            
+                            **📚 학습 시스템 안내:**
+                            - 10개 이상 평점을 입력하시면 추후 학습에 반영됩니다
+                            - 학습 주기는 **1주일**입니다
+                            - 매주 새로운 평점 데이터로 추천 모델이 업데이트됩니다
+                            - 더 많은 평점을 입력할수록 더 정확한 추천을 받을 수 있습니다
+                            """)
+                            return
+                        else:
+                            st.error(f"추천 생성 중 오류가 발생했습니다: {e}")
+                            return
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "나 (현재 로그인된 사용자)" in user_option and ("찾을 수 없습니다" in error_msg or "KeyError" in error_msg):
+                            st.warning("⚠️ 아직 학습되기 전입니다.")
+                            st.info("""
+                            **개인화 추천을 받으려면:**
+                            1. 영화 평점을 더 많이 입력해주세요
+                            2. 최소 10개 이상의 평점이 필요합니다
+                            3. 평점 관리 탭에서 영화를 검색하여 평점을 입력해보세요
+                            
+                            **📚 학습 시스템 안내:**
+                            - 10개 이상 평점을 입력하시면 추후 학습에 반영됩니다
+                            - 학습 주기는 **1주일**입니다
+                            - 매주 새로운 평점 데이터로 추천 모델이 업데이트됩니다
+                            - 더 많은 평점을 입력할수록 더 정확한 추천을 받을 수 있습니다
+                            """)
+                            return
+                        else:
+                            st.error(f"추천 생성 중 오류가 발생했습니다: {e}")
+                            return
                 
                     if recommendations.empty:
                         st.warning("추천할 영화가 없습니다.")

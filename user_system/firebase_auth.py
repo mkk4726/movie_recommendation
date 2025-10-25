@@ -289,83 +289,66 @@ class FirebaseAuthManager:
 
 
 def show_firebase_auth_ui():
-    """Firebase 인증 UI 표시"""
+    """Firebase 인증 UI 표시 (사이드바 버전)"""
     auth_manager = FirebaseAuthManager()
     auth_manager.init_session_state()
     
-    if not auth_manager.firebase_manager.initialized:
-        st.error("Firebase가 초기화되지 않았습니다.")
-        st.info("Firebase 설정을 먼저 완료해주세요.")
-        return
-    
-    if auth_manager.is_logged_in():
-        # 로그인된 상태
-        user = auth_manager.get_current_user()
-        if user:
-            st.subheader(f"👤 {user.get('display_name', 'User')}님")
-            
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                st.write(f"**이메일:** {user.get('email', 'N/A')}")
-                st.write(f"**가입일:** {user.get('created_at', 'N/A')}")
+    # 사이드바에서 UI 렌더링
+    with st.sidebar:
+        st.markdown("### 🔐 로그인 / 회원가입")
+
+        if not auth_manager.firebase_manager.initialized:
+            st.info("Firebase 설정이 필요합니다.")
+            return
+
+        if auth_manager.is_logged_in():
+            user = auth_manager.get_current_user()
+            if user:
+                st.write(f"👤 **{user.get('display_name', 'User')}님**")
+                st.caption(f"📧 {user.get('email', 'N/A')}")
+                st.caption(f"가입일: {user.get('created_at', 'N/A')}")
                 
-                # 평점 수 표시
                 ratings_count = auth_manager.get_user_ratings_count(st.session_state.user_uid)
-                st.write(f"**평점 수:** {ratings_count}개")
-            
-            with col2:
+                st.caption(f"평점 수: {ratings_count}개")
+
                 if st.button("로그아웃", type="secondary"):
                     auth_manager.logout()
                     st.rerun()
-    else:
-        # 로그인되지 않은 상태
-        st.subheader("🔐 로그인 / 회원가입")
-        
-        # 탭으로 로그인/회원가입 구분
-        tab1, tab2 = st.tabs(["로그인", "회원가입"])
-        
-        with tab1:
-            st.markdown("### 📧 이메일 로그인")
-            
-            with st.form("login_form"):
+
+        else:
+            # 로그인/회원가입 선택
+            auth_type = st.radio("선택", ["로그인", "회원가입"], horizontal=True)
+
+            if auth_type == "로그인":
                 email = st.text_input("이메일", placeholder="example@email.com")
-                password = st.text_input("비밀번호", type="password", placeholder="비밀번호를 입력하세요")
-                
-                if st.form_submit_button("로그인", type="primary"):
+                password = st.text_input("비밀번호", type="password")
+                if st.button("로그인"):
                     if email and password:
                         if auth_manager.login_with_email_password(email, password):
                             st.success("로그인 성공!")
                             st.rerun()
                         else:
-                            st.error("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.")
+                            st.error("로그인 실패: 이메일 또는 비밀번호를 확인하세요.")
                     else:
-                        st.warning("이메일과 비밀번호를 입력해주세요.")
-        
-        with tab2:
-            st.markdown("### ✨ 회원가입")
+                        st.warning("이메일과 비밀번호를 입력하세요.")
             
-            with st.form("signup_form"):
-                signup_email = st.text_input("이메일", placeholder="example@email.com", key="signup_email")
-                signup_password = st.text_input("비밀번호", type="password", placeholder="6자 이상 입력하세요", key="signup_password")
-                signup_password_confirm = st.text_input("비밀번호 확인", type="password", placeholder="비밀번호를 다시 입력하세요", key="signup_password_confirm")
-                signup_display_name = st.text_input("닉네임 (선택사항)", placeholder="표시될 이름", key="signup_display_name")
-                
-                if st.form_submit_button("회원가입", type="primary"):
-                    if signup_email and signup_password and signup_password_confirm:
-                        if signup_password != signup_password_confirm:
-                            st.error("비밀번호가 일치하지 않습니다.")
-                        elif len(signup_password) < 6:
-                            st.error("비밀번호는 6자 이상이어야 합니다.")
-                        else:
-                            if auth_manager.signup_with_email(signup_email, signup_password, signup_display_name):
-                                st.success("회원가입 성공! 자동으로 로그인되었습니다.")
-                                st.balloons()  # 축하 애니메이션
-                                st.rerun()
-                            else:
-                                st.error("회원가입에 실패했습니다. 이미 존재하는 이메일일 수 있습니다.")
+            else:  # 회원가입
+                signup_email = st.text_input("이메일", placeholder="example@email.com")
+                signup_password = st.text_input("비밀번호", type="password", placeholder="6자 이상 입력")
+                signup_password_confirm = st.text_input("비밀번호 확인", type="password")
+                signup_display_name = st.text_input("닉네임 (선택)")
+                if st.button("회원가입"):
+                    if signup_password != signup_password_confirm:
+                        st.error("비밀번호가 일치하지 않습니다.")
+                    elif len(signup_password) < 6:
+                        st.error("비밀번호는 6자 이상이어야 합니다.")
                     else:
-                        st.warning("모든 필수 항목을 입력해주세요.")
+                        if auth_manager.signup_with_email(signup_email, signup_password, signup_display_name):
+                            st.success("회원가입 성공!")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("회원가입 실패: 이미 존재하는 이메일일 수 있습니다.")
         
 
 
