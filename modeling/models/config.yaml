@@ -17,7 +17,7 @@ svd:
   
   # 데이터 분할 및 필터링
   test_size: 0.2        # 테스트 데이터 비율
-  min_user_ratings: 30  # 사용자당 최소 평점 개수
+  min_user_ratings: 10  # 사용자당 최소 평점 개수
   min_movie_ratings: 10 # 영화당 최소 평점 개수
   
   # 평점 범위
@@ -33,7 +33,7 @@ svd:
 # ========================================
 item_based:
   # 데이터 필터링
-  min_user_ratings: 30  # 사용자당 최소 평점 개수
+  min_user_ratings: 10  # 사용자당 최소 평점 개수
   min_movie_ratings: 10 # 영화당 최소 평점 개수
   
   # 유사도 행렬 설정
