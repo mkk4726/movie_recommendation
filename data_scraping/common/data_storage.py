@@ -162,7 +162,7 @@ class DataStorage:
         with open(file_path, 'a', encoding='utf-8') as f:
             f.write(line)
     
-    def _read_txt(self, file_path: str, expected_columns: int = None) -> List[List[str]]:
+    def _read_txt(self, file_path: str, expected_columns: int = None, type: str = "") -> List[List[str]]:
         """
         Read TXT file and parse rows.
         
@@ -181,16 +181,27 @@ class DataStorage:
         with open(file_path, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 if line.strip():
-                    row = line.strip().split(self.config.DATA_SEPARATOR)
+                    row = line.strip()
+                    splitted_row = row.split(self.config.DATA_SEPARATOR)
                     
+                    if type == "movie_info":
+                        rows.append(self._preprocess_movie_info_row(splitted_row))      
+                        continue    
+                                    
                     # 컬럼 수가 맞지 않는 행은 건너뛰기
                     if expected_columns is not None and len(row) != expected_columns:
                         self.logger.warning(f"Skipping line {line_num}: expected {expected_columns} columns, got {len(row)}")
                         continue
                     
-                    rows.append(row)
+                    rows.append(splitted_row)
         
         return rows
+    
+    def _preprocess_movie_info_row(self, splitted_row: list) -> list:
+        """캐스팅 정보에 / 이 포함되어 있어서 파싱이 잘 안되는 문제 해결하기 위해서"""
+        
+        middle = ['/'.join(splitted_row[7:-4]).replace('/', '|')]
+        return splitted_row[:7] + middle + splitted_row[-4:]                
     
     def load_movie_info(self) -> pd.DataFrame:
         """
@@ -211,7 +222,7 @@ class DataStorage:
         ]
         
         # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
-        rows = self._read_txt(file_path, expected_columns=len(columns))
+        rows = self._read_txt(file_path, expected_columns=len(columns), type='movie_info')
         
         return pd.DataFrame(rows, columns=columns)
     

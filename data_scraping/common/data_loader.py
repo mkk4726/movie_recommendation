@@ -4,6 +4,7 @@
 """
 import pandas as pd
 from pathlib import Path
+from .data_storage import DataStorage
 
 
 def get_data_path() -> Path:
@@ -17,32 +18,40 @@ def get_data_path() -> Path:
 
 
 def load_movie_data(data_path: str = None) -> pd.DataFrame:
-    """영화 정보 데이터 로딩"""
-    movie_info = []
+    """영화 정보 데이터 로딩 (DataStorage.load_movie_info 사용)"""
     if data_path is None:
         data_path = get_data_path()
-    file_path = Path(data_path) / 'movie_info_watcha.txt'
+        
+    # DataStorage 인스턴스 생성
+    storage = DataStorage()
+    storage.config.DATA_DIR = data_path
     
-    with open(file_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            parts = line.strip().split('/')
-            if len(parts) >= 11:
-                movie_info.append({
-                    'movie_id': parts[0],
-                    'title': parts[1],
-                    'year': parts[2],
-                    'genre': parts[3],
-                    'country': parts[4],
-                    'runtime': parts[5],
-                    'age_rating': parts[6],
-                    'cast': parts[7],
-                    'plot': parts[8],
-                    'avg_score': parts[9],
-                    'popularity': parts[10],
-                    'review_count': parts[11] if len(parts) > 11 else None
-                })
+    # DataStorage의 load_movie_info 사용
+    df_movies = storage.load_movie_info()
     
-    df_movies = pd.DataFrame(movie_info)
+    if df_movies.empty:
+        return df_movies
+    
+    # 컬럼명을 소문자로 변환하고 기존 형식에 맞게 매핑
+    column_mapping = {
+        'MovieID': 'movie_id',
+        'Title': 'title',
+        'Year': 'year',
+        'Genre': 'genre',
+        'Country': 'country',
+        'Runtime': 'runtime',
+        'Age': 'age_rating',
+        'Cast_Production': 'cast',
+        'Synopsis': 'plot',
+        'Avg_Rating': 'avg_score',
+        'N_Rating': 'popularity',
+        'N_Comments': 'review_count'
+    }
+    
+    # 컬럼명 변환
+    df_movies = df_movies.rename(columns=column_mapping)
+    
+    # 기존 로직과 동일한 전처리 수행
     df_movies['avg_score'] = pd.to_numeric(df_movies['avg_score'], errors='coerce')
     df_movies['popularity'] = pd.to_numeric(df_movies['popularity'], errors='coerce')
     df_movies['year'] = pd.to_numeric(df_movies['year'], errors='coerce')
