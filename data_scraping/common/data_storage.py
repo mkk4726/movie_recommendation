@@ -186,7 +186,11 @@ class DataStorage:
                     
                     if type == "movie_info":
                         rows.append(self._preprocess_movie_info_row(splitted_row))      
-                        continue    
+                        continue   
+                    
+                    if type == "custom_rating":
+                        rows.append(self._preprocess_custom_rating_row(splitted_row))
+                        continue
                                     
                     # 컬럼 수가 맞지 않는 행은 건너뛰기
                     if expected_columns is not None and len(row) != expected_columns:
@@ -246,6 +250,13 @@ class DataStorage:
         
         return pd.DataFrame(rows, columns=columns)
     
+    def _preprocess_custom_rating_row(self, splitted_row: list) -> list:
+        """제목에 / 이 포함되어 있어서 파싱이 잘 안되는 문제 해결하기 위해서"""
+ 
+        middle = [" ".join(splitted_row[2:-1])]
+
+        return splitted_row[:2] + middle + splitted_row[-1:]
+    
     def load_custom_rating(self) -> pd.DataFrame:
         """
         Load custom ratings from TXT file.
@@ -262,7 +273,7 @@ class DataStorage:
         columns = ['CustomID', 'MovieID', 'MovieName', 'Rating']
         
         # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
-        rows = self._read_txt(file_path, expected_columns=len(columns))
+        rows = self._read_txt(file_path, expected_columns=len(columns), type="custom_rating")
         
         return pd.DataFrame(rows, columns=columns)
     

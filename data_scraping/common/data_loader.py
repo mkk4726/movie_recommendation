@@ -61,28 +61,35 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
 
 
 def load_ratings_data(data_path: str = None) -> pd.DataFrame:
-    """사용자 평점 데이터 로딩"""
-    ratings = []
+    """사용자 평점 데이터 로딩 (DataStorage.load_custom_rating 사용)"""
     if data_path is None:
         data_path = get_data_path()
-    file_path = Path(data_path) / 'custom_movie_rating.txt'
+        
+    # DataStorage 인스턴스 생성
+    storage = DataStorage()
+    storage.config.DATA_DIR = data_path
     
-    with open(file_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            parts = line.strip().split('/')
-            if len(parts) >= 4:
-                try:
-                    ratings.append({
-                        'user_id': parts[0],
-                        'movie_id': parts[1],
-                        'movie_title': parts[2],
-                        'rating': float(parts[3])
-                    })
-                except ValueError:
-                    continue
+    # DataStorage의 load_custom_rating 사용
+    df_ratings = storage.load_custom_rating()
     
-    df_ratings = pd.DataFrame(ratings)
+    if df_ratings.empty:
+        return df_ratings
+    
+    # 컬럼명을 소문자로 변환하고 기존 형식에 맞게 매핑
+    column_mapping = {
+        'CustomID': 'user_id',
+        'MovieID': 'movie_id',
+        'MovieName': 'movie_title',
+        'Rating': 'rating'
+    }
+    
+    # 컬럼명 변환
+    df_ratings = df_ratings.rename(columns=column_mapping)
+    
+    # 기존 로직과 동일한 전처리 수행
+    df_ratings['rating'] = pd.to_numeric(df_ratings['rating'], errors='coerce')
     df_ratings = df_ratings[(df_ratings['rating'] >= 0) & (df_ratings['rating'] <= 5)]
+    df_ratings = df_ratings.dropna(subset=['rating'])
     
     return df_ratings
 
