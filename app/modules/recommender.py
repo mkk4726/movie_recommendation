@@ -6,7 +6,8 @@ import sys
 from pathlib import Path
 
 # 프로젝트 루트를 path에 추가
-project_root = Path(__file__).parent.parent.resolve()
+app_dir = Path(__file__).parent.parent.resolve()
+project_root = app_dir.parent.resolve()
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -26,3 +27,4 @@ class MovieRecommender(_MovieRecommender):
     def load_item_based(_self, filepath: str):
         """Item-Based 모델 로드 (Streamlit 캐싱 적용)"""
         return super(MovieRecommender, _self).load_item_based(filepath)
+

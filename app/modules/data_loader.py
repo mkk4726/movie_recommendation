@@ -6,8 +6,9 @@ import sys
 from pathlib import Path
 
 # 프로젝트 루트를 path에 추가
-project_root = Path(__file__).parent.parent.resolve()
-sys.path.append(str(project_root))
+app_dir = Path(__file__).parent.parent.resolve()
+project_root = app_dir.parent.resolve()
+sys.path.insert(0, str(project_root))
 
 import streamlit as st
 import pandas as pd
@@ -62,3 +63,4 @@ def search_movies(df_movies, query: str, limit: int = 10):
         # 에러 발생 시 빈 DataFrame 반환 (사용자에게 에러 노출하지 않음)
         print(f"Search error: {e}")  # 디버깅용 로그
         return pd.DataFrame()
+
