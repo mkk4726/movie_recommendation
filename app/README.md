@@ -73,14 +73,14 @@ streamlit run streamlit_app.py
 cd app
 
 # Streamlit 실행 (포트 8501)
-streamlit run streamlit_app.py --server.port 8501
+streamlit run app.py --server.port 8501
 ```
 
 #### 배포할 떄 사용하는 명령어
 
 ```bash
 nohup cloudflared tunnel run my-streamlit-tunnel > ~/cloudflared.log 2>&1 &
-nohup streamlit run app/streamlit_app.py --server.runOnSave false > ~/streamlit.log 2>&1 &
+nohup streamlit run app/app.py > ~/streamlit.log 2>&1 &
 nohup caffeinate > /dev/null 2>&1 &
 ```
 
