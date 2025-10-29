@@ -57,7 +57,7 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
     df_movies['year'] = pd.to_numeric(df_movies['year'], errors='coerce')
     df_movies = df_movies.dropna(subset=['avg_score'])
     
-    return df_movies
+    return df_movies.reset_index(drop=True, inplace=False)
 
 
 def load_ratings_data(data_path: str = None) -> pd.DataFrame:
@@ -91,7 +91,7 @@ def load_ratings_data(data_path: str = None) -> pd.DataFrame:
     df_ratings = df_ratings[(df_ratings['rating'] >= 0) & (df_ratings['rating'] <= 5)]
     df_ratings = df_ratings.dropna(subset=['rating'])
     
-    return df_ratings
+    return df_ratings.reset_index(drop=True, inplace=False)
 
 
 
