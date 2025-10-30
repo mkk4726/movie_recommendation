@@ -21,9 +21,7 @@ class DataStorage:
         """
         self.config = config or Config()
         self.logger = get_logger(__name__, level=self.config.LOG_LEVEL)
-        
-        # Ensure data directory exists
-        Path(self.config.DATA_DIR).mkdir(parents=True, exist_ok=True)
+        # Data 디렉토리 자동 생성 코드 제거함 (원치 않는 데이터 폴더 생성을 막기 위함)
     
     def get_movie_info_path(self) -> str:
         """Get full path to movie info file."""
