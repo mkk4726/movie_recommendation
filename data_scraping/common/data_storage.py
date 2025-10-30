@@ -184,20 +184,19 @@ class DataStorage:
                     row = line.strip()
                     splitted_row = row.split(self.config.DATA_SEPARATOR)
                     
-                    if type == "movie_info":
-                        rows.append(self._preprocess_movie_info_row(splitted_row))      
-                        continue   
-                    
-                    if type == "custom_rating":
-                        rows.append(self._preprocess_custom_rating_row(splitted_row))
-                        continue
-                                    
-                    # 컬럼 수가 맞지 않는 행은 건너뛰기
-                    if expected_columns is not None and len(row) != expected_columns:
-                        self.logger.warning(f"Skipping line {line_num}: expected {expected_columns} columns, got {len(row)}")
-                        continue
-                    
-                    rows.append(splitted_row)
+                    match type:
+                        case "movie_info":
+                            rows.append(self._preprocess_movie_info_row(splitted_row))
+                        case "custom_rating":
+                            rows.append(self._preprocess_custom_rating_row(splitted_row))
+                        case "movie_comments":
+                            rows.append(self._preprocess_movie_comments_row(splitted_row))
+                        case _:
+                            # 컬럼 수가 맞지 않는 행은 건너뛰기
+                            if expected_columns is not None and len(row) != expected_columns:
+                                self.logger.warning(f"Skipping line {line_num}: expected {expected_columns} columns, got {len(row)}")
+                            else:
+                                rows.append(splitted_row)
         
         return rows
     
@@ -230,6 +229,13 @@ class DataStorage:
         
         return pd.DataFrame(rows, columns=columns)
     
+    def _preprocess_movie_comments_row(self, splitted_row: list) -> list:
+        """comment에 / 이 포함되어 있어서 파싱이 안되는 문제 해결"""
+         
+        middle = [" ".join(splitted_row[2:-2])]
+
+        return splitted_row[:2] + middle + splitted_row[-2:]
+    
     def load_movie_comments(self) -> pd.DataFrame:
         """
         Load movie comments from TXT file.
@@ -246,7 +252,7 @@ class DataStorage:
         columns = ['MovieID', 'CustomID', 'Comment', 'Rating', 'N_Likes']
         
         # 예상 컬럼 수를 전달하여 잘못된 행은 건너뛰기
-        rows = self._read_txt(file_path, expected_columns=len(columns))
+        rows = self._read_txt(file_path, expected_columns=len(columns), type="movie_comments")
         
         return pd.DataFrame(rows, columns=columns)
     
