@@ -43,8 +43,14 @@ env/
 scraper.log
 
 # Data files (uncomment if you want to ignore data)
-# data_scraping/data/*.csv
-# data_scraping/data/*.txt
+data/
+data_scraping/data/
+data_scraping/data/*.csv
+data_scraping/data/*.txt
+
+# Model artifacts
+modeling/models/pkls/
+*.pkl
 
 # Environment variables
 .env
