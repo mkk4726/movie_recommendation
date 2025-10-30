@@ -37,7 +37,7 @@ item_based:
   min_movie_ratings: 10 # 영화당 최소 평점 개수
   
   # 유사도 행렬 설정
-  top_k: 50             # 각 영화당 유지할 상위 K개의 유사 영화
+  top_k: 500             # 각 영화당 유지할 상위 K개의 유사 영화
   
   # 실행 설정
   verbose: true         # 학습 과정 출력 여부

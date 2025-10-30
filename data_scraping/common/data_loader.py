@@ -5,7 +5,7 @@
 import pandas as pd
 from pathlib import Path
 from .data_storage import DataStorage
-
+from app.modules.config import MIN_YEAR, MAX_YEAR
 
 def get_data_path() -> Path:
     """데이터 디렉토리 경로를 반환 (로컬/배포 환경 모두 호환)"""
@@ -55,7 +55,11 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
     df_movies['avg_score'] = pd.to_numeric(df_movies['avg_score'], errors='coerce')
     df_movies['popularity'] = pd.to_numeric(df_movies['popularity'], errors='coerce')
     df_movies['year'] = pd.to_numeric(df_movies['year'], errors='coerce')
+    df_movies['genre'] = df_movies['genre'].str.split().apply(lambda genres: " ".join(dict.fromkeys(genres)) if isinstance(genres, list) else "")
     df_movies = df_movies.dropna(subset=['avg_score'])
+    df_movies = df_movies.drop_duplicates(subset=['movie_id'], keep='first').reset_index(drop=True)
+    df_movies = df_movies.dropna(subset='year')
+    df_movies = df_movies[(df_movies['year'] >= MIN_YEAR) & (df_movies['year'] <= MAX_YEAR)]
     
     return df_movies.reset_index(drop=True, inplace=False)
 

@@ -243,7 +243,8 @@ class ItemBasedRecommender:
         self,
         movie_id: str,
         top_n: int = 10,
-        return_scores: bool = False
+        return_scores: bool = False,
+        filters: dict = None
     ) -> pd.DataFrame:
         """
         특정 영화와 유사한 영화 추천
@@ -252,6 +253,10 @@ class ItemBasedRecommender:
             movie_id: 영화 ID
             top_n: 추천할 영화 개수
             return_scores: 유사도 점수 포함 여부
+            filters: 필터 조건 딕셔너리 (선택사항)
+                - genre: 장르 리스트, 예: ["로맨스", "액션"]
+                - min_year: 최소 제작연도, 예: 1988
+                - max_year: 최대 제작연도, 예: 2026
         
         Returns:
             추천 영화 정보 DataFrame
@@ -278,16 +283,13 @@ class ItemBasedRecommender:
         # 유사도 기준으로 정렬 (높은 순)
         similar_items.sort(key=lambda x: x[1], reverse=True)
         
-        # Top-N 선택
-        top_similar = similar_items[:top_n]
-        
-        if len(top_similar) == 0:
+        if len(similar_items) == 0:
             logger.warning("\n⚠️ 유사한 영화를 찾을 수 없습니다.")
             return None
         
-        # 영화 ID와 유사도 점수 추출
-        movie_indices = [idx for idx, _ in top_similar]
-        scores = [score for _, score in top_similar]
+        # 모든 유사 영화의 ID 추출
+        movie_indices = [idx for idx, _ in similar_items]
+        scores = [score for _, score in similar_items]
         recommended_movie_ids = [self.id_mapping.idx_to_movie[idx] for idx in movie_indices]
         
         # 영화 정보 로드
@@ -298,8 +300,52 @@ class ItemBasedRecommender:
         if return_scores:
             score_dict = dict(zip(recommended_movie_ids, scores))
             result_df['similarity_score'] = result_df['movie_id'].map(score_dict)
-            # 유사도 기준으로 정렬
+        
+        # 필터링 적용
+        if filters is not None:
+            # 장르 필터링
+            if 'genre' in filters and filters['genre']:
+                genres = filters['genre']
+                if isinstance(genres, list) and len(genres) > 0:
+                    def matches_genre(genre_str):
+                        """영화의 장르가 필터 조건과 일치하는지 확인"""
+                        if pd.isna(genre_str) or not isinstance(genre_str, str):
+                            return False
+                        movie_genres = [g.strip() for g in genre_str.split(' ')]
+                        return any(genre in movie_genres for genre in genres)
+                    
+                    result_df = result_df[result_df['genre'].apply(matches_genre)]
+                    
+            
+            # 연도 필터링
+            if 'min_year' in filters and filters['min_year'] is not None:
+                if 'year' in result_df.columns:
+                    result_df = result_df[pd.to_numeric(result_df['year'], errors='coerce') >= filters['min_year']]
+            
+            if 'max_year' in filters and filters['max_year'] is not None:
+                if 'year' in result_df.columns:
+                    result_df = result_df[pd.to_numeric(result_df['year'], errors='coerce') <= filters['max_year']]
+
+            # 국가 필터링
+            if 'country' in filters and filters['country']:
+                countries = filters['country']
+                if isinstance(countries, list) and len(countries) > 0:
+                    def matches_country(country_str):
+                        if pd.isna(country_str) or not isinstance(country_str, str):
+                            return False
+                        movie_countries = [c.strip() for c in country_str.split(',')]
+                        return any(country in movie_countries for country in countries)
+                    if 'country' in result_df.columns:
+                        result_df = result_df[result_df['country'].apply(matches_country)]
+        
+        # 유사도 기준으로 정렬 후 top_n만큼만 반환
+        if return_scores:
             result_df = result_df.sort_values('similarity_score', ascending=False)
+        else:
+            # 유사도 점수가 없으면 원래 순서 유지 (이미 정렬되어 있음)
+            pass
+        
+        result_df = result_df.head(top_n)
         
         return result_df.reset_index(drop=True)
     
@@ -329,7 +375,7 @@ class ItemBasedRecommender:
         file_size = format_file_size(filepath)
         logger.info(f"✅ 모델 저장 완료: {filepath}")
         logger.info(f"📦 파일 크기: {file_size}")
-    
+
     @classmethod
     def load(cls, filepath: str) -> 'ItemBasedRecommender':
         """

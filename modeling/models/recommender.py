@@ -105,14 +105,19 @@ class MovieRecommender:
         return top_watched
     
     def find_similar_movies(self, movie_id: str, df_movies: pd.DataFrame, 
-                           n_recommendations: int = 10) -> pd.DataFrame:
+                           n_recommendations: int = 10, 
+                           filters: dict = None) -> pd.DataFrame:
         """
         유사한 영화 찾기 (Item-Based CF 사용)
         
         Args:
             movie_id: 기준 영화 ID
             df_movies: 영화 정보 데이터프레임
-            n_recommendations: 추천할 영화 개수
+            n_recommendations: 추천할 영화 개수 (기본값: 10)
+            filters: 필터 조건 딕셔너리 (선택사항)
+                - genre: 장르 리스트, 예: ["로맨스", "액션"]
+                - min_year: 최소 제작연도, 예: 1988
+                - max_year: 최대 제작연도, 예: 2026
             
         Returns:
             유사한 영화 데이터프레임 (similarity 컬럼 포함)
@@ -127,7 +132,8 @@ class MovieRecommender:
         result_df = self.item_based.recommend(
             movie_id=movie_id,
             top_n=n_recommendations,
-            return_scores=True
+            return_scores=True,
+            filters=filters
         )
         
         if result_df is None or result_df.empty:

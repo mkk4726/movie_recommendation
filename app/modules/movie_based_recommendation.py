@@ -8,10 +8,13 @@ from pathlib import Path
 
 # 프로젝트 루트를 path에 추가
 app_dir = Path(__file__).parent.parent.resolve()
-sys.path.insert(0, str(app_dir))
+project_root = app_dir.parent.resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from modules.data_loader import search_movies
 from modules.utils import display_movie_card
+from app.modules.config import GENRE_OPTIONS, MIN_YEAR, MAX_YEAR, COUNTRY_OPTIONS
 
 
 def render_movie_based_recommendation(recommender, df_movies):
@@ -50,16 +53,68 @@ def render_movie_based_recommendation(recommender, df_movies):
                 st.markdown(f"**{selected_title}**")
                 display_movie_card(selected_movie, show_plot=True)
                 
-                col_rec1, col_rec2 = st.columns([2, 1])
-                with col_rec1:
-                    n_recommendations = st.slider("추천 개수", 5, 15, 10, key="movie_slider")
-                with col_rec2:
-                    st.write("")  # spacing
+                # form을 사용하여 위젯 조작 시 재실행 방지
+                with st.form("recommendation_form", clear_on_submit=False):
+                    col_rec1, col_rec2, col_rec3, col_rec4 = st.columns([3, 2, 2, 3])
+                    
+                    # 추천 개수 선택
+                    with col_rec1:
+                        n_recommendations = st.slider("추천 개수", 5, 15, 10, key="movie_slider")
+                    
+                    # 장르 선택
+                    with col_rec2:
+                        selected_genres = st.multiselect(
+                            "장르 선택",
+                            options=GENRE_OPTIONS,
+                            default=[],
+                            key="movie_genre_filter"
+                        )
+
+                    # 국가 선택
+                    with col_rec3:
+                        selected_countries = st.multiselect(
+                            "국가 선택",
+                            options=COUNTRY_OPTIONS,
+                            default=[],
+                            key="movie_country_filter"
+                        )
+
+                    # 연도 선택
+                    with col_rec4:
+                        # 연도 범위 슬라이더 (최소값과 최대값을 df_movies에서 가져옴)
+                        min_year = MIN_YEAR
+                        max_year = MAX_YEAR
+                        selected_year_range = st.slider(
+                            "선호하는 제작연도 범위",
+                            min_value=min_year,
+                            max_value=max_year,
+                            value=(min_year, max_year),
+                            step=1,
+                            # Streamlit v1.19+는 'key' 인자만 받음
+                            key="movie_year_slider"
+                        )
+                    
+                    # form 제출 버튼
+                    submitted = st.form_submit_button("🎬 비슷한 영화 찾기", use_container_width=True)
                 
-                if st.button("🎬 비슷한 영화 찾기", key="movie_rec"):
+                if submitted:
+                    # 필터 딕셔너리 생성
+                    filter_dict = {}
+                    if selected_genres:
+                        filter_dict['genre'] = selected_genres
+                    if selected_year_range:
+                        min_year, max_year = selected_year_range
+                        filter_dict['min_year'] = min_year
+                        filter_dict['max_year'] = max_year
+                    if selected_countries:
+                        filter_dict['country'] = selected_countries
+                    
+                    # 필터가 비어있으면 None으로 설정
+                    filter_dict = filter_dict if filter_dict else None
+                    
                     with st.spinner("비슷한 영화를 찾는 중..."):
                         similar_movies = recommender.find_similar_movies(
-                            selected_movie['movie_id'], df_movies, n_recommendations
+                            selected_movie['movie_id'], df_movies, n_recommendations, filters=filter_dict
                         )
                         
                         if similar_movies.empty:
