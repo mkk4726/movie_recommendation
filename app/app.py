@@ -119,7 +119,7 @@ def main():
         st.sidebar.info("💡 사용자 기반 추천과 평점 관리를 사용하려면 Firebase 설정이 필요합니다.")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📊 데이터 통계")
+    st.sidebar.markdown("### 📊 수집한 데이터 통계")
     st.sidebar.markdown(f"""
     - 전체 영화 수: **{len(df_movies):,}개**
     - 전체 평점 수: **{len(df_ratings):,}개**

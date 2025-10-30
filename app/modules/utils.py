@@ -113,7 +113,7 @@ def display_footer():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: gray; padding: 2rem;'>
-        <p>🎬 영화 추천 시스템 | 데이터 출처: Watcha</p>
+        <p>🎬 영화 추천 시스템 | 데이터 출처: Watcha Pedia</p>
         <p>Powered by Streamlit & Machine Learning</p>
     </div>
     """, unsafe_allow_html=True)
