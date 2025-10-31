@@ -45,3 +45,65 @@ item_based:
   # 데이터 통합 설정
   use_integrated_data: True  # Firebase 통합 데이터 사용 여부
 
+# ========================================
+# NER (Named Entity Recognition) 설정
+# ========================================
+ner:
+  # 모델 설정
+  # model_name: "Qwen/Qwen2.5-1.5B-Instruct"  # 사용할 Qwen 모델 (1.5B, 3B, 7B 중 선택)
+  model_name: "Qwen/Qwen2.5-3B-Instruct"  # 1.5B은 성능 영 별로긴 하네. 3B은 써야 함.
+  
+  # 허용된 모델명 목록
+  allowed_models:
+    - "Qwen/Qwen2.5-1.5B-Instruct"
+    - "Qwen/Qwen2.5-3B-Instruct"
+    - "Qwen/Qwen2.5-7B-Instruct"
+  
+  # 생성 파라미터
+  max_new_tokens: 128         # 최대 생성 토큰 수 (JSON만 생성하므로 축소해 지연 단축)
+  temperature: 0.0          # 생성 온도 (0.0 = 결정적, 높을수록 다양)
+  top_p: 0.9                # Nucleus sampling 파라미터
+  do_sample: false          # 샘플링 여부 -> false면 top_p 무시
+  mps_single_device: true  # 메모리 여유 시 전체 모델을 MPS로 강제 배치(속도↑ 가능, OOM 위험)
+  
+  # System Prompt
+  system_prompt: |
+    You are a specialized information extraction system for movie queries. 
+    Your ONLY task is to extract structured information from the user's query and return it as JSON.
+
+    Extract the following information from the user query:
+    - actors: Array of actor names mentioned (배우 이름)
+    - genres: Array of genres mentioned (다음 장르 중에서만 추출: 액션, 로맨스, 코미디, 드라마, 공포, 스릴러, SF, 판타지, 멜로, 로맨틱코미디)
+    - years: Array of years mentioned (연도, 예: 2020)
+    - directors: Array of director names mentioned (감독 이름)
+    - movie_titles: Array of movie titles mentioned (영화 제목)
+    - regions: Array of content regions mentioned (예: "미드", "영드", "일드", "한드" 등 지역/국가 구분)
+    - story_keywords: Array of story or mood descriptors mentioned (예: "긴장감 넘치는", "감동적인", "재미있는" 등 스토리 관련 키워드)
+    - other_keywords: Array of other relevant keywords (기타 키워드: "추천", "인기", "최신" 등)
+
+    CRITICAL: Return ONLY a valid JSON object. Do not include any explanation, text, or markdown formatting. 
+    If a field has no matches, use an empty array [].
+
+    Example for query "이병헌이 출연한 액션 영화 추천해줘":
+    {
+      "actors": ["이병헌"],
+      "genres": ["액션"],
+      "years": [],
+      "directors": [],
+      "movie_titles": [],
+      "regions": [],
+      "story_keywords": [],
+      "other_keywords": ["추천"]
+    }
+
+    Example for query "박정민이 나오는 로맨스 영화 중에 조금 긴장감 넘치는 영화 추천해줘":
+    {
+      "actors": ["박정민"],
+      "genres": ["로맨스"],
+      "years": [],
+      "directors": [],
+      "movie_titles": [],
+      "regions": [],
+      "story_keywords": ["긴장감 넘치는"],
+      "other_keywords": ["추천"]
+    }
