@@ -5,7 +5,16 @@
 import pandas as pd
 from pathlib import Path
 from .data_storage import DataStorage
-from app.modules.config import MIN_YEAR, MAX_YEAR
+
+
+def _get_year_config():
+    """연도 설정 값을 lazy import로 가져오기 (순환 import 방지)"""
+    try:
+        from app.modules.config import MIN_YEAR, MAX_YEAR
+        return MIN_YEAR, MAX_YEAR
+    except ImportError:
+        # fallback: app 모듈이 없는 경우 기본값 사용
+        return 1950, 2026
 
 def get_data_path() -> Path:
     """데이터 디렉토리 경로를 반환 (로컬/배포 환경 모두 호환)"""
@@ -59,6 +68,9 @@ def load_movie_data(data_path: str = None) -> pd.DataFrame:
     df_movies = df_movies.dropna(subset=['avg_score'])
     df_movies = df_movies.drop_duplicates(subset=['movie_id'], keep='first').reset_index(drop=True)
     df_movies = df_movies.dropna(subset='year')
+    
+    # 연도 필터링 (lazy import 사용)
+    MIN_YEAR, MAX_YEAR = _get_year_config()
     df_movies = df_movies[(df_movies['year'] >= MIN_YEAR) & (df_movies['year'] <= MAX_YEAR)]
     
     return df_movies.reset_index(drop=True, inplace=False)
