@@ -26,9 +26,11 @@ def render_app_sidebar(
         st.sidebar.error("❌ Firebase 연결 실패")
         st.sidebar.info("Firebase 설정이 필요합니다.")
 
-    st.sidebar.markdown("---")
-    if firebase_available and show_auth_ui_callback:
-        show_auth_ui_callback(cookies=global_cookies)
+    if firebase_available:
+        # Firebase가 연결되었고 쿠키가 준비되었을 때만 인증 UI 표시
+        if show_auth_ui_callback:
+            show_auth_ui_callback(cookies=global_cookies)
+        # 쿠키가 아직 준비되지 않은 경우는 자동으로 준비되므로 아무것도 표시하지 않음
     else:
         st.sidebar.info("Firebase 설정이 필요합니다.")
 

@@ -4,12 +4,8 @@
 import pandas as pd
 import streamlit as st
 
-# 경로 자동 추가
-from modules.core import add_project_paths  # noqa: E402
-add_project_paths()
-
-from modules.ui.components import display_movie_card  # noqa: E402
-from user_system.firebase_auth import require_firebase_auth  # noqa: E402
+from modules.ui.components import display_movie_card
+from user_system.firebase_auth import require_firebase_auth
 
 
 def render_user_based_recommendation(recommender, df_movies, df_ratings_filtered, global_cookies):

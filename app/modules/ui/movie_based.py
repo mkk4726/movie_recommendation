@@ -4,13 +4,9 @@
 import pandas as pd
 import streamlit as st
 
-# 경로 자동 추가
-from modules.core import add_project_paths  # noqa: E402
-add_project_paths()
-
-from modules.config import COUNTRY_OPTIONS, GENRE_OPTIONS, MAX_YEAR, MIN_YEAR  # noqa: E402
-from modules.data import search_movies  # noqa: E402
-from modules.ui.components import display_movie_card  # noqa: E402
+from modules.config import COUNTRY_OPTIONS, GENRE_OPTIONS, MAX_YEAR, MIN_YEAR
+from modules.data import search_movies
+from modules.ui.components import display_movie_card
 
 
 def render_movie_based_recommendation(recommender, df_movies):

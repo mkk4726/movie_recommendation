@@ -3,15 +3,11 @@
 """
 import streamlit as st
 
-# 경로 자동 추가
-from modules.core import add_project_paths  # noqa: E402
-add_project_paths()
-
-from cold_start.show_random_movies import get_random_popular_movies  # noqa: E402
-from modules.data import search_movies  # noqa: E402
-from modules.ui.components import display_movie_card  # noqa: E402
-from user_system.firebase_auth import require_firebase_auth  # noqa: E402
-from user_system.firebase_firestore import FirestoreManager  # noqa: E402
+from cold_start.show_random_movies import get_random_popular_movies
+from modules.data import search_movies
+from modules.ui.components import display_movie_card
+from user_system.firebase_auth import require_firebase_auth
+from user_system.firebase_firestore import FirestoreManager
 
 
 def render_rating_management(df_movies, df_ratings, global_cookies):
