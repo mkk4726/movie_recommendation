@@ -25,6 +25,12 @@ from data_scraping.common.data_loader import load_ratings_data, load_movie_data
 from modeling.utils.data import filter_by_min_counts, preprocess_id_mapping
 from modeling.utils.file_utils import format_file_size
 
+# 추상 클래스 import
+try:
+    from .base_recommender import BaseRecommender
+except ImportError:
+    from modeling.models.base_recommender import BaseRecommender
+
 # Logger 설정
 logger = logging.getLogger(__name__)
 
@@ -88,7 +94,7 @@ Top-K 유사도: {self.top_k}
         return cls(**item_based_config)
 
 
-class ItemBasedRecommender:
+class ItemBasedRecommender(BaseRecommender):
     """
     Item-Based Collaborative Filtering 추천 시스템
     
@@ -107,6 +113,9 @@ class ItemBasedRecommender:
         self.config = config or ItemBasedConfig()
         self.item_similarity_matrix = None
         self.id_mapping = None
+        
+        # BaseRecommender 초기화
+        super().__init__(config=self.config)
         
         if self.config.verbose:
             logger.info("✅ ItemBasedRecommender 초기화 완료")
@@ -136,6 +145,24 @@ class ItemBasedRecommender:
         logger.info("\n" + "="*50)
         logger.info("✅ 학습 완료!")
         logger.info("="*50)
+    
+    def predict(self, user_id: str = None, movie_id: str = None) -> float:
+        """
+        평점 예측 (BaseRecommender 추상 메서드 구현)
+        
+        참고: Item-Based CF는 평점 예측보다는 유사도 기반 추천에 초점을 맞춤
+        이 메서드는 추상 메서드 요구사항 충족을 위한 최소 구현
+        
+        Args:
+            user_id: 사용자 ID (사용 안 함)
+            movie_id: 영화 ID (사용 안 함)
+            
+        Returns:
+            항상 0.0 (Item-Based CF는 평점 예측에 초점을 두지 않음)
+        """
+        logger.warning("Item-Based CF는 평점 예측보다 유사도 기반 추천에 초점을 맞춥니다. "
+                      "recommend() 메서드를 사용하세요.")
+        return 0.0
     
     def _build_similarity_matrix(self, df_mapped: pd.DataFrame):
         """아이템 간 유사도 행렬 생성"""
@@ -349,18 +376,15 @@ class ItemBasedRecommender:
         
         return result_df.reset_index(drop=True)
     
-    def save(self, filepath: str):
+    def _prepare_save_data(self) -> dict:
         """
-        학습된 모델 저장
+        저장할 데이터 준비 (BaseRecommender 오버라이드)
         
-        Args:
-            filepath: 저장할 파일 경로 (.pkl)
+        Returns:
+            저장할 데이터를 담은 딕셔너리
         """
         if self.item_similarity_matrix is None:
             raise ValueError("저장할 모델이 없습니다. fit()을 먼저 실행하세요.")
-        
-        filepath = Path(filepath)
-        filepath.parent.mkdir(parents=True, exist_ok=True)
         
         model_data = {
             'config': self.config,
@@ -368,18 +392,35 @@ class ItemBasedRecommender:
             'id_mapping': self.id_mapping
         }
         
-        with open(filepath, 'wb') as f:
-            pickle.dump(model_data, f)
+        return model_data
+    
+    def _load_saved_data(self, model_data: dict):
+        """
+        저장된 데이터 로드 (BaseRecommender 오버라이드)
         
-        # 파일 크기 출력
-        file_size = format_file_size(filepath)
-        logger.info(f"✅ 모델 저장 완료: {filepath}")
-        logger.info(f"📦 파일 크기: {file_size}")
-
+        Args:
+            model_data: 로드된 모델 데이터 딕셔너리
+        """
+        # BaseRecommender의 기본 로드 수행
+        super()._load_saved_data(model_data)
+        
+        # ItemBased 전용 데이터 로드
+        self.item_similarity_matrix = model_data.get('item_similarity_matrix', None)
+        self.id_mapping = model_data.get('id_mapping', None)
+    
+    def save(self, filepath: str):
+        """
+        학습된 모델 저장 (BaseRecommender의 save_model 호출)
+        
+        Args:
+            filepath: 저장할 파일 경로 (.pkl)
+        """
+        return self.save_model(filepath)
+    
     @classmethod
     def load(cls, filepath: str) -> 'ItemBasedRecommender':
         """
-        저장된 모델 로드
+        저장된 모델 로드 (BaseRecommender의 load_model 호출)
         
         Args:
             filepath: 로드할 파일 경로 (.pkl)
@@ -387,34 +428,7 @@ class ItemBasedRecommender:
         Returns:
             ItemBasedRecommender 객체
         """
-        filepath = Path(filepath)
-        
-        if not filepath.exists():
-            raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {filepath}")
-        
-        # 파일 크기 출력
-        file_size = format_file_size(filepath)
-        logger.info(f"📂 모델 로드 중: {filepath}")
-        logger.info(f"📦 파일 크기: {file_size}")
-        
-        # pickle 파일의 모듈 경로 호환성을 위한 alias 추가
-        import sys
-        import modeling.models.svd as svd_module
-        import modeling.models.item_based as item_based_module
-        sys.modules['models.svd'] = svd_module
-        sys.modules['models.item_based'] = item_based_module
-        sys.modules['models'] = sys.modules['modeling.models']
-        
-        with open(filepath, 'rb') as f:
-            model_data = pickle.load(f)
-        
-        # 새 인스턴스 생성
-        recommender = cls(config=model_data['config'])
-        recommender.item_similarity_matrix = model_data['item_similarity_matrix']
-        recommender.id_mapping = model_data.get('id_mapping', None)
-        
-        logger.info("✅ 모델 로드 완료")
-        return recommender
+        return super().load_model(filepath)
 
 
 # 사용 예시

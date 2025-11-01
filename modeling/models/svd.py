@@ -23,6 +23,12 @@ from data_scraping.common.data_loader import load_ratings_data, load_movie_data
 from modeling.utils.data import filter_by_min_counts
 from modeling.utils.file_utils import format_file_size
 
+# 추상 클래스 import
+try:
+    from .base_recommender import BaseRecommender
+except ImportError:
+    from modeling.models.base_recommender import BaseRecommender
+
 # Logger 설정
 logger = logging.getLogger(__name__)
 
@@ -111,7 +117,7 @@ Item Overlap: {self.item_overlap:.2f}%
 """
 
 
-class SVDRecommenderPipeline:
+class SVDRecommenderPipeline(BaseRecommender):
     """
     SVD 기반 영화 추천 시스템의 전체 파이프라인
     
@@ -132,6 +138,9 @@ class SVDRecommenderPipeline:
         self.df_seen_data = None
         self.svd_model = None        
         self.metrics: Optional[EvaluationMetrics] = None
+        
+        # BaseRecommender 초기화
+        super().__init__(config=self.config)
         
     def predict(self, user_id:str, movie_id:str) -> float:
         """
@@ -358,17 +367,16 @@ class SVDRecommenderPipeline:
         
         return top_watched, recommendations
     
-    def save_model(self, filepath: str):
+    def _prepare_save_data(self) -> dict:
         """
-        학습된 모델을 파일로 저장
+        저장할 데이터 준비 (BaseRecommender 오버라이드)
         
-        Args:
-            filepath: 저장할 파일 경로
+        Returns:
+            저장할 데이터를 담은 딕셔너리
         """
         if self.svd_model is None:
             raise ValueError("저장할 모델이 없습니다. train() 먼저 실행 필요")
         
-        # 저장할 데이터 준비
         model_data = {
             'config': self.config,
             'svd_model': self.svd_model,
@@ -376,19 +384,27 @@ class SVDRecommenderPipeline:
             'df_seen_data': self.df_seen_data,
         }
         
-        # 디렉토리 생성
-        filepath = Path(filepath)
-        filepath.parent.mkdir(parents=True, exist_ok=True)
+        return model_data
         
-        # 모델 저장
-        with open(filepath, 'wb') as f:
-            pickle.dump(model_data, f)
+    def _load_saved_data(self, model_data: dict):
+        """
+        저장된 데이터 로드 (BaseRecommender 오버라이드)
         
-        # 파일 크기 출력
-        file_size = format_file_size(filepath)
-        logger.info(f"✅ 모델 저장 완료: {filepath}")
-        logger.info(f"📦 파일 크기: {file_size}")
+        Args:
+            model_data: 로드된 모델 데이터 딕셔너리
+        """
+        # BaseRecommender의 기본 로드 수행
+        super()._load_saved_data(model_data)
         
+        # SVD 전용 데이터 로드
+        self.svd_model = model_data.get('svd_model', None)
+        self.metrics = model_data.get('metrics', None)
+        self.df_seen_data = model_data.get('df_seen_data', None)
+        
+        if self.metrics:
+            logger.info(f"  - Test RMSE: {self.metrics.test_rmse:.4f}")
+            logger.info(f"  - Test MAE: {self.metrics.test_mae:.4f}")
+    
     @classmethod
     def load_model(cls, filepath: str) -> 'SVDRecommenderPipeline':
         """
@@ -400,39 +416,20 @@ class SVDRecommenderPipeline:
         Returns:
             로드된 SVDRecommenderPipeline 객체
         """
-        filepath = Path(filepath)
+        return super().load_model(filepath)
+    
+    def fit(self, filtered_data: pd.DataFrame, firebase_data: pd.DataFrame):
+        """
+        모델 학습 (BaseRecommender 추상 메서드 구현)
         
-        if not filepath.exists():
-            raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {filepath}")
-        
-        # 파일 크기 출력
-        file_size = format_file_size(filepath)
-        logger.info(f"📂 모델 로드 중: {filepath}")
-        logger.info(f"📦 파일 크기: {file_size}")
-        
-        # pickle 파일의 모듈 경로 호환성을 위한 alias 추가
-        import sys
-        import modeling.models.svd as svd_module
-        import modeling.models.item_based as item_based_module
-        sys.modules['models.svd'] = svd_module
-        sys.modules['models.item_based'] = item_based_module
-        sys.modules['models'] = sys.modules['modeling.models']
-        
-        with open(filepath, 'rb') as f:
-            model_data = pickle.load(f)
-        
-        # 파이프라인 객체 생성
-        pipeline = cls(config=model_data['config'])
-        pipeline.svd_model = model_data['svd_model']
-        pipeline.metrics = model_data.get('metrics', None)
-        pipeline.df_seen_data = model_data.get('df_seen_data', None)
-        
-        logger.info("✅ 모델 로드 완료")
-        if pipeline.metrics:
-            logger.info(f"  - Test RMSE: {pipeline.metrics.test_rmse:.4f}")
-            logger.info(f"  - Test MAE: {pipeline.metrics.test_mae:.4f}")
-        
-        return pipeline
+        Args:
+            filtered_data: 필터링된 평점 데이터
+            firebase_data: Firebase 평점 데이터
+            
+        Returns:
+            평가 지표
+        """
+        return self.run_full_pipeline(filtered_data, firebase_data)
     
     def run_full_pipeline(self, filtered_data: pd.DataFrame, firebase_data: pd.DataFrame):
         """
