@@ -120,7 +120,9 @@ class DataStorage:
                 str(comment_data.get('rating', '')),
                 str(comment_data.get('n_likes', '')),
             ]
-            lines.append(self.config.DATA_SEPARATOR.join(data_list))
+            # Replace '/' with space in all data items before joining
+            sanitized_data = [self._sanitize_for_txt(item) for item in data_list]
+            lines.append(self.config.DATA_SEPARATOR.join(sanitized_data))
         
         # Single file operation for all comments
         with open(file_path, 'a', encoding='utf-8') as f:
@@ -147,6 +149,20 @@ class DataStorage:
         
         self._append_to_txt(file_path, data_list)
     
+    def _sanitize_for_txt(self, text: str) -> str:
+        """
+        Sanitize text by replacing '/' with space before writing to txt.
+        
+        Args:
+            text: Text to sanitize
+        
+        Returns:
+            Sanitized text with '/' replaced by space
+        """
+        if text is None:
+            return ''
+        return str(text).replace('/', ' ')
+    
     def _append_to_txt(self, file_path: str, data: List[str]) -> None:
         """
         Append data row to TXT file with '/' delimiter.
@@ -155,7 +171,9 @@ class DataStorage:
             file_path: Path to TXT file
             data: List of values to write
         """
-        line = self.config.DATA_SEPARATOR.join(data) + "\n"
+        # Replace '/' with space in all data items before joining
+        sanitized_data = [self._sanitize_for_txt(item) for item in data]
+        line = self.config.DATA_SEPARATOR.join(sanitized_data) + "\n"
         
         with open(file_path, 'a', encoding='utf-8') as f:
             f.write(line)
