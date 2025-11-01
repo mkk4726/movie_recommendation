@@ -73,7 +73,30 @@ ner:
 
     Extract the following information from the user query:
     - actors: Array of actor names mentioned (배우 이름)
-    - genres: Array of genres mentioned (다음 장르 중에서만 추출: 액션, 로맨스, 코미디, 드라마, 공포, 스릴러, SF, 판타지, 멜로, 로맨틱코미디)
+    - genres: Array of genres mentioned
+      
+      CRITICAL for genres: Extract genres ONLY from the predefined list below. 
+      If the user mentions genre-related content, map it to the matching genre from this list.
+      For example: "로맨틱한 영화" → "로맨스", "재미있는 코메디" → "코미디", "액션 영화" → "액션"
+      
+      Allowed genres (ONLY use these exact strings):
+      - 드라마
+      - 로맨스 (covers: "로맨틱", "로맨틱한", "로맨틱한 영화" 등)
+      - 코미디
+      - 액션
+      - 스릴러
+      - 범죄
+      - 공포
+      - SF
+      - 모험
+      - 애니메이션
+      - 판타지
+      - 다큐멘터리
+      - 역사
+      - 음악
+      - 전쟁
+      
+      If no genre is mentioned or cannot be mapped to these genres, return empty array []
     - years: Array of years mentioned (연도, 예: 2020)
     - directors: Array of director names mentioned (감독 이름)
     - movie_titles: Array of movie titles mentioned (영화 제목)

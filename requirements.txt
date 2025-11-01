@@ -7,6 +7,7 @@ scikit-learn>=1.3.0
 scikit-surprise>=1.1.3
 pyyaml>=6.0.1
 psutil>=5.9.0
+urllib3<2.4.0,>=1.24.2
 
 # Web scraping
 playwright>=1.40.0
@@ -23,15 +24,9 @@ streamlit-cookies-manager>=0.2.0
 # Environment management
 python-dotenv>=1.0.1
 
-# NLP / NER
-# Pororo is only installable on Python < 3.9 because it pins torch==1.6.0.
-torch>=2.1.0; python_version >= "3.9"
-# GLiNER currently requires a Transformers version that still exposes
-# legacy utilities; pin an upper bound to avoid ImportError (cached_property).
-transformers>=4.38,<4.46; python_version >= "3.9"
-tokenizers>=0.15.0; python_version >= "3.9"
-gliner>=0.2.10,<0.3.0; python_version >= "3.9"
-
-torch==1.6.0; python_version < "3.9"
-torchvision==0.7.0; python_version < "3.9"
-pororo==0.4.2; python_version < "3.9"
+# NLP / Deep Learning
+torch>=2.2
+transformers>=4.51.0
+accelerate>=0.33.0
+sentencepiece
+protobuf

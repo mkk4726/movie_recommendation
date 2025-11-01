@@ -342,31 +342,8 @@ class QwenBasedNER:
 
 # 사용 예시
 if __name__ == "__main__":
-    # 로깅 설정
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    # YAML 파일에서 설정 로드
-    config = NERConfig.from_yaml()
-    
-    # NER 모델 초기화
-    ner = QwenBasedNER(config=config)
-    
-    # 테스트 쿼리
-    test_query = "박정민이 나오는 영화 중에 로맨스 영화 추천해줘"
-    print(f"\n🔍 쿼리: {test_query}\n")
-    
-    # 엔티티 추출
-    result = ner.run(test_query, verbose=True)
-    
-    # NERResult 객체로 접근 예시
-    print("\n" + "="*50)
-    print("📝 NERResult 객체 사용 예시")
-    print("="*50)
-    print(f"배우 목록: {result.actors}")
-    print(f"장르 목록: {result.genres}")
-    print(f"연도 목록: {result.years}")
-    print(f"감독 목록: {result.directors}")
-    print(f"\n전체 정보:\n{result}")
+    # from modeling.models.NER import QwenBasedNER
+
+    ner = QwenBasedNER()
+    print(ner.config)
+    ner.run("김민규가 나오는 진지한 분위기의 로맨스 액션 영화 추천해줘", verbose=True)
