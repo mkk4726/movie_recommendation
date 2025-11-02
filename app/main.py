@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 def main():
     uvicorn.run(
-        "app.api:app",
+        "app.api.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
