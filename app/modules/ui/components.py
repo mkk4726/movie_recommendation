@@ -82,7 +82,7 @@ def display_movie_card(movie, score=None, score_label="예측 평점", show_plot
     review_count = f"{movie['review_count']}개" if pd.notna(movie.get("review_count")) else "N/A"
 
     movie_id = movie.get("movie_id", "")
-    watcha_link = f"https://pedia.watcha.com/ko-KR/contents/{movie_id}"
+    movielens_link = f"https://movielens.org/movies/{movie_id}"
 
     st.markdown(
         f"""
@@ -92,7 +92,7 @@ def display_movie_card(movie, score=None, score_label="예측 평점", show_plot
             📅 개봉년도: {year} | 🎭 장르: {genre} | 🌍 국가: {country}<br>
             ⏱️ 러닝타임: {runtime} | 🔞 관람등급: {age_rating}<br>
             ⭐ 평균 평점: {avg_score} | 💬 리뷰수: {review_count}{score_text}<br>
-            <a href="{watcha_link}" target="_blank" style="color: #FFD700;">🔗 왓챠피디아에서 보기</a>
+            <a href="{movielens_link}" target="_blank" style="color: #FFD700;">🔗 MovieLens에서 보기</a>
         </div>
     </div>
     """,
@@ -114,7 +114,7 @@ def display_footer():
     st.markdown(
         """
     <div style='text-align: center; color: gray; padding: 2rem;'>
-        <p>🎬 영화 추천 시스템 | 데이터 출처: Watcha Pedia</p>
+        <p>🎬 영화 추천 시스템 | 데이터 출처: MovieLens 32M Dataset</p>
         <p>Powered by Streamlit & Machine Learning</p>
     </div>
     """,

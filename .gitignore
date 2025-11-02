@@ -46,6 +46,8 @@ scraper.log
 data_scraping/data/
 data_scraping/data/*.csv
 data_scraping/data/*.txt
+data_scraping/ml-32m/*.txt
+data_scraping/ml-32m/*.csv
 
 # Model artifacts
 modeling/models/pkls/

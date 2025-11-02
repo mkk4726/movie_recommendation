@@ -111,7 +111,7 @@ def main():
     
     logger.info("🎬 자주 본 영화 (높은 평점 순):")
     for idx, row in top_watched.iterrows():
-        logger.info(f"{idx+1}. {row['movie_title']} (평점: {row['rating']:.1f})")
+        logger.info(f"{idx+1}. {row.get('title', 'N/A')} (평점: {row['rating']:.1f})")
     
     logger.info("=" * 60)
     logger.info("✅ 모든 테스트 완료!")

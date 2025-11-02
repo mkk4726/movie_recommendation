@@ -1,10 +1,12 @@
 """
 데이터 로딩 및 전처리 유틸리티 (Streamlit 데코레이터 없는 깔끔한 버전)
 데이터 로드 하는 부분만, 전처리 등은 모두 modeling에 하도록
+
+ML-32M 데이터셋을 사용합니다.
 """
 import pandas as pd
 from pathlib import Path
-from .data_storage import DataStorage
+import re
 
 
 def _get_year_config():
@@ -16,94 +18,124 @@ def _get_year_config():
         # fallback: app 모듈이 없는 경우 기본값 사용
         return 1950, 2026
 
-def get_data_path() -> Path:
-    """데이터 디렉토리 경로를 반환 (로컬/배포 환경 모두 호환)"""
-    # 현재 파일의 위치를 기준으로 프로젝트 루트를 찾음
+def get_ml32m_data_path() -> Path:
+    """ML-32M 데이터 디렉토리 경로를 반환"""
     current_file = Path(__file__).resolve()
-    # data_scraping/common/data_loader.py -> data_scraping/common -> data_scraping -> project_root
     project_root = current_file.parent.parent.parent
-    data_dir = project_root / 'data_scraping' / 'data'
-    return data_dir
+    ml32m_dir = project_root / 'data_scraping' / 'ml-32m'
+    return ml32m_dir
 
 
 def load_movie_data(data_path: str = None) -> pd.DataFrame:
-    """영화 정보 데이터 로딩 (DataStorage.load_movie_info 사용)"""
-    if data_path is None:
-        data_path = get_data_path()
-        
-    # DataStorage 인스턴스 생성
-    storage = DataStorage()
-    storage.config.DATA_DIR = data_path
+    """
+    ML-32M 영화 정보 데이터 로딩
+    movies.csv 파일을 읽어서 기존 형식과 호환되는 형태로 변환
     
-    # DataStorage의 load_movie_info 사용
-    df_movies = storage.load_movie_info()
+    Args:
+        data_path: ML-32M 디렉토리 경로 (None이면 자동 탐색)
+    
+    Returns:
+        영화 정보 DataFrame
+    """
+    if data_path is None:
+        ml32m_dir = get_ml32m_data_path()
+    else:
+        ml32m_dir = Path(data_path)
+    
+    movies_file = ml32m_dir / 'movies.csv'
+    
+    if not movies_file.exists():
+        raise FileNotFoundError(f"ML-32M movies.csv 파일을 찾을 수 없습니다: {movies_file}")
+    
+    # CSV 읽기
+    df_movies = pd.read_csv(movies_file)
     
     if df_movies.empty:
         return df_movies
     
     # 컬럼명을 소문자로 변환하고 기존 형식에 맞게 매핑
     column_mapping = {
-        'MovieID': 'movie_id',
-        'Title': 'title',
-        'Year': 'year',
-        'Genre': 'genre',
-        'Country': 'country',
-        'Runtime': 'runtime',
-        'Age': 'age_rating',
-        'Cast_Production': 'cast',
-        'Synopsis': 'plot',
-        'Avg_Rating': 'avg_score',
-        'N_Rating': 'popularity',
-        'N_Comments': 'review_count'
+        'movieId': 'movie_id',
+        'title': 'title',
+        'genres': 'genre'
     }
-    
-    # 컬럼명 변환
     df_movies = df_movies.rename(columns=column_mapping)
     
-    # 기존 로직과 동일한 전처리 수행
-    df_movies['avg_score'] = pd.to_numeric(df_movies['avg_score'], errors='coerce')
-    df_movies['popularity'] = pd.to_numeric(df_movies['popularity'], errors='coerce')
-    df_movies['year'] = pd.to_numeric(df_movies['year'], errors='coerce')
-    df_movies['genre'] = df_movies['genre'].str.split().apply(lambda genres: " ".join(dict.fromkeys(genres)) if isinstance(genres, list) else "")
-    df_movies = df_movies.dropna(subset=['avg_score'])
-    df_movies = df_movies.drop_duplicates(subset=['movie_id'], keep='first').reset_index(drop=True)
-    df_movies = df_movies.dropna(subset='year')
+    # movie_id를 문자열로 변환
+    df_movies['movie_id'] = df_movies['movie_id'].astype(str)
+    
+    # title에서 연도 추출 (예: "Toy Story (1995)" -> 1995)
+    year_pattern = r'\((\d{4})\)'
+    df_movies['year'] = df_movies['title'].str.extract(year_pattern).astype(float)
+    
+    # 장르를 공백으로 구분된 문자열로 변환 (예: "Action|Adventure" -> "Action Adventure")
+    df_movies['genre'] = df_movies['genre'].str.replace('|', ' ', regex=False)
+    df_movies['genre'] = df_movies['genre'].str.replace('(no genres listed)', '', regex=False)
+    df_movies['genre'] = df_movies['genre'].str.strip()
+    
+    # ML-32M에는 없는 컬럼들에 대해 기본값 설정 (기존 호환성 유지)
+    df_movies['country'] = ''  # ML-32M에는 국가 정보 없음
+    df_movies['runtime'] = ''  # ML-32M에는 러닝타임 정보 없음
+    df_movies['age_rating'] = ''  # ML-32M에는 연령 등급 정보 없음
+    df_movies['cast'] = ''  # ML-32M에는 출연진 정보 없음
+    df_movies['plot'] = ''  # ML-32M에는 줄거리 정보 없음
+    df_movies['avg_score'] = 0.0  # ML-32M에는 평균 평점 정보 없음
+    df_movies['popularity'] = 0.0  # ML-32M에는 인기도 정보 없음
+    df_movies['review_count'] = 0  # ML-32M에는 리뷰 개수 정보 없음
     
     # 연도 필터링 (lazy import 사용)
     MIN_YEAR, MAX_YEAR = _get_year_config()
     df_movies = df_movies[(df_movies['year'] >= MIN_YEAR) & (df_movies['year'] <= MAX_YEAR)]
     
+    # 중복 제거 및 재정렬
+    df_movies = df_movies.drop_duplicates(subset=['movie_id'], keep='first').reset_index(drop=True)
+    
     return df_movies.reset_index(drop=True, inplace=False)
 
 
 def load_ratings_data(data_path: str = None) -> pd.DataFrame:
-    """사용자 평점 데이터 로딩 (DataStorage.load_custom_rating 사용)"""
-    if data_path is None:
-        data_path = get_data_path()
-        
-    # DataStorage 인스턴스 생성
-    storage = DataStorage()
-    storage.config.DATA_DIR = data_path
+    """
+    ML-32M 사용자 평점 데이터 로딩
+    ratings.csv 파일을 읽어서 기존 형식과 호환되는 형태로 변환
     
-    # DataStorage의 load_custom_rating 사용
-    df_ratings = storage.load_custom_rating()
+    Args:
+        data_path: ML-32M 디렉토리 경로 (None이면 자동 탐색)
+    
+    Returns:
+        평점 정보 DataFrame
+    """
+    if data_path is None:
+        ml32m_dir = get_ml32m_data_path()
+    else:
+        ml32m_dir = Path(data_path)
+    
+    ratings_file = ml32m_dir / 'ratings.csv'
+    
+    if not ratings_file.exists():
+        raise FileNotFoundError(f"ML-32M ratings.csv 파일을 찾을 수 없습니다: {ratings_file}")
+    
+    # CSV 읽기
+    df_ratings = pd.read_csv(ratings_file)
     
     if df_ratings.empty:
         return df_ratings
     
     # 컬럼명을 소문자로 변환하고 기존 형식에 맞게 매핑
     column_mapping = {
-        'CustomID': 'user_id',
-        'MovieID': 'movie_id',
-        'MovieName': 'movie_title',
-        'Rating': 'rating'
+        'userId': 'user_id',
+        'movieId': 'movie_id',
+        'rating': 'rating'
     }
-    
-    # 컬럼명 변환
     df_ratings = df_ratings.rename(columns=column_mapping)
     
-    # 기존 로직과 동일한 전처리 수행
-    df_ratings['rating'] = pd.to_numeric(df_ratings['rating'], errors='coerce')
+    # user_id와 movie_id를 문자열로 변환
+    df_ratings['user_id'] = df_ratings['user_id'].astype(str)
+    df_ratings['movie_id'] = df_ratings['movie_id'].astype(str)
+    
+    # ML-32M 평점은 0.5~5.0 범위이므로 0~5 범위로 유지
+    # (기존 코드에서 이미 0~5 범위로 필터링하므로 그대로 사용 가능)
+    
+    # 필터링: 유효한 평점만 유지
     df_ratings = df_ratings[(df_ratings['rating'] >= 0) & (df_ratings['rating'] <= 5)]
     df_ratings = df_ratings.dropna(subset=['rating'])
     

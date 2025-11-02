@@ -3,6 +3,7 @@ SVD 기반 영화 추천 시스템 파이프라인
 """
 import pickle
 import logging
+import random
 import yaml
 from pathlib import Path
 from typing import Tuple, Optional
@@ -282,7 +283,16 @@ class SVDRecommenderPipeline(BaseRecommender):
         # Train set 평가 (overfitting 확인용)
         logger.info("Train set 평가:")
         train_testset = trainset.build_testset()
-        train_predictions = self.svd_model.test(train_testset)
+        
+        # Train set이 크면 샘플링하여 평가 속도 개선
+        if len(train_testset) > 100000:
+            sample_size = min(100000, len(train_testset))
+            train_testset_sampled = random.sample(train_testset, sample_size)
+            logger.info(f"Train set이 크므로 샘플링하여 평가 ({len(train_testset):,} -> {sample_size:,} 평점)")
+            train_predictions = self.svd_model.test(train_testset_sampled)
+        else:
+            train_predictions = self.svd_model.test(train_testset)
+        
         train_rmse = accuracy.rmse(train_predictions, verbose=True)
         train_mae = accuracy.mae(train_predictions, verbose=True)
         
