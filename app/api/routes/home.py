@@ -51,13 +51,13 @@ def home(
     search_results = []
 
     # 모델 로드 상태 확인 (사이드바 표시용)
+    # 캐시되어 있으므로 빠르게 반환됨
     model_loaded = False
     recommender_service = None
     try:
-        logger.info("모델 로드 시도 중...")
+        # 이미 로드되어 있으면 로그 없이 빠르게 반환
         recommender_service = get_recommender_service()
         model_loaded = True
-        logger.info("✅ 모델 로드 성공")
     except FileNotFoundError as exc:
         logger.warning(f"⚠️ 모델 파일을 찾을 수 없습니다: {exc}")
         errors.append(str(exc))

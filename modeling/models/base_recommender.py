@@ -111,8 +111,10 @@ class BaseRecommender(ABC):
         file_size = format_file_size(filepath)
         logger.info(f"📂 모델 로드 중: {filepath}")
         logger.info(f"📦 파일 크기: {file_size}")
+        logger.info(f"🔧 모델 클래스: {cls.__name__}")
         
         # pickle 파일의 모듈 경로 호환성을 위한 alias 추가
+        logger.debug("🔗 모듈 경로 alias 설정 중...")
         import sys
         import modeling.models.svd as svd_module
         import modeling.models.item_based as item_based_module
@@ -121,15 +123,22 @@ class BaseRecommender(ABC):
         sys.modules['models.item_based'] = item_based_module
         sys.modules['models.base_recommender'] = base_recommender_module
         sys.modules['models'] = sys.modules['modeling.models']
+        logger.debug("✅ 모듈 경로 alias 설정 완료")
         
+        logger.info("💾 pickle 파일 읽는 중...")
         with open(filepath, 'rb') as f:
             model_data = pickle.load(f)
+        logger.debug(f"📊 로드된 데이터 키: {list(model_data.keys())}")
         
         # 모델 객체 생성
+        logger.info("🏗️ 모델 객체 생성 중...")
         config = model_data.get('config', None)
+        if config:
+            logger.debug(f"⚙️ 모델 설정 확인됨: {type(config).__name__}")
         model = cls(config=config)
         
         # 추가 데이터 로드 (서브클래스에서 필요시 오버라이드)
+        logger.debug("📥 추가 모델 데이터 로드 중...")
         model._load_saved_data(model_data)
         
         logger.info("✅ 모델 로드 완료")

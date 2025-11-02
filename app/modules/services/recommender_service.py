@@ -2,7 +2,6 @@
 Thin wrapper around the persisted recommendation models.
 """
 import logging
-from functools import lru_cache
 from pathlib import Path
 
 from modules.core import PROJECT_ROOT, add_project_paths
@@ -12,6 +11,9 @@ add_project_paths()
 from modeling.models.recommender import MovieRecommender  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+# 모델 로드 상태 추적 (캐시 확인용)
+_service_instance = None
 
 
 class RecommenderService:
@@ -56,14 +58,24 @@ class RecommenderService:
         return self._recommender.find_similar_movies(*args, **kwargs)
 
 
-@lru_cache(maxsize=1)
 def get_recommender_service() -> RecommenderService:
-    """Instantiate the recommender service once per process."""
-    logger.info("get_recommender_service 호출됨")
-    logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
-    models_root = PROJECT_ROOT / "modeling" / "models" / "pkls"
-    svd_path = models_root / "trained_svd_pipeline.pkl"
-    item_based_path = models_root / "trained_item_based.pkl"
-    logger.info(f"모델 경로 확인: SVD={svd_path.exists()}, Item-based={item_based_path.exists()}")
-    return RecommenderService(svd_path=svd_path, item_based_path=item_based_path)
+    """
+    Get recommender service instance (singleton pattern).
+    첫 번째 호출 시에만 모델을 로드하고, 이후 호출은 캐시된 인스턴스를 반환합니다.
+    """
+    global _service_instance
+    
+    if _service_instance is None:
+        logger.info("📦 RecommenderService 생성 중 (첫 번째 호출)...")
+        logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+        models_root = PROJECT_ROOT / "modeling" / "models" / "pkls"
+        svd_path = models_root / "trained_svd_pipeline.pkl"
+        item_based_path = models_root / "trained_item_based.pkl"
+        logger.info(f"모델 경로 확인: SVD={svd_path.exists()}, Item-based={item_based_path.exists()}")
+        _service_instance = RecommenderService(svd_path=svd_path, item_based_path=item_based_path)
+        logger.debug("✅ RecommenderService 인스턴스 생성 및 캐시 완료")
+    else:
+        logger.debug("♻️ RecommenderService 캐시에서 반환 (이미 로드됨)")
+    
+    return _service_instance
 

@@ -2,7 +2,9 @@
 FastAPI application main file.
 Creates the FastAPI app and registers all route routers.
 """
+import logging
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -18,10 +20,49 @@ except ImportError:
 
 add_project_paths()
 
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """애플리케이션 시작/종료 시 실행되는 lifespan 이벤트"""
+    # 시작 시
+    logger.info("=" * 80)
+    logger.info("🚀 FastAPI 애플리케이션 시작 중...")
+    logger.info("=" * 80)
+    
+    # 모델 사전 로드
+    try:
+        logger.info("📦 추천 모델 사전 로드 시작...")
+        from modules.services.recommender_service import get_recommender_service
+        recommender_service = get_recommender_service()
+        logger.info("✅ 모든 모델 로드 완료 및 서비스 준비 완료")
+    except Exception as e:
+        logger.error(f"❌ 모델 로드 중 오류 발생: {e}", exc_info=True)
+        raise
+    
+    logger.info("=" * 80)
+    logger.info("✅ FastAPI 애플리케이션 시작 완료")
+    logger.info("=" * 80)
+    
+    yield
+    
+    # 종료 시
+    logger.info("👋 FastAPI 애플리케이션 종료 중...")
+
+
 app = FastAPI(
     title="Movie Recommendation Backend",
     description="FastAPI service that wraps the existing recommendation models.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Static files

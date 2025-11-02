@@ -1,6 +1,7 @@
 """
 영화 추천 시스템 모듈 - 추천 전략별 모델을 불러와서 사용하는 래퍼 클래스
 """
+import logging
 import pandas as pd
 
 # SVD 파이프라인 import
@@ -10,6 +11,8 @@ try:
 except ImportError:
     from modeling.models.svd import SVDRecommenderPipeline
     from modeling.models.item_based import ItemBasedRecommender
+
+logger = logging.getLogger(__name__)
 
 
 class MovieRecommender:
@@ -27,15 +30,29 @@ class MovieRecommender:
             svd_pipeline_path: SVD 파이프라인 pkl 파일 경로
             item_based_path: Item-Based 모델 pkl 파일 경로
         """
+        logger.info("=" * 60)
+        logger.info("🎬 MovieRecommender 초기화 시작")
+        logger.info("=" * 60)
+        
         # CF 모델 (SVDRecommenderPipeline) - 사용자 맞춤 추천용
         self.svd_pipeline = None
         if svd_pipeline_path:
+            logger.info(f"📦 SVD 파이프라인 경로: {svd_pipeline_path}")
             self.load_svd_pipeline(svd_pipeline_path)
+        else:
+            logger.warning("⚠️ SVD 파이프라인 경로가 제공되지 않았습니다.")
         
         # Item-Based CF 모델 - 영화 유사도 추천용
         self.item_based = None
         if item_based_path:
+            logger.info(f"📦 Item-Based 모델 경로: {item_based_path}")
             self.load_item_based(item_based_path)
+        else:
+            logger.warning("⚠️ Item-Based 모델 경로가 제공되지 않았습니다.")
+        
+        logger.info("=" * 60)
+        logger.info("✅ MovieRecommender 초기화 완료")
+        logger.info("=" * 60)
     
     def load_svd_pipeline(self, filepath: str):
         """
@@ -44,8 +61,14 @@ class MovieRecommender:
         Args:
             filepath: SVD 파이프라인 pkl 파일 경로
         """
-        self.svd_pipeline = SVDRecommenderPipeline.load_model(filepath)
-        return True
+        logger.info(f"🔄 SVD 파이프라인 로드 시작: {filepath}")
+        try:
+            self.svd_pipeline = SVDRecommenderPipeline.load_model(filepath)
+            logger.info("✅ SVD 파이프라인 로드 완료")
+            return True
+        except Exception as e:
+            logger.error(f"❌ SVD 파이프라인 로드 실패: {e}")
+            raise
     
     def load_item_based(self, filepath: str):
         """
@@ -54,8 +77,14 @@ class MovieRecommender:
         Args:
             filepath: Item-Based 모델 pkl 파일 경로
         """
-        self.item_based = ItemBasedRecommender.load(filepath)
-        return True
+        logger.info(f"🔄 Item-Based 모델 로드 시작: {filepath}")
+        try:
+            self.item_based = ItemBasedRecommender.load(filepath)
+            logger.info("✅ Item-Based 모델 로드 완료")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Item-Based 모델 로드 실패: {e}")
+            raise
     
     def recommend_for_user(self, user_id: str, df_movies: pd.DataFrame, 
                           n_recommendations: int = 10):
