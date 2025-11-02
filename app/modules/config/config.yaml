@@ -2,21 +2,25 @@
 
 # 영화 장르 옵션
 genre_options:
-  - 드라마
-  - 로맨스
-  - 코미디
-  - 액션
-  - 스릴러
-  - 범죄
-  - 공포
-  - SF
-  - 모험
-  - 애니메이션
-  - 판타지
-  - 다큐멘터리
-  - 역사
-  - 음악
-  - 전쟁
+  - Action
+  - Adventure
+  - Animation
+  - Children
+  - Comedy
+  - Crime
+  - Documentary
+  - Drama
+  - Fantasy
+  - Film-Noir
+  - Horror
+  - IMAX
+  - Musical
+  - Mystery
+  - Romance
+  - Sci-Fi
+  - Thriller
+  - War
+  - Western
 
 # 연도 필터링 옵션
 year_filter:

@@ -7,16 +7,29 @@ ML-32M 데이터셋을 사용합니다.
 import pandas as pd
 from pathlib import Path
 import re
+import yaml
 
 
 def _get_year_config():
-    """연도 설정 값을 lazy import로 가져오기 (순환 import 방지)"""
+    """연도 설정 값을 config.yaml에서 직접 로드 (Streamlit 의존성 제거)"""
     try:
-        from app.modules.config import MIN_YEAR, MAX_YEAR
-        return MIN_YEAR, MAX_YEAR
-    except ImportError:
-        # fallback: app 모듈이 없는 경우 기본값 사용
-        return 1950, 2026
+        # config.yaml 파일 직접 로드
+        current_file = Path(__file__).resolve()
+        project_root = current_file.parent.parent.parent
+        config_path = project_root / 'app' / 'modules' / 'config' / 'config.yaml'
+        
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            year_filter = config.get('year_filter', {})
+            min_year = year_filter.get('min_year', 1950)
+            max_year = year_filter.get('max_year', 2026)
+            return min_year, max_year
+    except (ImportError, FileNotFoundError, KeyError):
+        pass
+    
+    # fallback: 기본값 사용
+    return 1950, 2026
 
 def get_ml32m_data_path() -> Path:
     """ML-32M 데이터 디렉토리 경로를 반환"""
@@ -142,5 +155,57 @@ def load_ratings_data(data_path: str = None) -> pd.DataFrame:
     return df_ratings.reset_index(drop=True, inplace=False)
 
 
-
-
+def load_links_data(data_path: str = None) -> pd.DataFrame:
+    """
+    ML-32M 영화 링크 데이터 로딩
+    links.csv 파일을 읽어서 기존 형식과 호환되는 형태로 변환
+    
+    Args:
+        data_path: ML-32M 디렉토리 경로 (None이면 자동 탐색)
+    
+    Returns:
+        링크 정보 DataFrame (movieId, imdbId, tmdbId)
+    """
+    if data_path is None:
+        ml32m_dir = get_ml32m_data_path()
+    else:
+        ml32m_dir = Path(data_path)
+    
+    links_file = ml32m_dir / 'links.csv'
+    
+    if not links_file.exists():
+        raise FileNotFoundError(f"ML-32M links.csv 파일을 찾을 수 없습니다: {links_file}")
+    
+    # CSV 읽기
+    df_links = pd.read_csv(links_file)
+    
+    if df_links.empty:
+        return df_links
+    
+    # 컬럼명을 소문자로 변환하고 기존 형식에 맞게 매핑
+    column_mapping = {
+        'movieId': 'movie_id',
+        'imdbId': 'imdb_id',
+        'tmdbId': 'tmdb_id'
+    }
+    df_links = df_links.rename(columns=column_mapping)
+    
+    # movie_id를 문자열로 변환
+    df_links['movie_id'] = df_links['movie_id'].astype(str)
+    
+    # imdb_id를 'tt' 접두사 + 7자리 숫자 형식으로 변환 (예: 114709 -> tt0114709)
+    if 'imdb_id' in df_links.columns:
+        def format_imdb_id(imdb_id):
+            if pd.isna(imdb_id) or imdb_id == '':
+                return ''
+            try:
+                return f"tt{int(float(imdb_id)):07d}"
+            except (ValueError, TypeError):
+                # 이미 'tt' 형식이거나 변환 불가능한 경우 그대로 반환
+                return str(imdb_id)
+        
+        df_links['imdb_id'] = df_links['imdb_id'].apply(format_imdb_id)
+    if 'tmdb_id' in df_links.columns:
+        df_links['tmdb_id'] = df_links['tmdb_id'].fillna('').astype(str).replace('nan', '')
+    
+    return df_links.reset_index(drop=True, inplace=False)
