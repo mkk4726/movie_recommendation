@@ -3,10 +3,18 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 
-from common.config import Config
-from common.browser_manager import BrowserManager
-from common.data_cleaner import DataCleaner
-from common.logger import get_logger
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import from legacy
+legacy_dir = Path(__file__).parent.parent
+if legacy_dir not in sys.path:
+    sys.path.insert(0, str(legacy_dir))
+
+from config import Config
+from browser_manager import BrowserManager
+from data_cleaner import DataCleaner
+from logger import get_logger
 
 
 class BaseScraper(ABC):

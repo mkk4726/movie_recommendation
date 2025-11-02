@@ -10,8 +10,8 @@ from bs4 import BeautifulSoup
 from lxml import etree
 
 from .config import Config
-from .exceptions import BrowserError
-from .logger import get_logger
+from common.exceptions import BrowserError
+from common.logger import get_logger
 
 
 class BrowserManager:

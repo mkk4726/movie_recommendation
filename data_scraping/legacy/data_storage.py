@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 
 from .config import Config
-from .logger import get_logger
+from common.logger import get_logger
 
 
 class DataStorage:

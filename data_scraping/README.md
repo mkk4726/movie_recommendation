@@ -28,12 +28,17 @@
 ### 디렉토리 구조
 ```
 data_scraping/
-├── common/           # 공통 유틸리티 (ML-32M 로더)
+├── common/           # 공통 유틸리티
+│   ├── data_loader.py      # ML-32M 데이터 로더
+│   ├── exceptions.py       # 예외 클래스
+│   └── logger.py           # 로깅 유틸리티
 ├── ml-32m/          # ML-32M 데이터셋
-├── legacy/          # 레거시 코드 (와챠 크롤링 관련)
-│   ├── scrapers/    # 스크래퍼 클래스
-│   ├── data/        # 수집된 데이터
-│   └── debug/       # 디버깅 스크립트
+├── legacy/          # 레거시 코드 (와챠 크롤링 관련, 미사용)
+│   ├── config.py           # 왓챠피디아 설정
+│   ├── browser_manager.py  # 브라우저 관리
+│   ├── data_storage.py     # 데이터 저장
+│   ├── data_cleaner.py     # 데이터 정제
+│   └── scrapers/           # 스크래퍼 클래스
 └── data/            # 로컬 테스트 데이터
 ```
 
