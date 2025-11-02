@@ -1,5 +1,5 @@
 """
-UI 레이어 초기화
+레거시 Streamlit UI 레이어 초기화
 """
 
 from .components import display_footer, display_movie_card, inject_custom_css

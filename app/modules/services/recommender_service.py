@@ -1,0 +1,55 @@
+"""
+Thin wrapper around the persisted recommendation models.
+"""
+from functools import lru_cache
+from pathlib import Path
+
+from modules.core import PROJECT_ROOT, add_project_paths
+
+add_project_paths()
+
+from modeling.models.recommender import MovieRecommender  # noqa: E402
+
+
+class RecommenderService:
+    """Loads persisted recommender models and exposes helper methods."""
+
+    def __init__(self, svd_path: Path, item_based_path: Path):
+        if not svd_path.exists():
+            raise FileNotFoundError(
+                f"SVD pipeline not found at {svd_path}. "
+                "Run the training pipeline before starting the backend."
+            )
+        if not item_based_path.exists():
+            raise FileNotFoundError(
+                f"Item-based model not found at {item_based_path}. "
+                "Run the training pipeline before starting the backend."
+            )
+
+        self._recommender = MovieRecommender(
+            svd_pipeline_path=str(svd_path),
+            item_based_path=str(item_based_path),
+        )
+
+    @property
+    def model(self) -> MovieRecommender:
+        return self._recommender
+
+    def recommend_for_user(self, *args, **kwargs):
+        return self._recommender.recommend_for_user(*args, **kwargs)
+
+    def user_top_watched(self, *args, **kwargs):
+        return self._recommender.get_user_top_watched(*args, **kwargs)
+
+    def similar_movies(self, *args, **kwargs):
+        return self._recommender.find_similar_movies(*args, **kwargs)
+
+
+@lru_cache(maxsize=1)
+def get_recommender_service() -> RecommenderService:
+    """Instantiate the recommender service once per process."""
+    models_root = PROJECT_ROOT / "modeling" / "models" / "pkls"
+    svd_path = models_root / "trained_svd_pipeline.pkl"
+    item_based_path = models_root / "trained_item_based.pkl"
+    return RecommenderService(svd_path=svd_path, item_based_path=item_based_path)
+

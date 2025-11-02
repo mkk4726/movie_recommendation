@@ -5,27 +5,34 @@
 
 ## 프로젝트 구조
 
-ML-32M Dataset 로딩 (data_scraping) -> 모델링 (modeling) -> 배포 (app, streamlit)
+ML-32M Dataset 로딩 (data_scraping) -> 모델링 (modeling) -> 배포 (app, FastAPI)
 
 ```
 movie_recommendation/
-├── app/                    # 스트림릿 웹 애플리케이션
-│   ├── models/            # 학습된 추천 모델
-│   ├── utils/             # 앱 유틸리티 함수
-│   ├── streamlit_app.py   # 메인 앱 파일
-│   ├── train_and_save_model.py  # 모델 학습 스크립트
-│   └── requirements.txt   # 앱 의존성
+├── app/                    # FastAPI 웹 애플리케이션
+│   ├── api.py             # FastAPI 애플리케이션 (메인)
+│   ├── main.py            # 실행 진입점
+│   ├── modules/           # FastAPI용 모듈
+│   │   ├── core/          # 경로 관리
+│   │   └── services/      # 데이터 및 추천 서비스 (FastAPI용)
+│   ├── static/            # 정적 파일 (CSS)
+│   ├── templates/         # Jinja2 템플릿 (HTML)
+│   ├── legacy/            # 레거시 Streamlit 앱
+│   │   └── streamlit/     # Streamlit 관련 파일들
+│   ├── requirements.txt   # 앱 의존성
+│   └── README.md          # 앱 문서
 ├── data_scraping/          # 데이터 스크래핑 모듈
 │   ├── common/            # 공통 유틸리티
 │   ├── scrapers/          # 스크래퍼 클래스
 │   ├── data/              # 수집된 데이터
-│   ├── debug/             # 디버깅 스크립트
 │   ├── legacy/            # 레거시 코드
 │   └── README.md          # 스크래핑 상세 문서
 ├── modeling/               # 모델링 및 분석
+│   ├── models/            # 추천 모델 구현
 │   ├── notebooks/         # Jupyter 노트북
 │   ├── utils/             # 모델링 유틸리티
 │   └── README.md          # 모델링 문서
+├── user_system/            # Firebase 사용자 인증 시스템
 ├── pyproject.toml         # Poetry 의존성 관리
 ├── poetry.lock            # Poetry 의존성 잠금 파일
 ├── requirements.txt       # pip 의존성
@@ -41,7 +48,8 @@ movie_recommendation/
 
 ### 🤖 모델링
 - Interaction 기반: Matrix Factorization (SVD), Item-based Filtering 구현 완료
-- Streamlit 앱 배포: 유저 기반 / 아이템 기반 추천 서비스 운영 중
+- FastAPI 배포: REST API 기반 추천 서비스 (유저 기반 / 아이템 기반)
+- 레거시: Streamlit 앱은 `app/legacy/streamlit/`에 보관
 
 ---
 

@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block sidebar %}
+  <div class="sidebar-section">
+    <h3>🎯 추천 방식</h3>
+    <div class="sidebar-radio-group">
+      <label class="sidebar-radio-label">
+        <input 
+          type="radio" 
+          name="page" 
+          value="movie_based" 
+          class="page-radio"
+          {% if current_page == "movie_based" %}checked{% endif %}
+        />
+        <span>🎞️ 영화 기반 추천</span>
+      </label>
+      <label class="sidebar-radio-label">
+        <input 
+          type="radio" 
+          name="page" 
+          value="user_based" 
+          class="page-radio"
+          {% if current_page == "user_based" %}checked{% endif %}
+        />
+        <span>👤 사용자 기반 추천</span>
+      </label>
+      {% if firebase_available and is_logged_in %}
+      <label class="sidebar-radio-label">
+        <input 
+          type="radio" 
+          name="page" 
+          value="rating_management" 
+          class="page-radio"
+          {% if current_page == "rating_management" %}checked{% endif %}
+        />
+        <span>⭐ 내 평점 관리</span>
+      </label>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="divider"></div>
+  </div>
+
+  {% if firebase_available %}
+  <div class="sidebar-section">
+    <h3>🔐 로그인 / 회원가입</h3>
+    {% if is_logged_in and current_user %}
+      <div class="user-info">
+        <p style="margin: 0.5rem 0; font-weight: 600;">👤 {{ current_user.get('display_name', 'User') }}</p>
+        <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--muted-text);">📧 {{ current_user.get('email', 'N/A') }}</p>
+      </div>
+      <form method="post" action="/auth/logout" style="margin-top: 1rem;">
+        <button type="submit" class="logout-btn">로그아웃</button>
+      </form>
+    {% else %}
+      <div class="auth-tabs">
+        <input type="radio" id="tab-login" name="auth-tab" checked>
+        <input type="radio" id="tab-signup" name="auth-tab">
+        
+        <div class="tab-labels">
+          <label for="tab-login" class="tab-label">로그인</label>
+          <label for="tab-signup" class="tab-label">회원가입</label>
+        </div>
+        
+        <div class="tab-content" id="login-content">
+          <form method="post" action="/auth/login" class="auth-form">
+            <input type="email" name="email" placeholder="이메일" required>
+            <input type="password" name="password" placeholder="비밀번호" required>
+            <button type="submit" class="auth-btn">로그인</button>
+          </form>
+        </div>
+        
+        <div class="tab-content" id="signup-content">
+          <form method="post" action="/auth/signup" class="auth-form">
+            <input type="email" name="email" placeholder="이메일" required>
+            <input type="password" name="password" placeholder="비밀번호 (6자 이상)" required minlength="6">
+            <input type="text" name="display_name" placeholder="닉네임 (선택)">
+            <button type="submit" class="auth-btn">회원가입</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="sidebar-section">
+    <div class="divider"></div>
+  </div>
+  {% endif %}
+
+  <div class="sidebar-section">
+    <h3>📊 데이터 통계</h3>
+    <div class="sidebar-stats">
+      <div class="sidebar-stat-item">
+        <span class="sidebar-stat-label">전체 영화 수</span>
+        <span class="sidebar-stat-value">{{ stats.total_movies | default("0") }}</span>
+      </div>
+      <div class="sidebar-stat-item">
+        <span class="sidebar-stat-label">전체 평점 수</span>
+        <span class="sidebar-stat-value">{{ stats.total_ratings | default("0") }}</span>
+      </div>
+      <div class="sidebar-stat-item">
+        <span class="sidebar-stat-label">사용자 수</span>
+        <span class="sidebar-stat-value">{{ stats.total_users | default("0") }}</span>
+      </div>
+      {% if stats.avg_rating %}
+      <div class="sidebar-stat-item">
+        <span class="sidebar-stat-label">평균 평점</span>
+        <span class="sidebar-stat-value">{{ "%.2f"|format(stats.avg_rating) }}/5.0</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="divider"></div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>🤖 모델 상태</h3>
+    {% if model_loaded %}
+    <div class="sidebar-status success">
+      ✅ 모델 로드 완료
+    </div>
+    <p style="font-size: 0.85rem; color: var(--muted-text); margin: 0.5rem 0 0 0;">
+      추천 시스템이 준비되었습니다.
+    </p>
+    {% else %}
+    <div class="sidebar-status info">
+      ⚠️ 모델 미로드
+    </div>
+    <p style="font-size: 0.85rem; color: var(--muted-text); margin: 0.5rem 0 0 0;">
+      추천 기능을 사용하려면 모델이 필요합니다.
+    </p>
+    {% endif %}
+  </div>
+
+  {% if firebase_available %}
+  <div class="sidebar-section">
+    <div class="divider"></div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>🔥 Firebase 상태</h3>
+    <div class="sidebar-status success">
+      ✅ Firebase 연결됨
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if errors and errors|length > 0 %}
+    <section class="card error-card">
+      <h2>⚠️ 오류</h2>
+      <ul>
+        {% for message in errors %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <!-- 사용자 기반 추천 페이지 -->
+  <div class="page-content" id="page-user_based" style="display: {% if current_page == 'user_based' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>👤 사용자 기반 추천</h2>
+      <form method="get" action="/">
+        <input type="hidden" name="page" value="user_based" />
+        <label for="user_id">사용자 ID</label>
+        <input
+          type="text"
+          id="user_id"
+          name="user_id"
+          placeholder="예: 123"
+          value="{{ user_id }}"
+        />
+        <label for="user_top_n">추천 개수</label>
+        <input
+          type="number"
+          id="user_top_n"
+          name="user_top_n"
+          min="1"
+          max="20"
+          value="{{ user_top_n }}"
+        />
+        <button type="submit">추천 보기</button>
+      </form>
+
+      {% if user_recommendations %}
+        <div class="result-group">
+          <h3>좋아한 영화 Top {{ user_top_n }}</h3>
+          <ul class="result-list">
+            {% for movie in user_recommendations.top_watched %}
+              <li>
+                <strong>{{ movie.title or movie.movie_id }}</strong>
+                {% if movie.year %}<span class="meta">({{ movie.year }})</span>{% endif %}
+                {% if movie.rating %}<span class="meta rating">평점: {{ '%.1f'|format(movie.rating) }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="result-group">
+          <h3>추천 목록</h3>
+          <ul class="result-list">
+            {% for movie in user_recommendations.recommendations %}
+              <li>
+                <strong>{{ movie.title or movie.movie_id }}</strong>
+                {% if movie.year %}<span class="meta">({{ movie.year }})</span>{% endif %}
+                {% if movie.predicted_rating %}<span class="meta rating">예상 평점: {{ '%.2f'|format(movie.predicted_rating) }}</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% elif user_id %}
+        <p class="muted">추천 결과가 없습니다.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- 영화 기반 추천 페이지 -->
+  <div class="page-content" id="page-movie_based" style="display: {% if current_page == 'movie_based' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>🎞️ 영화 기반 유사 추천</h2>
+      <form method="get" action="/">
+        <input type="hidden" name="page" value="movie_based" />
+        <label for="movie_id">영화 ID</label>
+        <input
+          type="text"
+          id="movie_id"
+          name="movie_id"
+          placeholder="예: 1"
+          value="{{ movie_id }}"
+        />
+        <label for="similar_top_n">추천 개수</label>
+        <input
+          type="number"
+          id="similar_top_n"
+          name="similar_top_n"
+          min="1"
+          max="20"
+          value="{{ similar_top_n }}"
+        />
+        <button type="submit">유사 영화 보기</button>
+      </form>
+
+      {% if similar_movies %}
+        <ul class="result-list">
+          {% for movie in similar_movies.items %}
+            <li>
+              <strong>{{ movie.title or movie.movie_id }}</strong>
+              {% if movie.year %}<span class="meta">({{ movie.year }})</span>{% endif %}
+              {% if movie.genre %}<span class="meta genre">{{ movie.genre }}</span>{% endif %}
+              {% if movie.similarity %}<span class="meta rating">유사도: {{ '%.3f'|format(movie.similarity) }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif movie_id %}
+        <p class="muted">유사 영화 결과가 없습니다.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- 평점 관리 페이지 -->
+  {% if firebase_available and is_logged_in %}
+  <div class="page-content" id="page-rating_management" style="display: {% if current_page == 'rating_management' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>⭐ 내 영화 평점 관리</h2>
+      <p class="muted">본 영화에 대한 평점을 입력하고 관리하세요.</p>
+
+      <!-- 평점 입력 방식 선택 -->
+      <div style="margin-bottom: 1.5rem;">
+        <form method="get" action="/" style="display: inline;">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="radio" id="method_search" name="rating_method" value="search" 
+                 {% if rating_method == 'search' %}checked{% endif %} 
+                 onchange="this.form.submit()">
+          <label for="method_search" style="margin-right: 1rem;">🔍 검색</label>
+          <input type="radio" id="method_explore" name="rating_method" value="explore"
+                 {% if rating_method == 'explore' %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label for="method_explore">🎲 탐색</label>
+        </form>
+      </div>
+
+      <!-- 검색 기반 평점 입력 -->
+      {% if rating_method == 'search' %}
+      <div class="card" style="margin-top: 1rem;">
+        <h3>🔍 영화 검색 및 평점 입력</h3>
+        <form method="get" action="/">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="hidden" name="rating_method" value="search" />
+          <label for="rating_query">평점을 입력할 영화를 검색하세요</label>
+          <input
+            type="text"
+            id="rating_query"
+            name="query"
+            placeholder="예: 타이타닉, 어벤져스, 기생충..."
+            value="{{ search_query }}"
+          />
+          <button type="submit">검색</button>
+        </form>
+
+        {% if rating_search_results %}
+        <div style="margin-top: 1.5rem;">
+          <h4>검색 결과</h4>
+          {% for movie in rating_search_results %}
+          <div class="movie-card" style="margin-bottom: 1rem;">
+            <h4>{{ movie.title }} {% if movie.year %}({{ movie.year }}){% endif %}</h4>
+            {% if movie.genre %}<p>장르: {{ movie.genre }}</p>{% endif %}
+            <form method="post" action="/rating/add" style="display: inline-block; width: 100%;">
+              <input type="hidden" name="movie_id" value="{{ movie.movie_id }}" />
+              <input type="hidden" name="page" value="rating_management" />
+              <input type="hidden" name="rating_method" value="search" />
+              <label for="rating_{{ movie.movie_id }}">평점 (0.5 ~ 5.0)</label>
+              <input
+                type="number"
+                id="rating_{{ movie.movie_id }}"
+                name="rating"
+                min="0.5"
+                max="5.0"
+                step="0.5"
+                value="3.0"
+                required
+                style="width: 100%; margin-bottom: 0.5rem;"
+              />
+              <button type="submit" class="auth-btn">💾 평점 저장</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% elif search_query %}
+        <p class="muted" style="margin-top: 1rem;">검색 결과가 없습니다. 다른 키워드로 검색해보세요.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- 탐색 기반 평점 입력 -->
+      {% if rating_method == 'explore' %}
+      <div class="card" style="margin-top: 1rem;">
+        <h3>🎲 인기 영화 탐색</h3>
+        <p class="muted">인기 있는 영화들을 랜덤하게 탐색해보세요.</p>
+        <form method="post" action="/rating/explore" style="margin-bottom: 1rem;">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="hidden" name="rating_method" value="explore" />
+          <label for="explore_count">표시할 영화 개수</label>
+          <input
+            type="number"
+            id="explore_count"
+            name="explore_count"
+            min="5"
+            max="20"
+            value="{{ explore_count }}"
+          />
+          <button type="submit" class="auth-btn">🎲 새로운 영화 탐색</button>
+        </form>
+        <p class="muted">탐색 기능은 곧 구현될 예정입니다.</p>
+      </div>
+      {% endif %}
+
+      <!-- 내 평점 목록 -->
+      <div class="card" style="margin-top: 2rem;">
+        <h3>📋 내 평점 목록</h3>
+        {% if rating_stats and rating_stats.get('total', 0) > 0 %}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 150px;">
+            <strong>총 평점 수</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.total }}개</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>평균 평점</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ '%.2f'|format(rating_stats.avg) }}/5.0</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>높은 평점 (4.0+)</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.high }}개</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>낮은 평점 (2.0-)</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.low }}개</p>
+          </div>
+        </div>
+
+        <div class="divider" style="margin: 1.5rem 0;"></div>
+
+        {% for rating_item in user_ratings_list %}
+        <div class="movie-card" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <h4>{{ rating_item.title }} {% if rating_item.year %}({{ rating_item.year }}){% endif %}</h4>
+              {% if rating_item.genre %}<p style="margin: 0.25rem 0;">장르: {{ rating_item.genre }}</p>{% endif %}
+              <p style="margin: 0.25rem 0; color: var(--muted-text); font-size: 0.9rem;">
+                영화 ID: {{ rating_item.movie_id }}
+              </p>
+            </div>
+            <div style="text-align: right; margin-left: 1rem;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent);">
+                ⭐ {{ rating_item.rating }}/5.0
+              </div>
+              <form method="post" action="/rating/delete" style="margin-top: 0.5rem;">
+                <input type="hidden" name="movie_id" value="{{ rating_item.movie_id }}" />
+                <input type="hidden" name="page" value="rating_management" />
+                <button type="submit" class="logout-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">🗑️ 삭제</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">아직 저장된 평점이 없습니다. 영화를 평가해보세요!</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+  {% endif %}
+
+  <script>
+    // 페이지 전환 로직
+    document.addEventListener('DOMContentLoaded', function() {
+      const radioButtons = document.querySelectorAll('.page-radio');
+      
+      radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+          const selectedPage = this.value;
+          const url = new URL(window.location);
+          url.searchParams.set('page', selectedPage);
+          // 기존 결과 파라미터 제거 (새 페이지로 전환)
+          if (selectedPage !== 'rating_management') {
+            url.searchParams.delete('query');
+            url.searchParams.delete('limit');
+            url.searchParams.delete('rating_method');
+            url.searchParams.delete('rating_movie_id');
+          }
+          if (selectedPage !== 'user_based') {
+            url.searchParams.delete('user_id');
+            url.searchParams.delete('user_top_n');
+          }
+          if (selectedPage !== 'movie_based') {
+            url.searchParams.delete('movie_id');
+            url.searchParams.delete('similar_top_n');
+          }
+          window.location.href = url.toString();
+        });
+      });
+
+      // 인증 탭 전환 로직
+      const authTabs = document.querySelectorAll('input[name="auth-tab"]');
+      authTabs.forEach(tab => {
+        tab.addEventListener('change', function() {
+          // 모든 탭 컨텐츠 숨기기
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+          });
+          // 선택된 탭 컨텐츠 보이기
+          const tabId = this.id;
+          if (tabId === 'tab-login') {
+            document.getElementById('login-content').style.display = 'block';
+          } else if (tabId === 'tab-signup') {
+            document.getElementById('signup-content').style.display = 'block';
+          }
+        });
+      });
+
+      // 초기 탭 상태 설정
+      const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
+      if (checkedTab) {
+        checkedTab.dispatchEvent(new Event('change'));
+      }
+    });
+  </script>
+{% endblock %}

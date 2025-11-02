@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title or "볼거 없나?" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container">
+        <h1>🎬 볼거 없나?</h1>
+        <p class="subtitle">
+          MovieLens + 하이브리드 추천 모델을 API와 간단한 웹 UI로 확인해보세요.
+        </p>
+      </div>
+    </header>
+    <main class="container sidebar-container">
+      <aside class="sidebar">
+        {% block sidebar %}{% endblock %}
+      </aside>
+      <div class="main-content">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    <footer class="app-footer">
+      <div class="container">
+        <p>데이터: MovieLens ML-32M · 메타데이터 확장 준비 중</p>
+        <p>FastAPI + Jinja2 템플릿 예제</p>
+      </div>
+    </footer>
+  </body>
+</html>
+

@@ -24,6 +24,12 @@ streamlit-cookies-manager>=0.2.0
 # Environment management
 python-dotenv>=1.0.1
 
+# API backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+python-multipart>=0.0.6
+
 # NLP / Deep Learning
 torch>=2.2
 transformers>=4.51.0

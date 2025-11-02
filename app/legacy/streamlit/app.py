@@ -10,7 +10,16 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# 프로젝트 경로 자동 추가 (core 모듈 import 시 자동 실행)
+# 프로젝트 경로 자동 추가
+import sys
+from pathlib import Path
+
+# 레거시 앱의 modules를 sys.path에 추가
+LEGACY_DIR = Path(__file__).parent
+PROJECT_ROOT = LEGACY_DIR.parents[2]  # app/legacy/streamlit -> app -> 프로젝트 루트
+sys.path.insert(0, str(LEGACY_DIR))  # legacy/streamlit/modules를 import할 수 있도록
+sys.path.insert(0, str(PROJECT_ROOT))  # 프로젝트 루트도 추가
+
 from modules.core import add_project_paths
 add_project_paths()
 
@@ -19,7 +28,7 @@ from user_system.firebase_config import setup_firebase_config, get_firebase_mana
 from user_system.firebase_auth import show_firebase_auth_ui
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# 모듈 import
+# 레거시 모듈 import (legacy/streamlit/modules에서)
 from modules.services import load_all_data
 from modules.ui import (
     display_footer,
