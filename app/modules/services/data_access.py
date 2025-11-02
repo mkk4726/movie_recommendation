@@ -71,3 +71,29 @@ def search_movies_cached(query: str, limit: int = 10) -> pd.DataFrame:
     result = _search_movies(df_movies, normalized, limit)
     return result.copy()
 
+
+@lru_cache(maxsize=1)
+def get_data_stats() -> dict:
+    """
+    데이터 통계를 계산하고 캐시합니다.
+    
+    Returns:
+        통계 정보 딕셔너리
+    """
+    df_movies, df_ratings, _ = load_all_data()
+    
+    if df_movies is None or df_ratings is None:
+        return {
+            "total_movies": "0",
+            "total_ratings": "0",
+            "total_users": "0",
+            "avg_rating": None,
+        }
+    
+    return {
+        "total_movies": f"{len(df_movies):,}",
+        "total_ratings": f"{len(df_ratings):,}",
+        "total_users": f"{df_ratings['user_id'].nunique():,}" if "user_id" in df_ratings.columns else "0",
+        "avg_rating": float(df_ratings["rating"].mean()) if "rating" in df_ratings.columns else None,
+    }
+

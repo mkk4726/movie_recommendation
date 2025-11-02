@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import pandas as pd
 
-from modules.services.data_access import load_all_data, search_movies_cached
+from modules.services.data_access import load_all_data, search_movies_cached, get_data_stats
 from modules.services.recommender_service import get_recommender_service
 from app.api.utils import get_current_user_from_cookies, from_dataframe, _safe_year
 
@@ -36,28 +36,43 @@ def home(
     query: Optional[str] = Query(None),
     limit: int = Query(5, ge=1, le=50),
     user_id: Optional[str] = Query(None),
-    user_top_n: int = Query(5, ge=1, le=20),
-    movie_id: Optional[str] = Query(None),
-    similar_top_n: int = Query(5, ge=1, le=20),
+    user_top_n: int = Query(10, ge=5, le=20),
+    user_option: Optional[str] = Query(None, description="사용자 선택 옵션: me 또는 other"),
+    movie_search_query: Optional[str] = Query(None, description="영화 검색 쿼리"),
+    selected_movie_id: Optional[str] = Query(None, description="선택된 영화 ID"),
+    similar_top_n: int = Query(10, ge=5, le=15),
+    movie_genre: Optional[List[str]] = Query(None, description="장르 필터"),
+    movie_country: Optional[List[str]] = Query(None, description="국가 필터"),
+    movie_min_year: Optional[int] = Query(None, description="최소 연도"),
+    movie_max_year: Optional[int] = Query(None, description="최대 연도"),
     rating_method: Optional[str] = Query("search", description="평점 입력 방식"),
     rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),
     explore_count: int = Query(10, ge=5, le=20, description="탐색할 영화 개수"),
 ):
     """Render a simple HTML frontend for interacting with the recommender."""
+    import time
+    request_start = time.time()
+    
     errors: List[str] = []
+    
+    # 기본 페이지는 movie_based
+    current_page = page or "movie_based"
 
-    # Search movies (영화 검색 페이지가 제거되어 더 이상 사용하지 않음)
-    search_results = []
+    # 영화 기반 추천용 검색 결과
+    movie_search_results = []
+    selected_movie_info = None
 
     # 모델 로드 상태 확인 (사이드바 표시용)
     # 캐시되어 있으므로 빠르게 반환됨
+    model_load_start = time.time()
     model_loaded = False
     recommender_service = None
     try:
         # 이미 로드되어 있으면 로그 없이 빠르게 반환
         recommender_service = get_recommender_service()
         model_loaded = True
+        logger.debug(f"모델 서비스 가져오기: {time.time() - model_load_start:.3f}초")
     except FileNotFoundError as exc:
         logger.warning(f"⚠️ 모델 파일을 찾을 수 없습니다: {exc}")
         errors.append(str(exc))
@@ -67,72 +82,123 @@ def home(
 
     df_movies = None
     df_ratings = None
-    stats = {
-        "total_movies": "0",
-        "total_ratings": "0",
-        "total_users": "0",
-        "avg_rating": None,
-    }
     
-    # 데이터 로드 시도 (사이드바 통계용)
+    # 통계 정보는 캐시된 함수 사용 (사이드바 통계용)
+    stats_start = time.time()
     try:
-        logger.debug("데이터 로드 시도 중...")
-        df_movies, df_ratings, _ = load_all_data()
-        if df_movies is not None and df_ratings is not None:
-            stats = {
-                "total_movies": f"{len(df_movies):,}",
-                "total_ratings": f"{len(df_ratings):,}",
-                "total_users": f"{df_ratings['user_id'].nunique():,}" if "user_id" in df_ratings.columns else "0",
-                "avg_rating": float(df_ratings["rating"].mean()) if "rating" in df_ratings.columns else None,
-            }
-            logger.debug(f"데이터 로드 완료: 영화 {stats['total_movies']}개, 평점 {stats['total_ratings']}개")
+        stats = get_data_stats()
+        logger.debug(f"통계 정보 로드: {time.time() - stats_start:.3f}초")
+    except Exception as exc:
+        logger.error(f"통계 정보 로드 실패: {type(exc).__name__}: {exc}", exc_info=True)
+        stats = {
+            "total_movies": "0",
+            "total_ratings": "0",
+            "total_users": "0",
+            "avg_rating": None,
+        }
+    
+    # 실제 데이터는 필요한 경우에만 로드 (지연 로딩)
+    data_load_start = time.time()
+    try:
+        # 현재 페이지에 따라 필요한 데이터만 로드
+        # 영화 기반: 검색이나 선택된 영화가 있을 때
+        # 사용자 기반: 사용자 ID가 있을 때
+        # 평점 관리: 항상 필요
+        needs_full_data = (
+            (current_page == "movie_based" and (selected_movie_id or movie_search_query)) or
+            (current_page == "user_based" and (user_id or user_option == "me")) or
+            current_page == "rating_management"
+        )
+        
+        if needs_full_data:
+            logger.info(f"데이터 로드 시작... (페이지: {current_page})")
+            df_movies, df_ratings, _ = load_all_data()
+            logger.info(f"✅ 데이터 로드 완료: {time.time() - data_load_start:.3f}초")
+        else:
+            logger.debug(f"데이터 로드 스킵 (필요 없음, 페이지: {current_page})")
     except FileNotFoundError as exc:
         logger.warning(f"데이터 파일을 찾을 수 없습니다: {exc}")
     except Exception as exc:
         logger.error(f"데이터 로드 실패: {type(exc).__name__}: {exc}", exc_info=True)
 
+    # 영화 기반 추천: 영화 검색 및 선택
+    if current_page == "movie_based" and df_movies is not None:
+        if movie_search_query and movie_search_query.strip():
+            try:
+                df_search = search_movies_cached(query=movie_search_query, limit=10)
+                movie_search_results = from_dataframe(df_search)
+            except Exception as e:
+                logger.error(f"영화 검색 실패: {e}", exc_info=True)
+        
+        # 선택된 영화 정보 가져오기
+        if selected_movie_id and df_movies is not None:
+            try:
+                movie_row = df_movies[df_movies["movie_id"] == selected_movie_id]
+                if not movie_row.empty:
+                    selected_movie_info = from_dataframe(movie_row.head(1))[0]
+            except Exception as e:
+                logger.error(f"영화 정보 조회 실패: {e}", exc_info=True)
+
     # User recommendations
     user_recommendations = None
-    if user_id and recommender_service is not None and df_ratings is not None:
-        if user_id not in df_ratings["user_id"].values:
-            errors.append(f"사용자 '{user_id}'를 평점 데이터에서 찾을 수 없습니다.")
-        else:
-            try:
-                top_watched_df, recommendations_df = recommender_service.recommend_for_user(
-                    user_id=user_id,
-                    df_movies=df_movies,
-                    n=user_top_n,
-                )
-                user_recommendations = {
-                    "user_id": user_id,
-                    "top_watched": from_dataframe(top_watched_df, include_rating=True),
-                    "recommendations": from_dataframe(recommendations_df, include_predicted=True),
-                }
-            except ValueError as exc:
-                errors.append(str(exc))
+    # 사용자 기반 추천: 로그인된 사용자 또는 선택된 사용자
+    if current_page == "user_based":
+        # 로그인된 사용자 선택 옵션
+        if user_option == "me" and is_logged_in and current_user:
+            user_id = current_user.get("uid")
+        
+        if user_id and recommender_service is not None and df_ratings is not None:
+            if user_id not in df_ratings["user_id"].values:
+                # Firebase 사용자일 경우 데이터 없을 수 있음
+                if user_option == "me":
+                    errors.append("아직 학습되기 전입니다. 더 많은 평점을 입력해주세요.")
+                else:
+                    errors.append(f"사용자 '{user_id}'를 평점 데이터에서 찾을 수 없습니다.")
+            else:
+                try:
+                    top_watched_df, recommendations_df = recommender_service.recommend_for_user(
+                        user_id=user_id,
+                        df_movies=df_movies,
+                        n=user_top_n,
+                    )
+                    user_recommendations = {
+                        "user_id": user_id,
+                        "top_watched": from_dataframe(top_watched_df, include_rating=True),
+                        "recommendations": from_dataframe(recommendations_df, include_predicted=True),
+                    }
+                except ValueError as exc:
+                    errors.append(str(exc))
 
-    # Similar movies
+    # Similar movies (영화 기반 추천 결과)
     similar_movies = None
-    if movie_id and recommender_service is not None and df_movies is not None:
-        if movie_id not in df_movies["movie_id"].values:
-            errors.append(f"영화 ID '{movie_id}'를 영화 데이터에서 찾을 수 없습니다.")
+    if selected_movie_id and recommender_service is not None and df_movies is not None:
+        if selected_movie_id not in df_movies["movie_id"].values:
+            errors.append(f"영화 ID '{selected_movie_id}'를 영화 데이터에서 찾을 수 없습니다.")
         else:
             try:
+                # 필터 구성
+                filters = {}
+                if movie_genre:
+                    filters["genre"] = movie_genre
+                if movie_min_year is not None:
+                    filters["min_year"] = movie_min_year
+                if movie_max_year is not None:
+                    filters["max_year"] = movie_max_year
+                if movie_country:
+                    filters["country"] = movie_country
+                
                 similar_df = recommender_service.similar_movies(
-                    movie_id=movie_id,
+                    movie_id=selected_movie_id,
                     df_movies=df_movies,
                     n_recommendations=similar_top_n,
-                    filters=None,
+                    filters=filters if filters else None,
                 )
                 similar_movies = {
-                    "movie_id": movie_id,
+                    "movie_id": selected_movie_id,
                     "items": from_dataframe(similar_df, include_similarity=True),
                 }
             except ValueError as exc:
                 errors.append(str(exc))
-
-    # 기본 페이지는 movie_based
-    current_page = page or "movie_based"
     
     # 현재 사용자 정보 가져오기
     current_user = get_current_user_from_cookies(request)
@@ -194,20 +260,55 @@ def home(
         except Exception as e:
             errors.append(f"평점 데이터 로드 실패: {str(e)}")
     
+    # 설정값 로드 (장르, 국가, 연도 옵션)
+    config_options = {
+        "genres": [
+            "Action", "Adventure", "Animation", "Children", "Comedy",
+            "Crime", "Documentary", "Drama", "Fantasy", "Film-Noir",
+            "Horror", "IMAX", "Musical", "Mystery", "Romance",
+            "Sci-Fi", "Thriller", "War", "Western"
+        ],
+        "countries": [
+            "한국", "일본", "중국", "홍콩", "대만", "인도",
+            "영국", "프랑스", "독일", "이탈리아", "스페인", "러시아",
+            "미국", "캐나다", "멕시코", "브라질", "아르헨티나",
+            "호주", "뉴질랜드", "이집트", "남아프리카공화국", "나이지리아"
+        ],
+        "min_year": 1950,
+        "max_year": 2026,
+    }
+    
+    # 사용 가능한 사용자 목록 (사용자 기반 추천용)
+    available_users = []
+    if current_page == "user_based" and df_ratings is not None:
+        try:
+            available_users = sorted(df_ratings["user_id"].unique().tolist()[:100])
+        except Exception:
+            pass
+    
     context = {
         "request": request,
         "title": "볼거 없나? 추천 서비스",
         "current_page": current_page,
         "search_query": query or "",
         "search_limit": limit,
-        "search_results": search_results,
+        "movie_search_query": movie_search_query or "",
+        "movie_search_results": movie_search_results,
+        "selected_movie_id": selected_movie_id or "",
+        "selected_movie_info": selected_movie_info,
         "rating_search_results": rating_search_results,
         "user_id": user_id or "",
+        "user_option": user_option or "",
         "user_top_n": user_top_n,
         "user_recommendations": user_recommendations,
-        "movie_id": movie_id or "",
+        "available_users": available_users,
         "similar_top_n": similar_top_n,
         "similar_movies": similar_movies,
+        "movie_genre": movie_genre or [],
+        "movie_country": movie_country or [],
+        "movie_min_year": movie_min_year or config_options["min_year"],
+        "movie_max_year": movie_max_year or config_options["max_year"],
+        "config_options": config_options,
         "errors": errors,
         "stats": stats,
         "model_loaded": model_loaded,
@@ -221,5 +322,8 @@ def home(
         "explore_count": explore_count,
     }
 
+    total_time = time.time() - request_start
+    logger.info(f"✅ 전체 요청 처리 완료: {total_time:.3f}초 (페이지: {current_page})")
+    
     return templates.TemplateResponse("index.html", context)
 
