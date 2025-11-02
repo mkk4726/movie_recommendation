@@ -67,13 +67,12 @@ def get_recommender_service() -> RecommenderService:
     
     if _service_instance is None:
         logger.info("📦 RecommenderService 생성 중 (첫 번째 호출)...")
-        logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
         models_root = PROJECT_ROOT / "modeling" / "models" / "pkls"
         svd_path = models_root / "trained_svd_pipeline.pkl"
         item_based_path = models_root / "trained_item_based.pkl"
         logger.info(f"모델 경로 확인: SVD={svd_path.exists()}, Item-based={item_based_path.exists()}")
         _service_instance = RecommenderService(svd_path=svd_path, item_based_path=item_based_path)
-        logger.debug("✅ RecommenderService 인스턴스 생성 및 캐시 완료")
+        logger.info("✅ RecommenderService 인스턴스 생성 및 캐시 완료")
     else:
         logger.debug("♻️ RecommenderService 캐시에서 반환 (이미 로드됨)")
     

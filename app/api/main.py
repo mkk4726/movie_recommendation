@@ -43,13 +43,24 @@ async def lifespan(app: FastAPI):
         logger.info("📦 추천 모델 사전 로드 시작...")
         from modules.services.recommender_service import get_recommender_service
         recommender_service = get_recommender_service()
-        logger.info("✅ 모든 모델 로드 완료 및 서비스 준비 완료")
+        logger.info("✅ 모든 모델 로드 완료")
     except Exception as e:
         logger.error(f"❌ 모델 로드 중 오류 발생: {e}", exc_info=True)
         raise
     
+    # 데이터 사전 로드
+    try:
+        logger.info("📦 데이터 사전 로드 시작...")
+        from modules.services.data_access import load_all_data
+        df_movies, df_ratings, df_filtered = load_all_data()
+        logger.info(f"✅ 데이터 로드 완료: 영화 {len(df_movies)}개, 평점 {len(df_ratings)}개")
+    except Exception as e:
+        logger.error(f"❌ 데이터 로드 중 오류 발생: {e}", exc_info=True)
+        raise
+    
     logger.info("=" * 80)
-    logger.info("✅ FastAPI 애플리케이션 시작 완료")
+    logger.info("🎉 모든 모델 및 데이터 캐시 로드 완료!")
+    logger.info("✅ FastAPI 서버 준비 완료 - 요청 대기 중...")
     logger.info("=" * 80)
     
     yield
