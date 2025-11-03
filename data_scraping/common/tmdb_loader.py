@@ -7,6 +7,71 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import pandas as pd
 
+# To-Do
+# https://image.tmdb.org/t/p/{size}{poster_path}
+# poster_url은 이렇게 매핑해서 사용하면 됨.
+# IMDB url : https://www.imdb.com/title/{IMDB_id}/
+
+# TMDB 장르 ID와 한글명 매핑 사전
+TMDB_GENRES = {
+    28: "액션",       # Action
+    12: "모험",       # Adventure
+    16: "애니메이션",  # Animation
+    35: "코미디",     # Comedy
+    80: "범죄",       # Crime
+    99: "다큐멘터리", # Documentary
+    18: "드라마",     # Drama
+    10751: "가족",    # Family
+    14: "판타지",     # Fantasy
+    36: "역사",       # History
+    27: "공포",       # Horror
+    10402: "음악",    # Music
+    9648: "미스터리", # Mystery
+    10749: "로맨스",  # Romance
+    878: "SF",        # Science Fiction
+    10770: "TV 영화", # TV Movie
+    53: "스릴러",     # Thriller
+    10752: "전쟁",    # War
+    37: "서부",       # Western
+}
+
+TMDB_LANGUAGE = {
+    "en": "영어 (미국)",
+    "ko": "한국어",
+    "ja": "일본어",
+    "zh": "중국어",
+    "fr": "프랑스어",
+    "de": "독일어",
+    "es": "스페인어",
+    "it": "이탈리아어",
+    "ru": "러시아어",
+    "pt": "포르투갈어",
+    "hi": "힌디어 (인도)",
+    "ar": "아랍어",
+    "tr": "터키어",
+    "th": "태국어",
+    "vi": "베트남어",
+    "id": "인도네시아어",
+    "pl": "폴란드어",
+    "nl": "네덜란드어",
+    "sv": "스웨덴어",
+    "da": "덴마크어",
+    "no": "노르웨이어",
+    "fi": "핀란드어",
+    "he": "히브리어",
+    "cs": "체코어",
+    "el": "그리스어",
+    "hu": "헝가리어",
+    "fa": "페르시아어 (이란)",
+    "ta": "타밀어",
+    "te": "텔루구어",
+    "ml": "말라얄람어",
+    "bn": "벵골어 (방글라데시)",
+    "uk": "우크라이나어",
+    "ro": "루마니아어"
+}
+
+
 
 def get_tmdb_data_path() -> Path:
     """TMDB API 데이터 저장 디렉토리 경로를 반환"""
@@ -127,6 +192,17 @@ def load_tmdb_data(data_path: Optional[str] = None) -> pd.DataFrame:
     # 중복 제거 (imdb_id 기준, 최신 것 유지)
     if 'imdb_id' in df.columns:
         df = df.drop_duplicates(subset=['imdb_id'], keep='last').reset_index(drop=True)
+    
+    # 장르 ID를 한글명으로 매핑
+    if 'genre_ids' in df.columns:
+        df['genres'] = df['genre_ids'].apply(
+            lambda x: " ".join([TMDB_GENRES.get(gid, str(gid)) for gid in x]) 
+            if isinstance(x, list) else ""
+        )
+    
+    # 언어 코드를 한글명으로 매핑
+    if 'original_language' in df.columns:
+        df['language'] = df['original_language'].map(TMDB_LANGUAGE)
     
     return df
 
