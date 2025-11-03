@@ -53,6 +53,7 @@ data_scraping/ml-32m/*.csv
 # Model artifacts
 modeling/models/pkls/
 *.pkl
+*.npz
 
 # Environment variables
 .env
