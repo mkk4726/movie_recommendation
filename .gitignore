@@ -48,6 +48,7 @@ data_scraping/data/*.csv
 data_scraping/data/*.txt
 data_scraping/ml-32m/*.txt
 data_scraping/ml-32m/*.csv
+*.csv
 
 # Model artifacts
 modeling/models/pkls/

@@ -1,15 +1,15 @@
 """
 추천 시스템 추상 기본 클래스
 """
-import pickle
 import logging
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
-
-import pandas as pd
 
 from modeling.utils.file_utils import format_file_size
+
+# joblib은 numpy 배열 직렬화에 최적화되어 있어 pickle보다 빠름
+import joblib
 
 logger = logging.getLogger(__name__)
 
@@ -75,21 +75,32 @@ class BaseRecommender(ABC):
         if not hasattr(self, 'config') or self.config is None:
             raise ValueError("저장할 모델이 없습니다. fit() 먼저 실행 필요")
         
+        logger.info("💾 모델 저장 시작...")
+        save_start_time = time.time()
+        
         # 저장할 데이터 준비
+        prep_start_time = time.time()
         model_data = self._prepare_save_data()
+        prep_time = time.time() - prep_start_time
+        logger.debug(f"  - 데이터 준비: {prep_time:.2f}초")
         
         # 디렉토리 생성
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
         
-        # 모델 저장
-        with open(filepath, 'wb') as f:
-            pickle.dump(model_data, f)
+        # 모델 저장 (joblib이 numpy 배열 직렬화에 더 효율적)
+        serialize_start_time = time.time()
+        logger.debug("  - joblib 사용 (numpy 배열 최적화)")
+        joblib.dump(model_data, filepath, compress=3)  # compress=3은 속도/크기 균형
+        serialize_time = time.time() - serialize_start_time
+        logger.debug(f"  - joblib 직렬화: {serialize_time:.2f}초")
         
         # 파일 크기 출력
         file_size = format_file_size(filepath)
+        total_time = time.time() - save_start_time
         logger.info(f"✅ 모델 저장 완료: {filepath}")
         logger.info(f"📦 파일 크기: {file_size}")
+        logger.info(f"⏱️  저장 소요 시간: {total_time:.2f}초 (준비: {prep_time:.2f}초, 직렬화: {serialize_time:.2f}초)")
     
     @classmethod
     def load_model(cls, filepath: str):
@@ -125,9 +136,14 @@ class BaseRecommender(ABC):
         sys.modules['models'] = sys.modules['modeling.models']
         logger.debug("✅ 모듈 경로 alias 설정 완료")
         
-        logger.info("💾 pickle 파일 읽는 중...")
-        with open(filepath, 'rb') as f:
-            model_data = pickle.load(f)
+        logger.info("💾 모델 파일 읽는 중...")
+        load_start_time = time.time()
+        
+        model_data = joblib.load(filepath)
+        logger.debug("  - joblib으로 로드됨")
+        
+        load_time = time.time() - load_start_time
+        logger.debug(f"  - 파일 로드: {load_time:.2f}초")
         logger.debug(f"📊 로드된 데이터 키: {list(model_data.keys())}")
         
         # 모델 객체 생성

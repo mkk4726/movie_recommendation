@@ -2,12 +2,14 @@
 영화 데이터 로딩 유틸리티
 ML-32M, TMDB 데이터를 통합하여 로드합니다.
 """
+import time
 import pandas as pd
 from data_scraping.common import (
     load_movie_data_ml,
     load_links_data_ml,
     load_ratings_data_ml,
     load_tmdb_data,
+    get_logger,
 )
 
 
@@ -41,24 +43,61 @@ def load_movie_data() -> pd.DataFrame:
     return df
 
 
-def load_ratings_data(data_path: str = None) -> pd.DataFrame:
+def load_ratings_data(data_path: str = None, verbose: bool = False) -> pd.DataFrame:
     """
     ML-32M 사용자 평점 데이터 로딩
     
     Args:
         data_path: ML-32M 디렉토리 경로 (None이면 자동 탐색)
+        verbose: 로그 출력 여부 (True면 상세 로그 출력)
     
     Returns:
         평점 정보 DataFrame
     """
-    df_ratings = load_ratings_data_ml(data_path)
-    df_movies = load_movie_data()
+    # Logger 설정
+    logger = get_logger(__name__, level="INFO" if verbose else "CRITICAL")
     
+    start_time = time.time()
+    logger.info("=" * 60)
+    logger.info("평점 데이터 로딩 시작")
+    logger.info("=" * 60)
+    
+    # 1. ML-32M 평점 데이터 로딩
+    step_start = time.time()
+    logger.info("[1/4] ML-32M 평점 데이터 로딩 중...")
+    df_ratings = load_ratings_data_ml(data_path)
+    step_time = time.time() - step_start
+    logger.info(f"[1/4] 완료: {step_time:.2f}초 (행 수: {len(df_ratings):,})")
+    
+    # 2. 영화 데이터 로딩
+    step_start = time.time()
+    logger.info("[2/4] 영화 데이터 로딩 중...")
+    df_movies = load_movie_data()
+    step_time = time.time() - step_start
+    logger.info(f"[2/4] 완료: {step_time:.2f}초 (영화 수: {len(df_movies):,})")
+    
+    # 3. 유효한 영화 ID 필터링
+    step_start = time.time()
+    logger.info("[3/4] 유효한 영화 ID 필터링 중...")
     # set을 사용하여 isin() 연산 성능 개선 (특히 큰 데이터셋에서 유용)
     valid_movie_ids = set(df_movies['movie_id'])
     df_ratings = df_ratings[df_ratings['movie_id'].isin(valid_movie_ids)].reset_index(drop=True)
+    step_time = time.time() - step_start
+    logger.info(f"[3/4] 완료: {step_time:.2f}초 (필터링 후 행 수: {len(df_ratings):,})")
     
+    # 4. 타임스탬프 변환
+    step_start = time.time()
+    logger.info("[4/4] 타임스탬프 변환 중...")
     # apply 대신 pd.to_datetime 사용 (더 효율적)
     df_ratings['time'] = pd.to_datetime(df_ratings['timestamp'], unit='s')
+    step_time = time.time() - step_start
+    logger.info(f"[4/4] 완료: {step_time:.2f}초")
+    
+    # 총 소요 시간
+    total_time = time.time() - start_time
+    logger.info("=" * 60)
+    logger.info(f"전체 로딩 완료: {total_time:.2f}초")
+    logger.info(f"최종 데이터 행 수: {len(df_ratings):,}")
+    logger.info("=" * 60)
     
     return df_ratings

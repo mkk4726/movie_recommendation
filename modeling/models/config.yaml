@@ -6,8 +6,8 @@
 # ========================================
 svd:
   # SVD 알고리즘 하이퍼파라미터
-  n_factors: 15         # 잠재 요인(latent factor)의 개수
-  n_epochs: 10          # 학습 반복 횟수
+  n_factors: 20         # 잠재 요인(latent factor)의 개수
+  n_epochs: 8          # 학습 반복 횟수
   lr_all: 0.005         # 학습률 (learning rate)
   reg_all: 0.02         # 정규화 계수 (regularization)
   
