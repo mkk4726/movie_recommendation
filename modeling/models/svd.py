@@ -1,7 +1,6 @@
 """
 SVD 기반 영화 추천 시스템 파이프라인
 """
-import pickle
 import logging
 import random
 import yaml
@@ -20,9 +19,7 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from data_scraping.common.data_loader import load_ratings_data, load_movie_data
-from modeling.utils.data import filter_by_min_counts
-from modeling.utils.file_utils import format_file_size
+from data_scraping.common.data_loader import load_movie_data
 
 # 추상 클래스 import
 try:
@@ -44,8 +41,6 @@ class ModelConfig:
     random_state: int = 42
     verbose: bool = True
     test_size: float = 0.2
-    min_user_ratings: int = 30
-    min_movie_ratings: int = 10
     rating_scale: Tuple[float, float] = (0.5, 5.0)
     
     # 데이터 통합 설정
@@ -484,8 +479,6 @@ if __name__ == "__main__":
         lr_all=0.005,
         reg_all=0.02,
         test_size=0.2,
-        min_user_ratings=30,
-        min_movie_ratings=10,
         verbose=True
     )
     

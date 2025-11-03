@@ -2,12 +2,10 @@
 Item-Based Collaborative Filtering 파이프라인 실행 스크립트
 """
 import logging
+import yaml
 from pathlib import Path
 
 from models.item_based import ItemBasedRecommender, ItemBasedConfig
-
-# Firebase 초기화
-from user_system.firebase_config import setup_firebase_config
 
 from data_scraping.common.data_loader import load_ratings_data
 from utils.data import filter_by_min_counts
@@ -26,6 +24,19 @@ def main():
     
     config = ItemBasedConfig.from_yaml()
     
+    # 데이터 설정 로드
+    data_config_path = Path(__file__).parent / 'utils' / 'data_config.yaml'
+    logger.info(f"📄 데이터 설정 파일 로드: {data_config_path}")
+    with open(data_config_path, 'r', encoding='utf-8') as f:
+        data_config_dict = yaml.safe_load(f)
+    
+    if 'data' not in data_config_dict:
+        raise ValueError("data_config.yaml 파일에 'data' 섹션이 없습니다.")
+    
+    data_config = data_config_dict['data']
+    min_user_ratings = data_config.get('min_user_ratings', 10)
+    min_movie_ratings = data_config.get('min_movie_ratings', 30)
+    
     logger.info("\n" + "="*60)
     logger.info("🎬 Item-Based Collaborative Filtering 파이프라인")
     logger.info("="*60)
@@ -35,8 +46,8 @@ def main():
     logger.info(f"  - 데이터: {len(df_ratings):,}개 평점")
     
     logger.info("🔍 데이터를 필터링하는 중...")
-    logger.info(f"  - 필터링 조건: 사용자당 최소 {config.min_user_ratings}개, 영화당 최소 {config.min_movie_ratings}개")            
-    filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=config.min_movie_ratings, min_user_ratings=config.min_user_ratings)
+    logger.info(f"  - 필터링 조건: 사용자당 최소 {min_user_ratings}개, 영화당 최소 {min_movie_ratings}개")            
+    filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=min_movie_ratings, min_user_ratings=min_user_ratings)
     logger.info(f"  - 필터링된 데이터: {len(filtered_data):,}개 평점")
                        
     # 3. 추천 시스템 초기화 및 학습

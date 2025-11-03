@@ -15,8 +15,8 @@ class IDMapping:
 
 def filter_by_min_counts(
     df: pd.DataFrame,
-    min_user_ratings: int = 10,
-    min_movie_ratings: int = 10,
+    min_user_ratings: int = 0,
+    min_movie_ratings: int = 0,
     verbose: bool = True
 ) -> pd.DataFrame:
     """

@@ -3,6 +3,7 @@ SVD 파이프라인 테스트 스크립트
 """
 import logging
 import pandas as pd
+import yaml
 from pathlib import Path
 from models.svd import SVDRecommenderPipeline, ModelConfig
 
@@ -27,6 +28,19 @@ def main():
     # YAML 파일에서 모델 설정 로드
     config = ModelConfig.from_yaml()
     
+    # 데이터 설정 로드
+    data_config_path = Path(__file__).parent / 'utils' / 'data_config.yaml'
+    logger.info(f"📄 데이터 설정 파일 로드: {data_config_path}")
+    with open(data_config_path, 'r', encoding='utf-8') as f:
+        data_config_dict = yaml.safe_load(f)
+    
+    if 'data' not in data_config_dict:
+        raise ValueError("data_config.yaml 파일에 'data' 섹션이 없습니다.")
+    
+    data_config = data_config_dict['data']
+    min_user_ratings = data_config.get('min_user_ratings', 10)
+    min_movie_ratings = data_config.get('min_movie_ratings', 30)
+    
     # 데이터 로드 (config에서 통합 데이터 사용 여부 확인)
     if getattr(config, 'use_integrated_data', True): # 사용할 때 True
         logger.info("📊 Firebase 통합 데이터를 사용합니다...")
@@ -37,6 +51,19 @@ def main():
         if not firebase_available:
             logger.error("❌ Firebase 초기화에 실패했습니다. 기존 데이터를 사용합니다.")
             logger.info("📊 기존 데이터를 사용합니다...")
+            
+            # Firebase 실패 시에도 데이터를 로드해야 함
+            logger.info("📥 기존 데이터를 로드하는 중...")
+            df_ratings = load_ratings_data()
+            logger.info(f"  - 기존 데이터: {len(df_ratings):,}개 평점")
+            
+            logger.info("🔍 데이터를 필터링하는 중...")
+            logger.info(f"  - 필터링 조건: 사용자당 최소 {min_user_ratings}개, 영화당 최소 {min_movie_ratings}개")            
+            filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=min_movie_ratings, min_user_ratings=min_user_ratings)
+            logger.info(f"  - 필터링된 데이터: {len(filtered_data):,}개 평점")
+            
+            # 빈 Firebase 데이터 생성
+            firebase_data = pd.DataFrame(columns=['user_id', 'movie_id', 'rating'])
         else:
             logger.info("✅ Firebase 초기화 완료!")
             firestore_manager = FirestoreManager()
@@ -49,8 +76,8 @@ def main():
             logger.info(f"  - 기존 데이터: {len(df_ratings):,}개 평점")
             
             logger.info("🔍 데이터를 필터링하는 중...")
-            logger.info(f"  - 필터링 조건: 사용자당 최소 {config.min_user_ratings}개, 영화당 최소 {config.min_movie_ratings}개")            
-            filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=config.min_movie_ratings, min_user_ratings=config.min_user_ratings)
+            logger.info(f"  - 필터링 조건: 사용자당 최소 {min_user_ratings}개, 영화당 최소 {min_movie_ratings}개")            
+            filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=min_movie_ratings, min_user_ratings=min_user_ratings)
             logger.info(f"  - 필터링된 데이터: {len(filtered_data):,}개 평점")
                        
 
@@ -63,8 +90,8 @@ def main():
         logger.info(f"  - 기존 데이터: {len(df_ratings):,}개 평점")
         
         logger.info("🔍 데이터를 필터링하는 중...")
-        logger.info(f"  - 필터링 조건: 사용자당 최소 {config.min_user_ratings}개, 영화당 최소 {config.min_movie_ratings}개")            
-        filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=config.min_movie_ratings, min_user_ratings=config.min_user_ratings)
+        logger.info(f"  - 필터링 조건: 사용자당 최소 {min_user_ratings}개, 영화당 최소 {min_movie_ratings}개")            
+        filtered_data = filter_by_min_counts(df_ratings, min_movie_ratings=min_movie_ratings, min_user_ratings=min_user_ratings)
         logger.info(f"  - 필터링된 데이터: {len(filtered_data):,}개 평점")
         
         # 빈 Firebase 데이터 생성
