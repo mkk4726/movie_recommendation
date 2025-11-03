@@ -414,13 +414,27 @@ if __name__ == "__main__":
         logger.info("\n" + "=" * 80)
         logger.info("✅ 모든 작업이 완료되었습니다. 프로그램을 종료합니다.")
         logger.info("=" * 80)
+        
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
+        
         sys.exit(0)
     
     except KeyboardInterrupt:
         logger.info("\n⚠️  사용자에 의해 중단되었습니다.")
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
         sys.exit(1)
     
     except Exception as e:
         logger.error(f"\n❌ 오류가 발생했습니다: {str(e)}", exc_info=True)
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
         sys.exit(1)
 

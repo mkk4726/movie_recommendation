@@ -52,7 +52,7 @@ def load_data(
     # 캐시에서 로드 시도 (refresh=False이고 파일이 존재하는 경우)
     if not refresh and cache_path.exists():
         print(f"\n✅ 캐시에서 데이터 로드: {cache_path.name}")
-        filtered_data = pd.read_csv(cache_path)
+        filtered_data = pd.read_csv(cache_path, dtype={'user_id': str, 'movie_id': str})
         print(f"  - 캐시된 데이터: {len(filtered_data):,}개 평점\n")
         return filtered_data
     

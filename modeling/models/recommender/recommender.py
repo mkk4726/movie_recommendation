@@ -4,13 +4,12 @@
 import logging
 import pandas as pd
 
-# SVD 파이프라인 import
-try:
-    from .svd import SVDRecommenderPipeline
-    from .item_based import ItemBasedRecommender
-except ImportError:
-    from modeling.models.svd import SVDRecommenderPipeline
-    from modeling.models.item_based import ItemBasedRecommender
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from modeling.models.item_based.model import ItemBasedModel
+from modeling.models.svd.model import SVDModel
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class MovieRecommender:
     - Item-Based CF: ItemBasedRecommender (영화 간 유사도 기반 추천)
     """
     
-    def __init__(self, svd_pipeline_path: str = None, item_based_path: str = None):
+    def __init__(self):
         """
         Args:
             svd_pipeline_path: SVD 파이프라인 pkl 파일 경로
@@ -34,57 +33,28 @@ class MovieRecommender:
         logger.info("🎬 MovieRecommender 초기화 시작")
         logger.info("=" * 60)
         
-        # CF 모델 (SVDRecommenderPipeline) - 사용자 맞춤 추천용
-        self.svd_pipeline = None
-        if svd_pipeline_path:
-            logger.info(f"📦 SVD 파이프라인 경로: {svd_pipeline_path}")
-            self.load_svd_pipeline(svd_pipeline_path)
-        else:
-            logger.warning("⚠️ SVD 파이프라인 경로가 제공되지 않았습니다.")
+        # CF 모델 - 사용자 맞춤 추천용
+        logger.info("SVD 모델 로드 시작")
+        self.svd_model = SVDModel.load_model(use_total_data=True)
+        trainset = self.svd_model.trainset
+        self.df_trainset = pd.DataFrame([
+            {
+                'user_id': trainset.to_raw_uid(u),
+                'movie_id': trainset.to_raw_iid(i),
+                'rating': r
+            }
+            for (u, i, r) in trainset.all_ratings()
+        ])
+        logger.info("SVD 모델 로드 완료")
         
-        # Item-Based CF 모델 - 영화 유사도 추천용
-        self.item_based = None
-        if item_based_path:
-            logger.info(f"📦 Item-Based 모델 경로: {item_based_path}")
-            self.load_item_based(item_based_path)
-        else:
-            logger.warning("⚠️ Item-Based 모델 경로가 제공되지 않았습니다.")
-        
+        # Item-based 모델 - 유사한 영화 추천용
+        logger.info("Item-based 모델 로드 시작")
+        self.item_based_model = ItemBasedModel.load()
+        logger.info("Item-based 모델 로드 완료")
+
         logger.info("=" * 60)
         logger.info("✅ MovieRecommender 초기화 완료")
         logger.info("=" * 60)
-    
-    def load_svd_pipeline(self, filepath: str):
-        """
-        저장된 SVD 파이프라인 모델을 로드합니다.
-        
-        Args:
-            filepath: SVD 파이프라인 pkl 파일 경로
-        """
-        logger.info(f"🔄 SVD 파이프라인 로드 시작: {filepath}")
-        try:
-            self.svd_pipeline = SVDRecommenderPipeline.load_model(filepath)
-            logger.info("✅ SVD 파이프라인 로드 완료")
-            return True
-        except Exception as e:
-            logger.error(f"❌ SVD 파이프라인 로드 실패: {e}")
-            raise
-    
-    def load_item_based(self, filepath: str):
-        """
-        저장된 Item-Based 추천 모델을 로드합니다.
-        
-        Args:
-            filepath: Item-Based 모델 pkl 파일 경로
-        """
-        logger.info(f"🔄 Item-Based 모델 로드 시작: {filepath}")
-        try:
-            self.item_based = ItemBasedRecommender.load(filepath)
-            logger.info("✅ Item-Based 모델 로드 완료")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Item-Based 모델 로드 실패: {e}")
-            raise
     
     def recommend_for_user(self, user_id: str, df_movies: pd.DataFrame, 
                           n_recommendations: int = 10):
@@ -101,15 +71,32 @@ class MovieRecommender:
             - top_watched: 사용자가 높게 평가한 영화 DataFrame
             - recommendations: 추천 영화 DataFrame
         """
-        if self.svd_pipeline is None:
+        if self.svd_model is None:
             raise ValueError("SVD 파이프라인을 먼저 로드해주세요. load_svd_pipeline() 실행 필요")
+        user_watched_movies = self.df_trainset.loc[self.df_trainset['user_id'] == user_id, 'movie_id']
+        candidate_mask = ~df_movies['movie_id'].isin(user_watched_movies)
+        candidate_movie_ids = df_movies.loc[candidate_mask, 'movie_id']
         
-        # SVD 파이프라인으로 추천
-        top_watched, recommendations = self.svd_pipeline.recommend_for_user(
-            user_id, df_movies, n=n_recommendations
-        )
+        # candidate_movie_id를 하나씩 넣어서 예측값 뽑아내고 높은 평점으로 정렬하는 코드
+        predictions = []
+        for movie_id in candidate_movie_ids.values:
+            pred = self.svd_model.predict(user_id, movie_id)
+            predictions.append((movie_id, pred.est))
+
+        # 예측값으로 정렬
+        sorted_predictions = sorted(predictions, key=lambda x: x[1], reverse=True)
+
+        # 상위 10개 추천 영화 ID 추출
+        top_n = 10
+        top_movie_ids = [movie_id for movie_id, est in sorted_predictions[:n_recommendations]]
+
+        # 추천 영화 DataFrame 생성
+        recommendations = df_movies[df_movies['movie_id'].isin(top_movie_ids)].copy()
+        recommendations['pred_rating'] = recommendations['movie_id'].map(dict(sorted_predictions))
+        recommendations = recommendations.sort_values('pred_rating', ascending=False)
+        recommendations.reset_index(drop=True, inplace=True)
         
-        return top_watched, recommendations
+        return recommendations
     
     def get_user_top_watched(self, user_id: str, df_movies: pd.DataFrame, 
                             n: int = 10) -> pd.DataFrame:
@@ -127,9 +114,8 @@ class MovieRecommender:
         if self.svd_pipeline is None:
             raise ValueError("SVD 파이프라인을 먼저 로드해주세요.")
         
-        top_watched, _ = self.svd_pipeline.recommend_for_user(
-            user_id, df_movies, n=n
-        )
+        top_watched = self.df_trainset.loc[self.df_trainset['user_id'] == user_id].nlargest(n, 'rating')
+        top_watched = df_movies.merge(top_watched[['movie_id']], on='movie_id', how='inner')
         
         return top_watched
     
@@ -157,14 +143,14 @@ class MovieRecommender:
         if movie_id not in df_movies['movie_id'].values:
             return pd.DataFrame()
         
-        # Item-Based 추천 시스템으로 유사한 영화 찾기
-        result_df = self.item_based.recommend(
+        recommendations = self.item_based_model.predict(
             movie_id=movie_id,
             top_n=n_recommendations,
-            return_scores=True,
-            filters=filters
-        )
-        
+            return_scores=False
+            )
+
+        result_df = df_movies[df_movies['movie_id'].isin(recommendations)]
+
         if result_df is None or result_df.empty:
             return pd.DataFrame()
         

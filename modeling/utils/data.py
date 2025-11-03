@@ -7,10 +7,10 @@ import pandas as pd
 @dataclass
 class IDMapping:
     """ID 매핑 정보를 담는 데이터 클래스"""
-    user_to_idx: Dict[str, int]
-    idx_to_user: Dict[int, str]
-    movie_to_idx: Dict[str, int]
-    idx_to_movie: Dict[int, str]
+    user_to_idx: Dict[str, int]  # 원본 user_id (str) -> 인덱스 (int)
+    idx_to_user: Dict[int, str]  # 인덱스 (int) -> 원본 user_id (str)
+    movie_to_idx: Dict[str, int]  # 원본 movie_id (str) -> 인덱스 (int)
+    idx_to_movie: Dict[int, str]  # 인덱스 (int) -> 원본 movie_id (str)
 
 
 def filter_by_min_counts(

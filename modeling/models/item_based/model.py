@@ -189,7 +189,7 @@ class ItemBasedModel:
         특정 영화와 유사한 영화 추천
         
         Args:
-            movie_id: 영화 ID
+            movie_id: 영화 ID (문자열)
             top_n: 추천할 영화 개수
             return_scores: 유사도 점수 포함 여부 (False면 movie_id 리스트만 반환)
         
@@ -322,76 +322,97 @@ if __name__ == "__main__":
     - 모델 로드 테스트
     - 추천 예측 테스트
     """
-    print("=" * 80)
-    print("🎬 Item-Based Collaborative Filtering 파이프라인 실행")
-    print("=" * 80)
-    
-    # Config 로드
-    config_path = Path(__file__).parent.parent / 'config.yaml'
-    print(f"\n📄 Config 파일 로드: {config_path}")
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config_dict = yaml.safe_load(f)
-    
-    item_based_config = config_dict.get('item_based', {})
-    print(f"  - top_k: {item_based_config.get('top_k', 500)}")
-    print(f"  - verbose: {item_based_config.get('verbose', True)}")
-    
-    # 데이터 로드
-    from dataloader import load_data
-    df_filtered = load_data(refresh=False)
-    
-    # 모델 학습
-    print("\n" + "=" * 80)
-    print("📊 모델 학습 시작")
-    print("=" * 80)
-    model = ItemBasedModel(config=item_based_config)
-    model.fit(df_filtered)
-    
-    # 모델 저장
-    print("\n" + "=" * 80)
-    print("💾 모델 저장")
-    print("=" * 80)
-    model.save()  # 기본 경로에 저장
-    
-    # 모델 로드 테스트
-    print("\n" + "=" * 80)
-    print("📂 모델 로드 테스트")
-    print("=" * 80)
-    loaded_model = ItemBasedModel.load()
-    
-    # 추천 예측 테스트
-    print("\n" + "=" * 80)
-    print("🎯 추천 예측 테스트")
-    print("=" * 80)
-    
-    # 첫 번째 영화 ID로 추천 테스트
-    if df_filtered is not None and len(df_filtered) > 0:
-        test_movie_id = df_filtered['movie_id'].iloc[0]
-        print(f"\n테스트 영화 ID: {test_movie_id}")
+    try:
+        print("=" * 80)
+        print("🎬 Item-Based Collaborative Filtering 파이프라인 실행")
+        print("=" * 80)
         
-        # movie_id 리스트 반환 (return_scores=False)
-        recommendations = loaded_model.predict(
-            movie_id=test_movie_id,
-            top_n=10,
-            return_scores=False
-        )
-        print("\n추천 영화 ID 리스트 (상위 10개):")
-        for i, movie_id in enumerate(recommendations, 1):
-            print(f"  {i}. {movie_id}")
+        # Config 로드
+        config_path = Path(__file__).parent.parent / 'config.yaml'
+        print(f"\n📄 Config 파일 로드: {config_path}")
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_dict = yaml.safe_load(f)
         
-        # DataFrame 반환 (return_scores=True)
-        print("\n추천 영화 점수 포함 (상위 5개):")
-        recommendations_df = loaded_model.predict(
-            movie_id=test_movie_id,
-            top_n=5,
-            return_scores=True
-        )
-        print(recommendations_df.to_string(index=False))
+        item_based_config = config_dict.get('item_based', {})
+        print(f"  - top_k: {item_based_config.get('top_k', 500)}")
+        print(f"  - verbose: {item_based_config.get('verbose', True)}")
+        
+        # 데이터 로드
+        from dataloader import load_data
+        df_filtered = load_data(refresh=False)
+        
+        # 모델 학습
+        print("\n" + "=" * 80)
+        print("📊 모델 학습 시작")
+        print("=" * 80)
+        model = ItemBasedModel(config=item_based_config)
+        model.fit(df_filtered)
+        
+        # 모델 저장
+        print("\n" + "=" * 80)
+        print("💾 모델 저장")
+        print("=" * 80)
+        model.save()  # 기본 경로에 저장
+        
+        # 모델 로드 테스트
+        print("\n" + "=" * 80)
+        print("📂 모델 로드 테스트")
+        print("=" * 80)
+        loaded_model = ItemBasedModel.load()
+        
+        # 추천 예측 테스트
+        print("\n" + "=" * 80)
+        print("🎯 추천 예측 테스트")
+        print("=" * 80)
+        
+        # 첫 번째 영화 ID로 추천 테스트
+        if df_filtered is not None and len(df_filtered) > 0:
+            test_movie_id = df_filtered['movie_id'].iloc[0]
+            print(f"\n테스트 영화 ID: {test_movie_id}")
+            
+            # movie_id 리스트 반환 (return_scores=False)
+            recommendations = loaded_model.predict(
+                movie_id=test_movie_id,
+                top_n=10,
+                return_scores=False
+            )
+            print("\n추천 영화 ID 리스트 (상위 10개):")
+            for i, movie_id in enumerate(recommendations, 1):
+                print(f"  {i}. {movie_id}")
+            
+            # DataFrame 반환 (return_scores=True)
+            print("\n추천 영화 점수 포함 (상위 5개):")
+            recommendations_df = loaded_model.predict(
+                movie_id=test_movie_id,
+                top_n=5,
+                return_scores=True
+            )
+            print(recommendations_df.to_string(index=False))
+        
+        print("\n" + "=" * 80)
+        print("✅ 파이프라인 실행 완료!")
+        print("=" * 80)
+        
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
+        
+        sys.exit(0)
     
-    print("\n" + "=" * 80)
-    print("✅ 파이프라인 실행 완료!")
-    print("=" * 80)
+    except KeyboardInterrupt:
+        logger.info("\n⚠️  사용자에 의해 중단되었습니다.")
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
+        sys.exit(1)
     
-    # 완료 후 종료
-    sys.exit(0)
+    except Exception as e:
+        logger.error(f"\n❌ 오류가 발생했습니다: {str(e)}", exc_info=True)
+        # 로거 핸들러 정리
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
+        sys.exit(1)
     

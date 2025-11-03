@@ -43,8 +43,8 @@ def load_train_test_df(
     # 캐시에서 로드 시도 (refresh=False이고 파일이 존재하는 경우)
     if not refresh and cache_train_path.exists() and cache_test_path.exists():
         print(f"\n✅ 캐시에서 Train/Test 데이터 로드: {cache_train_path.name}")
-        df_train = pd.read_csv(cache_train_path)
-        df_test = pd.read_csv(cache_test_path)
+        df_train = pd.read_csv(cache_train_path, dtype={'user_id': str, 'movie_id': str})
+        df_test = pd.read_csv(cache_test_path, dtype={'user_id': str, 'movie_id': str})
         return df_train, df_test
     
     # 새로 생성

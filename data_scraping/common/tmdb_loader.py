@@ -36,7 +36,7 @@ TMDB_GENRES = {
 }
 
 TMDB_LANGUAGE = {
-    "en": "영어 (미국)",
+    "en": "영어",
     "ko": "한국어",
     "ja": "일본어",
     "zh": "중국어",
