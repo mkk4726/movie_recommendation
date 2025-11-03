@@ -2,7 +2,7 @@
 Utility helpers for loading movie data without relying on Streamlit.
 """
 from functools import lru_cache
-from typing import Tuple
+from typing import Optional, Tuple
 
 import pandas as pd
 
@@ -19,22 +19,30 @@ from modeling.utils.data import (  # noqa: E402
     filter_by_min_counts as _filter_by_min_counts,
     search_movies as _search_movies,
 )
-
-DEFAULT_MIN_USER_RATINGS = 30
-DEFAULT_MIN_MOVIE_RATINGS = 10
+from modules.config import data_config  # noqa: E402
 
 
 @lru_cache(maxsize=1)
 def load_all_data(
-    min_user_ratings: int = DEFAULT_MIN_USER_RATINGS,
-    min_movie_ratings: int = DEFAULT_MIN_MOVIE_RATINGS,
+    min_user_ratings: Optional[int] = None,
+    min_movie_ratings: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load movie metadata and rating interactions from disk.
 
+    Args:
+        min_user_ratings: 최소 사용자 평점 개수 (None이면 config 값 사용)
+        min_movie_ratings: 최소 영화 평점 개수 (None이면 config 값 사용)
+
     Returns:
         Tuple of (movies, ratings, filtered_ratings).
     """
+    # config에서 기본값 가져오기
+    if min_user_ratings is None:
+        min_user_ratings = data_config.min_user_ratings
+    if min_movie_ratings is None:
+        min_movie_ratings = data_config.min_movie_ratings
+
     df_movies = _load_movie_data()
     df_ratings = _load_ratings_data()
 
