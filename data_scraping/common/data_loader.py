@@ -35,7 +35,7 @@ def get_ml32m_data_path() -> Path:
     """ML-32M 데이터 디렉토리 경로를 반환"""
     current_file = Path(__file__).resolve()
     project_root = current_file.parent.parent.parent
-    ml32m_dir = project_root / 'data_scraping' / 'ml-32m'
+    ml32m_dir = project_root / 'data_scraping' / 'data' / 'ml-32m'
     return ml32m_dir
 
 
