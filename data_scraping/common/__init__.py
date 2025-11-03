@@ -16,10 +16,11 @@ from .tmdb_loader import (
 )
 from .exceptions import ScrapingError, DataParsingError, BrowserError, DataNotFoundError
 from .logger import get_logger
-from .data_loader import load_movie_data
+from .data_loader import load_movie_data, load_ratings_data
 
 __all__ = [
     "load_movie_data",
+    "load_ratings_data",
     "load_movie_data_ml",
     "load_ratings_data_ml",
     "load_links_data_ml",

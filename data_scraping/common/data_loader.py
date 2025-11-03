@@ -6,6 +6,7 @@ import pandas as pd
 from data_scraping.common import (
     load_movie_data_ml,
     load_links_data_ml,
+    load_ratings_data_ml,
     load_tmdb_data,
 )
 
@@ -38,3 +39,26 @@ def load_movie_data() -> pd.DataFrame:
     ).reset_index(drop=True)
     
     return df
+
+
+def load_ratings_data(data_path: str = None) -> pd.DataFrame:
+    """
+    ML-32M 사용자 평점 데이터 로딩
+    
+    Args:
+        data_path: ML-32M 디렉토리 경로 (None이면 자동 탐색)
+    
+    Returns:
+        평점 정보 DataFrame
+    """
+    df_ratings = load_ratings_data_ml(data_path)
+    df_movies = load_movie_data()
+    
+    # set을 사용하여 isin() 연산 성능 개선 (특히 큰 데이터셋에서 유용)
+    valid_movie_ids = set(df_movies['movie_id'])
+    df_ratings = df_ratings[df_ratings['movie_id'].isin(valid_movie_ids)].reset_index(drop=True)
+    
+    # apply 대신 pd.to_datetime 사용 (더 효율적)
+    df_ratings['time'] = pd.to_datetime(df_ratings['timestamp'], unit='s')
+    
+    return df_ratings
