@@ -428,11 +428,17 @@ button:hover {
   display: none;
 }
 
-.auth-tabs #tab-login:checked ~ #login-content {
+/* 초기 상태: 로그인 탭이 체크되어 있으면 로그인 컨텐츠 표시 */
+#login-content {
   display: block;
 }
 
-.auth-tabs #tab-signup:checked ~ #signup-content {
+/* 회원가입 탭이 체크되어 있으면 회원가입 컨텐츠 표시, 로그인 숨김 */
+.auth-tabs #tab-signup:checked ~ .tab-labels ~ #login-content {
+  display: none;
+}
+
+.auth-tabs #tab-signup:checked ~ .tab-labels ~ #signup-content {
   display: block;
 }
 

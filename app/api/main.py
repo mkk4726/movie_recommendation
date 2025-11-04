@@ -8,6 +8,16 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+
+# .env 파일 로드 (프로젝트 루트에서)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+env_path = PROJECT_ROOT / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"✅ .env 파일 로드 완료: {env_path}")
+else:
+    print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 from modules.core import add_project_paths
 from app.api.routes import health, movies, users, auth, ratings, home

@@ -53,6 +53,7 @@ def home(
     rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),
     explore_count: int = Query(10, ge=5, le=20, description="탐색할 영화 개수"),
+    auth_error: Optional[str] = Query(None, description="인증 에러 메시지"),
 ):
     """Render a simple HTML frontend for interacting with the recommender."""
     # 로딩 상태 확인
@@ -71,6 +72,10 @@ def home(
     request_start = time.time()
     
     errors: List[str] = []
+    
+    # 인증 에러 메시지 추가
+    if auth_error:
+        errors.append(auth_error)
     
     # 기본 페이지는 movie_based
     current_page = page or "movie_based"
@@ -136,6 +141,19 @@ def home(
         logger.warning(f"데이터 파일을 찾을 수 없습니다: {exc}")
     except Exception as exc:
         logger.error(f"데이터 로드 실패: {type(exc).__name__}: {exc}", exc_info=True)
+
+    # 현재 사용자 정보 가져오기 (다른 로직보다 먼저 실행)
+    current_user = get_current_user_from_cookies(request)
+    logger.info(f"현재 사용자 상태: is_logged_in={current_user is not None}, current_user={current_user}")
+    
+    if FIREBASE_AVAILABLE:
+        try:
+            firebase_available = get_firebase_manager().initialized
+        except:
+            firebase_available = False
+    else:
+        firebase_available = False
+    is_logged_in = current_user is not None
 
     # 영화 기반 추천: 영화 검색 및 선택
     if current_page == "movie_based" and df_movies is not None:
@@ -211,17 +229,6 @@ def home(
                 }
             except ValueError as exc:
                 errors.append(str(exc))
-    
-    # 현재 사용자 정보 가져오기
-    current_user = get_current_user_from_cookies(request)
-    if FIREBASE_AVAILABLE:
-        try:
-            firebase_available = get_firebase_manager().initialized
-        except:
-            firebase_available = False
-    else:
-        firebase_available = False
-    is_logged_in = current_user is not None
     
     # 평점 관리 페이지 데이터 로드
     rating_search_results = []

@@ -65,6 +65,13 @@
         </div>
         
         <div class="tab-content" id="login-content">
+          {% if errors and errors|length > 0 %}
+          <div style="padding: 0.75rem; background-color: var(--error-bg); color: var(--error-text); border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.85rem;">
+            {% for error in errors %}
+            <p style="margin: 0;">⚠️ {{ error }}</p>
+            {% endfor %}
+          </div>
+          {% endif %}
           <form method="post" action="/auth/login" class="auth-form">
             <input type="email" name="email" placeholder="이메일" required>
             <input type="password" name="password" placeholder="비밀번호" required>
@@ -822,28 +829,49 @@
         });
 
       // 인증 탭 전환 로직
-      const authTabs = document.querySelectorAll('input[name="auth-tab"]');
-      authTabs.forEach(tab => {
-        tab.addEventListener('change', function() {
-          // 모든 탭 컨텐츠 숨기기
-          document.querySelectorAll('.tab-content').forEach(content => {
-            content.style.display = 'none';
-          });
-          // 선택된 탭 컨텐츠 보이기
-          const tabId = this.id;
+      function initAuthTabs() {
+        const authTabs = document.querySelectorAll('input[name="auth-tab"]');
+        const loginContent = document.getElementById('login-content');
+        const signupContent = document.getElementById('signup-content');
+        
+        if (!loginContent || !signupContent) {
+          return; // 탭이 없으면 실행하지 않음
+        }
+        
+        // 탭 전환 함수
+        function switchTab(tabId) {
           if (tabId === 'tab-login') {
-            document.getElementById('login-content').style.display = 'block';
+            loginContent.style.display = 'block';
+            signupContent.style.display = 'none';
           } else if (tabId === 'tab-signup') {
-            document.getElementById('signup-content').style.display = 'block';
+            loginContent.style.display = 'none';
+            signupContent.style.display = 'block';
           }
+        }
+        
+        // 탭 변경 이벤트 리스너
+        authTabs.forEach(tab => {
+          tab.addEventListener('change', function() {
+            switchTab(this.id);
+          });
         });
-      });
 
-      // 초기 탭 상태 설정
-      const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
-      if (checkedTab) {
-        checkedTab.dispatchEvent(new Event('change'));
+        // 초기 탭 상태 설정
+        const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
+        if (checkedTab) {
+          switchTab(checkedTab.id);
+        } else {
+          // 기본적으로 로그인 탭 표시
+          const loginTab = document.getElementById('tab-login');
+          if (loginTab) {
+            loginTab.checked = true;
+            switchTab('tab-login');
+          }
+        }
       }
+      
+      // DOM 로드 후 즉시 실행
+      initAuthTabs();
     });
   </script>
 {% endblock %}
