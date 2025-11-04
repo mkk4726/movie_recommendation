@@ -40,7 +40,7 @@ def home(
     request: Request,
     page: Optional[str] = Query("movie_based", description="페이지 타입"),
     query: Optional[str] = Query(None),
-    limit: int = Query(5, ge=1, le=50),
+    limit: int = Query(5, ge=1, le=200),
     user_id: Optional[str] = Query(None),
     user_top_n: int = Query(10, ge=5, le=20),
     user_option: Optional[str] = Query(None, description="사용자 선택 옵션: me 또는 other"),
@@ -49,9 +49,10 @@ def home(
     similar_top_n: int = Query(10, ge=5, le=15),
     movie_genre: Optional[List[str]] = Query(None, description="장르 필터"),
     movie_language: Optional[List[str]] = Query(None, description="언어 필터"),
-    rating_method: Optional[str] = Query("search", description="평점 입력 방식"),
-    rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),
-    rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),
+        rating_method: Optional[str] = Query("search", description="평점 입력 방식"),                                                                               
+    rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),                                                                            
+    rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),                                                                        
+    selected_rating_movie_id: Optional[str] = Query(None, description="평점 관리에서 선택된 영화 ID"),                                                                        
     explore_count: int = Query(10, ge=5, le=20, description="탐색할 영화 개수"),
     auth_error: Optional[str] = Query(None, description="인증 에러 메시지"),
 ):
@@ -230,8 +231,9 @@ def home(
             except ValueError as exc:
                 errors.append(str(exc))
     
-    # 평점 관리 페이지 데이터 로드
+        # 평점 관리 페이지 데이터 로드
     rating_search_results = []
+    selected_rating_movie_info = None
     user_ratings_list = []
     rating_stats = {
         "total": 0,
@@ -239,12 +241,23 @@ def home(
         "high": 0,
         "low": 0,
     }
-    if current_page == "rating_management" and is_logged_in and firebase_available:
+    if current_page == "rating_management" and is_logged_in and firebase_available:                                                                             
         try:
-            # 영화 검색 결과 (평점 입력용)
+            # 영화 검색 결과 (평점 입력용) - 평점 관리에서는 더 많은 결과 표시
             if query:
-                df_search = search_movies_cached(query=query, limit=limit)
+                # 평점 관리에서는 최대 200개까지 검색 결과 표시 (모든 결과를 보여주기 위해)
+                rating_limit = 200  # 더 많은 결과 표시
+                df_search = search_movies_cached(query=query, limit=rating_limit)
                 rating_search_results = from_dataframe(df_search)
+            
+            # 선택된 영화 정보 가져오기
+            if selected_rating_movie_id and df_movies is not None:
+                try:
+                    movie_row = df_movies[df_movies["movie_id"] == selected_rating_movie_id]                                                                               
+                    if not movie_row.empty:
+                        selected_rating_movie_info = from_dataframe(movie_row.head(1))[0]
+                except Exception as e:
+                    logger.error(f"평점 관리 영화 정보 조회 실패: {e}", exc_info=True)
             
             # 사용자 평점 목록
             firestore_manager = FirestoreManager()
@@ -256,12 +269,12 @@ def home(
                     for _, rating_row in user_ratings_df.iterrows():
                         movie_id = str(rating_row.get("movie_id", ""))
                         rating = rating_row.get("rating", 0)
-                        movie_row = df_movies[df_movies["movie_id"] == movie_id] if df_movies is not None else pd.DataFrame()
+                        movie_row = df_movies[df_movies["movie_id"] == movie_id] if df_movies is not None else pd.DataFrame()                                   
                         if not movie_row.empty:
                             movie_data = movie_row.iloc[0]
                             user_ratings_list.append({
                                 "movie_id": movie_id,
-                                "title": movie_data.get("title") or movie_data.get("movie_title", "N/A"),
+                                "title": movie_data.get("title") or movie_data.get("movie_title", "N/A"),                                                       
                                 "year": _safe_year(movie_data.get("year")),
                                 "genre": movie_data.get("genre"),
                                 "rating": rating,
@@ -272,7 +285,7 @@ def home(
                     ratings_list = user_ratings_df["rating"].tolist()
                     rating_stats = {
                         "total": len(ratings_list),
-                        "avg": sum(ratings_list) / len(ratings_list) if ratings_list else 0,
+                        "avg": sum(ratings_list) / len(ratings_list) if ratings_list else 0,                                                                    
                         "high": len([r for r in ratings_list if r >= 4.0]),
                         "low": len([r for r in ratings_list if r <= 2.0]),
                     }
@@ -321,6 +334,8 @@ def home(
         "current_user": current_user,
         "rating_method": rating_method or "search",
         "rating_movie_id": rating_movie_id or "",
+        "selected_rating_movie_id": selected_rating_movie_id or "",
+        "selected_rating_movie_info": selected_rating_movie_info,
         "user_ratings_list": user_ratings_list,
         "rating_stats": rating_stats,
         "explore_count": explore_count,

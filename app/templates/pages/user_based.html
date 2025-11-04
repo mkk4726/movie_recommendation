@@ -1,0 +1,149 @@
+  <div class="page-content" id="page-user_based" style="display: {% if current_page == 'user_based' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>🎯 사용자 기반 추천</h2>
+      <p class="muted">특정 사용자의 과거 평점을 분석하여 맞춤형 영화를 추천합니다.</p>
+
+      <form method="get" action="/" id="user-based-form">
+        <input type="hidden" name="page" value="user_based" />
+        
+        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">추천 받을 사용자 선택</label>
+            {% if firebase_available and is_logged_in %}
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input 
+                  type="radio" 
+                  name="user_option" 
+                  value="me" 
+                  {% if user_option == 'me' or not user_option %}checked{% endif %}
+                  onchange="handleUserOptionChange('me')"
+                  style="margin-right: 0.5rem;"
+                />
+                <span>👤 나 (현재 로그인된 사용자)</span>
+              </label>
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input 
+                  type="radio" 
+                  name="user_option" 
+                  value="other"
+                  {% if user_option == 'other' %}checked{% endif %}
+                  onchange="handleUserOptionChange('other')"
+                  style="margin-right: 0.5rem;"
+                />
+                <span>👥 다른 사용자</span>
+              </label>
+            </div>
+            {% if user_option == 'me' or not user_option %}
+              <p style="color: var(--muted-text); font-size: 0.9rem; margin: 0.5rem 0;">
+                현재 사용자: <strong>{{ current_user.get('display_name', 'User') if current_user else 'User' }}</strong>
+              </p>
+            {% else %}
+              <label for="user_id" style="display: block; margin-top: 0.5rem;">사용자 선택</label>
+              <select id="user_id" name="user_id" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem;">
+                <option value="">-- 사용자를 선택하세요 --</option>
+                {% for uid in available_users %}
+                <option value="{{ uid }}" {% if user_id == uid %}selected{% endif %}>{{ uid }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+            {% else %}
+            <label for="user_id" style="display: block; margin-bottom: 0.5rem;">사용자 ID</label>
+            <input
+              type="text"
+              id="user_id"
+              name="user_id"
+              placeholder="예: 123"
+              value="{{ user_id }}"
+              style="width: 100%;"
+            />
+            {% endif %}
+          </div>
+          <div>
+            <label for="user_top_n" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">추천 개수</label>
+            <input
+              type="range"
+              id="user_top_n"
+              name="user_top_n"
+              min="5"
+              max="20"
+              value="{{ user_top_n }}"
+              oninput="document.getElementById('user_top_n_value').textContent = this.value"
+              style="width: 100%;"
+            />
+            <div style="text-align: center; margin-top: 0.5rem;">
+              <span id="user_top_n_value">{{ user_top_n }}</span> 개
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-btn" style="width: 100%;">🎬 추천 받기</button>
+      </form>
+
+      {% if user_recommendations %}
+        <div style="margin-top: 2rem;">
+          <div class="divider" style="margin: 1.5rem 0;"></div>
+          {% if user_recommendations.top_watched and user_recommendations.top_watched|length > 0 %}
+          <details style="margin-bottom: 1.5rem;">
+            <summary style="cursor: pointer; font-size: 1.1rem; font-weight: 600; padding: 0.75rem; background: var(--card-bg); border-radius: 8px;">
+              🌟 이 사용자가 재밌게 본 영화 (상위 {{ user_recommendations.top_watched|length }}개)
+            </summary>
+            <div style="margin-top: 1rem;">
+              {% for movie in user_recommendations.top_watched %}
+              <div class="movie-card" style="margin-bottom: 1rem;">
+                <h4>{{ loop.index }}. {{ movie.title }}{% if movie.year %} ({{ movie.year }}){% endif %}</h4>
+                {% if movie.genre %}<p style="margin: 0.25rem 0;">장르: {{ movie.genre }}</p>{% endif %}
+                {% if movie.rating %}
+                <p style="margin: 0.25rem 0;">
+                  <span style="font-weight: 600; color: var(--accent);">내 평점: ⭐ {{ '%.1f'|format(movie.rating) }}/5.0</span>
+                </p>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </details>
+          {% endif %}
+
+          <div class="divider" style="margin: 1.5rem 0;"></div>
+          
+          <h3 style="margin-bottom: 1rem;">🎁 AI 추천 영화</h3>
+          <p class="muted" style="margin-bottom: 1.5rem;">
+            아직 안 본 영화 중 예상 평점이 높은 순 {{ user_recommendations.recommendations|length }}개
+          </p>
+
+          {% for movie in user_recommendations.recommendations %}
+          <div class="movie-card" style="margin-bottom: 1rem;">
+            <h4>{{ loop.index }}. {{ movie.title }}{% if movie.year %} ({{ movie.year }}){% endif %}</h4>
+            {% if movie.genre %}<p style="margin: 0.25rem 0;">장르: {{ movie.genre }}</p>{% endif %}
+            {% if movie.predicted_rating %}
+            <p style="margin: 0.25rem 0;">
+              <span style="font-weight: 600; color: var(--accent);">예측 평점: {{ '%.2f'|format(movie.predicted_rating) }}/5.0</span>
+            </p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% elif user_id or user_option == 'me' %}
+        {% if errors and errors|length > 0 %}
+        <div class="card error-card" style="margin-top: 1.5rem;">
+          <h3>⚠️ 안내</h3>
+          {% for error in errors %}
+          <p>{{ error }}</p>
+          {% endfor %}
+          {% if user_option == 'me' %}
+          <div style="margin-top: 1rem; padding: 1rem; background: var(--muted-bg); border-radius: 8px;">
+            <p><strong>더 좋은 개인화 추천을 받으려면:</strong></p>
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+              <li>영화 평점을 더 많이 입력해주세요</li>
+              <li>최소 10개 이상의 평점이 필요합니다</li>
+              <li>평점 관리 탭에서 영화를 검색하여 평점을 입력해보세요</li>
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="muted" style="margin-top: 1.5rem;">추천 결과가 없습니다.</p>
+        {% endif %}
+      {% endif %}
+    </section>
+  </div>

@@ -25,10 +25,12 @@ async def add_rating(
     rating: float = Form(..., ge=0.5, le=5.0),
     page: Optional[str] = Form("rating_management"),
     rating_method: Optional[str] = Form("search"),
+    query: Optional[str] = Form(None),
+    selected_rating_movie_id: Optional[str] = Form(None),
 ):
     """평점 추가/업데이트"""
     if not FIREBASE_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Firebase가 사용 불가능합니다.")
+        raise HTTPException(status_code=503, detail="Firebase가 사용 불가능합니다.")                                                                           
     
     current_user = get_current_user_from_cookies(request)
     if not current_user:
@@ -37,21 +39,27 @@ async def add_rating(
     try:
         firebase_manager = get_firebase_manager()
         if not firebase_manager.initialized:
-            raise HTTPException(status_code=503, detail="Firebase가 초기화되지 않았습니다.")
+            raise HTTPException(status_code=503, detail="Firebase가 초기화되지 않았습니다.")                                                                   
         
         firestore_manager = FirestoreManager()
         user_uid = current_user.get("uid")
         
         if not user_uid:
-            raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")
+            raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")                                                                     
         
         success = firestore_manager.add_user_rating(user_uid, movie_id, rating)
         
         if success:
-            redirect_url = f"/?page={page}&rating_method={rating_method}"
+            # 리다이렉트 URL 구성
+            redirect_params = [f"page={page}", f"rating_method={rating_method}"]
+            if query:
+                redirect_params.append(f"query={query}")
+            if selected_rating_movie_id:
+                redirect_params.append(f"selected_rating_movie_id={selected_rating_movie_id}")
+            redirect_url = f"/?{'&'.join(redirect_params)}"
             return RedirectResponse(url=redirect_url, status_code=303)
         else:
-            raise HTTPException(status_code=500, detail="평점 저장에 실패했습니다.")
+            raise HTTPException(status_code=500, detail="평점 저장에 실패했습니다.")                                                                           
             
     except HTTPException:
         raise

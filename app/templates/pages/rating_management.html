@@ -1,0 +1,251 @@
+  {% if firebase_available and is_logged_in %}
+  <div class="page-content" id="page-rating_management" style="display: {% if current_page == 'rating_management' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>⭐ 내 영화 평점 관리</h2>
+      <p class="muted">본 영화에 대한 평점을 입력하고 관리하세요.</p>
+
+      <!-- 평점 입력 방식 선택 -->
+      <div style="margin-bottom: 1.5rem;">
+        <form method="get" action="/" style="display: inline;">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="radio" id="method_search" name="rating_method" value="search" 
+                 {% if rating_method == 'search' %}checked{% endif %} 
+                 onchange="this.form.submit()">
+          <label for="method_search" style="margin-right: 1rem;">🔍 검색</label>
+          <input type="radio" id="method_explore" name="rating_method" value="explore"
+                 {% if rating_method == 'explore' %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label for="method_explore">🎲 탐색</label>
+        </form>
+      </div>
+
+            <!-- 검색 기반 평점 입력 -->
+      {% if rating_method == 'search' %}
+      <div class="card" style="margin-top: 1rem;">
+        <h3>🔍 영화 검색 및 평점 입력</h3>
+        <form method="get" action="/" style="margin-bottom: 1.5rem;">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="hidden" name="rating_method" value="search" />
+          <label for="rating_query">평점을 입력할 영화를 검색하세요</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input
+              type="text"
+              id="rating_query"
+              name="query"
+              placeholder="예: 타이타닉, 어벤져스, 기생충..."
+              value="{{ search_query }}"
+              style="flex: 1;"
+            />
+            <button type="submit">🔍 검색</button>
+          </div>
+        </form>
+
+        {% if rating_search_results and rating_search_results|length > 0 %}
+          <!-- 영화 선택 -->
+          <form method="get" action="/" style="margin-bottom: 1.5rem;">
+            <input type="hidden" name="page" value="rating_management" />
+            <input type="hidden" name="rating_method" value="search" />
+            <input type="hidden" name="query" value="{{ search_query }}" />
+            <label for="selected_rating_movie_id">영화를 선택하세요</label>
+            <select 
+              id="selected_rating_movie_id" 
+              name="selected_rating_movie_id" 
+              onchange="this.form.submit()"
+              style="width: 100%; padding: 0.5rem;"
+            >
+              <option value="">-- 영화를 선택하세요 --</option>
+              {% for movie in rating_search_results %}
+              <option value="{{ movie.movie_id }}" {% if selected_rating_movie_id == movie.movie_id %}selected{% endif %}>                                               
+                {{ movie.total_title or movie.title }}{% if movie.year %} ({{ movie.year }}){% endif %}                                                           
+              </option>
+              {% endfor %}
+            </select>
+          </form>
+        {% elif search_query %}
+        <div class="card error-card" style="margin-bottom: 1.5rem;">
+          <p>검색 결과가 없습니다. 다른 키워드로 검색해보세요.</p>
+        </div>
+        {% endif %}
+
+        {% if selected_rating_movie_info %}
+        <!-- 선택한 영화 정보 및 평점 입력 -->
+        <div style="margin-top: 1.5rem;">
+          <h4 style="margin-bottom: 1rem;">📽️ 선택한 영화</h4>
+          <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">                                          
+            {% if selected_rating_movie_info.poster_url %}
+            <div style="flex-shrink: 0;">
+              <img src="{{ selected_rating_movie_info.poster_url }}" alt="{{ selected_rating_movie_info.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />                                                   
+            </div>
+            {% endif %}
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem;">                                                           
+                <h4 style="margin: 0; font-size: 1.3rem;">{{ selected_rating_movie_info.total_title or selected_rating_movie_info.title }}</h4>                                                           
+                {% if selected_rating_movie_info.adult %}
+                <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>   
+                {% endif %}
+              </div>
+              
+              {% if selected_rating_movie_info.year or selected_rating_movie_info.release_date %}
+              <p style="margin: 0.25rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">                                                                   
+                {% if selected_rating_movie_info.release_date %}
+                  📅 개봉일: {{ selected_rating_movie_info.release_date }}
+                {% elif selected_rating_movie_info.year %}
+                  📅 개봉년도: {{ selected_rating_movie_info.year }}
+                {% endif %}
+              </p>
+              {% endif %}
+              
+              {% if selected_rating_movie_info.genres_tmdb %}
+              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">                                                                      
+                {% for genre in selected_rating_movie_info.genres_tmdb.split() %}
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">{{ genre }}</span>                                                           
+                {% endfor %}
+              </div>
+              {% elif selected_rating_movie_info.genre %}
+              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">                                                                      
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">{{ selected_rating_movie_info.genre }}</span>                                                     
+              </div>
+              {% endif %}
+              
+              {% if selected_rating_movie_info.language %}
+              <p style="margin: 0.5rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">                                                                    
+                🌍 언어: {{ selected_rating_movie_info.language }}
+              </p>
+              {% endif %}
+              
+              {% if selected_rating_movie_info.vote_average is not none or selected_rating_movie_info.vote_count is not none %}                                                                           
+              <div style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center;">                                                                    
+                {% if selected_rating_movie_info.vote_average is not none %}
+                <span style="color: #FFD700; font-weight: 600; font-size: 0.95rem;">                                                                            
+                  ⭐ {{ '%.1f'|format(selected_rating_movie_info.vote_average) }}/10
+                </span>
+                {% endif %}
+                {% if selected_rating_movie_info.vote_count is not none %}
+                <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+                  ({{ selected_rating_movie_info.vote_count|int }}명 평가)
+                </span>
+                {% endif %}
+              </div>
+              {% endif %}
+              
+              {% if selected_rating_movie_info.overview %}
+              <div style="margin: 0.75rem 0;">
+                <p id="rating-selected-movie-overview" style="margin: 0 0 0.5rem 0; color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 0.9rem; max-height: 4.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">                       
+                  {{ selected_rating_movie_info.overview }}
+                </p>
+                <button onclick="toggleOverview('rating-selected-movie-overview', 'rating-selected-movie-overview-btn')" id="rating-selected-movie-overview-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; margin-bottom: 1rem;">             
+                  더보기
+                </button>
+              </div>
+              {% endif %}
+              
+              <!-- 평점 입력 폼 -->
+              <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">                                                   
+                <form method="post" action="/rating/add" style="display: flex; flex-direction: column; gap: 0.75rem;">                                          
+                  <input type="hidden" name="movie_id" value="{{ selected_rating_movie_info.movie_id }}" />                                                                          
+                  <input type="hidden" name="page" value="rating_management" />
+                  <input type="hidden" name="rating_method" value="search" />
+                  <input type="hidden" name="query" value="{{ search_query }}" />
+                  <input type="hidden" name="selected_rating_movie_id" value="{{ selected_rating_movie_id }}" />
+                  <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label for="rating_{{ selected_rating_movie_info.movie_id }}" style="font-weight: 600; white-space: nowrap;">평점 (0.5 ~ 5.0):</label>                           
+                    <input
+                      type="number"
+                      id="rating_{{ selected_rating_movie_info.movie_id }}"
+                      name="rating"
+                      min="0.5"
+                      max="5.0"
+                      step="0.5"
+                      value="3.0"
+                      required
+                      style="flex: 1; max-width: 150px; padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white;"                                                         
+                    />
+                    <button type="submit" class="auth-btn" style="white-space: nowrap;">💾 평점 저장</button>                                                   
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+                </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- 탐색 기반 평점 입력 -->
+      {% if rating_method == 'explore' %}
+      <div class="card" style="margin-top: 1rem;">
+        <h3>🎲 인기 영화 탐색</h3>
+        <p class="muted">인기 있는 영화들을 랜덤하게 탐색해보세요.</p>
+        <form method="post" action="/rating/explore" style="margin-bottom: 1rem;">
+          <input type="hidden" name="page" value="rating_management" />
+          <input type="hidden" name="rating_method" value="explore" />
+          <label for="explore_count">표시할 영화 개수</label>
+          <input
+            type="number"
+            id="explore_count"
+            name="explore_count"
+            min="5"
+            max="20"
+            value="{{ explore_count }}"
+          />
+          <button type="submit" class="auth-btn">🎲 새로운 영화 탐색</button>
+        </form>
+        <p class="muted">탐색 기능은 곧 구현될 예정입니다.</p>
+      </div>
+      {% endif %}
+
+      <!-- 내 평점 목록 -->
+      <div class="card" style="margin-top: 2rem;">
+        <h3>📋 내 평점 목록</h3>
+        {% if rating_stats and rating_stats.get('total', 0) > 0 %}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 150px;">
+            <strong>총 평점 수</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.total }}개</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>평균 평점</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ '%.2f'|format(rating_stats.avg) }}/5.0</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>높은 평점 (4.0+)</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.high }}개</p>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <strong>낮은 평점 (2.0-)</strong>
+            <p style="font-size: 1.5rem; margin: 0.25rem 0;">{{ rating_stats.low }}개</p>
+          </div>
+        </div>
+
+        <div class="divider" style="margin: 1.5rem 0;"></div>
+
+        {% for rating_item in user_ratings_list %}
+        <div class="movie-card" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <h4>{{ rating_item.title }} {% if rating_item.year %}({{ rating_item.year }}){% endif %}</h4>
+              {% if rating_item.genre %}<p style="margin: 0.25rem 0;">장르: {{ rating_item.genre }}</p>{% endif %}
+              <p style="margin: 0.25rem 0; color: var(--muted-text); font-size: 0.9rem;">
+                영화 ID: {{ rating_item.movie_id }}
+              </p>
+            </div>
+            <div style="text-align: right; margin-left: 1rem;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent);">
+                ⭐ {{ rating_item.rating }}/5.0
+              </div>
+              <form method="post" action="/rating/delete" style="margin-top: 0.5rem;">
+                <input type="hidden" name="movie_id" value="{{ rating_item.movie_id }}" />
+                <input type="hidden" name="page" value="rating_management" />
+                <button type="submit" class="logout-btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">🗑️ 삭제</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">아직 저장된 평점이 없습니다. 영화를 평가해보세요!</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+  {% endif %}

@@ -1,0 +1,120 @@
+  <script>
+      // 영화 개요 더보기/접기 토글 함수
+      function toggleOverview(overviewId, btnId) {
+        const overview = document.getElementById(overviewId);
+        const btn = document.getElementById(btnId);
+        
+        if (overview.style.maxHeight === 'none' || overview.style.maxHeight === '') {
+          // 접기: 3줄까지만 보이도록
+          overview.style.maxHeight = '4.8em';
+          overview.style.display = '-webkit-box';
+          overview.style.webkitLineClamp = '3';
+          overview.style.webkitBoxOrient = 'vertical';
+          overview.style.overflow = 'hidden';
+          overview.style.textOverflow = 'ellipsis';
+          btn.textContent = '더보기';
+        } else {
+          // 더보기: 전체 내용 보이도록
+          overview.style.maxHeight = 'none';
+          overview.style.display = 'block';
+          overview.style.setProperty('-webkit-line-clamp', 'none');
+          overview.style.setProperty('-webkit-box-orient', 'initial');
+          overview.style.overflow = 'visible';
+          overview.style.textOverflow = 'initial';
+          btn.textContent = '접기';
+        }
+      }
+      
+      // 사용자 옵션 변경 핸들러
+      function handleUserOptionChange(option) {
+        const form = document.getElementById('user-based-form');
+        if (option === 'me') {
+          // '나' 선택 시 user_id 필드 제거
+          const userIdInput = document.getElementById('user_id');
+          if (userIdInput) {
+            userIdInput.remove();
+          }
+        } else {
+          // '다른 사용자' 선택 시 폼 제출
+          form.submit();
+        }
+      }
+
+      // 페이지 전환 로직
+      document.addEventListener('DOMContentLoaded', function() {
+        const radioButtons = document.querySelectorAll('.page-radio');
+        
+        radioButtons.forEach(radio => {
+          radio.addEventListener('change', function() {
+            const selectedPage = this.value;
+            const url = new URL(window.location);
+            url.searchParams.set('page', selectedPage);
+            // 기존 결과 파라미터 제거 (새 페이지로 전환)
+            if (selectedPage !== 'rating_management') {
+              url.searchParams.delete('query');
+              url.searchParams.delete('limit');
+              url.searchParams.delete('rating_method');
+              url.searchParams.delete('rating_movie_id');
+            }
+            if (selectedPage !== 'user_based') {
+              url.searchParams.delete('user_id');
+              url.searchParams.delete('user_top_n');
+              url.searchParams.delete('user_option');
+            }
+            if (selectedPage !== 'movie_based') {
+              url.searchParams.delete('movie_search_query');
+              url.searchParams.delete('selected_movie_id');
+              url.searchParams.delete('similar_top_n');
+              url.searchParams.delete('movie_genre');
+              url.searchParams.delete('movie_language');
+            }
+            window.location.href = url.toString();
+          });
+        });
+
+      // 인증 탭 전환 로직
+      function initAuthTabs() {
+        const authTabs = document.querySelectorAll('input[name="auth-tab"]');
+        const loginContent = document.getElementById('login-content');
+        const signupContent = document.getElementById('signup-content');
+        
+        if (!loginContent || !signupContent) {
+          return; // 탭이 없으면 실행하지 않음
+        }
+        
+        // 탭 전환 함수
+        function switchTab(tabId) {
+          if (tabId === 'tab-login') {
+            loginContent.style.display = 'block';
+            signupContent.style.display = 'none';
+          } else if (tabId === 'tab-signup') {
+            loginContent.style.display = 'none';
+            signupContent.style.display = 'block';
+          }
+        }
+        
+        // 탭 변경 이벤트 리스너
+        authTabs.forEach(tab => {
+          tab.addEventListener('change', function() {
+            switchTab(this.id);
+          });
+        });
+
+        // 초기 탭 상태 설정
+        const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
+        if (checkedTab) {
+          switchTab(checkedTab.id);
+        } else {
+          // 기본적으로 로그인 탭 표시
+          const loginTab = document.getElementById('tab-login');
+          if (loginTab) {
+            loginTab.checked = true;
+            switchTab('tab-login');
+          }
+        }
+      }
+      
+      // DOM 로드 후 즉시 실행
+      initAuthTabs();
+    });
+  </script>
