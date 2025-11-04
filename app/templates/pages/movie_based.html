@@ -58,9 +58,9 @@
               <img src="{{ selected_movie_info.poster_url }}" alt="{{ selected_movie_info.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
             </div>
             {% endif %}
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <h4 style="margin: 0; font-size: 1.3rem;">{{ selected_movie_info.total_title or selected_movie_info.title }}</h4>
+            <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
+                <h4 style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">{{ selected_movie_info.total_title or selected_movie_info.title }}</h4>
                 {% if selected_movie_info.adult %}
                 <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
                 {% endif %}
@@ -77,14 +77,14 @@
               {% endif %}
               
               {% if selected_movie_info.genres_tmdb %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">
+              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
                 {% for genre in selected_movie_info.genres_tmdb.split() %}
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">{{ genre }}</span>
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ genre }}</span>
                 {% endfor %}
               </div>
               {% elif selected_movie_info.genre %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">{{ selected_movie_info.genre }}</span>
+              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ selected_movie_info.genre }}</span>
               </div>
               {% endif %}
               
@@ -203,9 +203,9 @@
               <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
             </div>
             {% endif %}
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <h4 style="margin: 0; font-size: 1.3rem;">{{ loop.index }}. {{ movie.title }}</h4>
+            <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
+                <h4 style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">{{ loop.index }}. {{ movie.title }}</h4>
                 {% if movie.adult %}
                 <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
                 {% endif %}
@@ -222,9 +222,9 @@
               {% endif %}
               
               {% if movie.genres_tmdb %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem;">
+              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
                 {% for genre in movie.genres_tmdb.split() %}
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">{{ genre }}</span>
+                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ genre }}</span>
                 {% endfor %}
               </div>
               {% endif %}
