@@ -54,6 +54,7 @@ def home(
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),                                                                        
     selected_rating_movie_id: Optional[str] = Query(None, description="평점 관리에서 선택된 영화 ID"),                                                                        
     explore_count: int = Query(10, ge=5, le=20, description="탐색할 영화 개수"),
+    explored_movie_ids: Optional[str] = Query(None, description="탐색된 영화 ID들 (쉼표로 구분)"),
     auth_error: Optional[str] = Query(None, description="인증 에러 메시지"),
 ):
     """Render a simple HTML frontend for interacting with the recommender."""
@@ -231,9 +232,10 @@ def home(
             except ValueError as exc:
                 errors.append(str(exc))
     
-        # 평점 관리 페이지 데이터 로드
+                # 평점 관리 페이지 데이터 로드
     rating_search_results = []
     selected_rating_movie_info = None
+    explored_movies_list = []
     user_ratings_list = []
     rating_stats = {
         "total": 0,
@@ -245,19 +247,41 @@ def home(
         try:
             # 영화 검색 결과 (평점 입력용) - 평점 관리에서는 더 많은 결과 표시
             if query:
-                # 평점 관리에서는 최대 200개까지 검색 결과 표시 (모든 결과를 보여주기 위해)
+                # 평점 관리에서는 최대 200개까지 검색 결과 표시 (모든 결과를 보여주기 위해)                                                                    
                 rating_limit = 200  # 더 많은 결과 표시
-                df_search = search_movies_cached(query=query, limit=rating_limit)
+                df_search = search_movies_cached(query=query, limit=rating_limit)                                                                               
                 rating_search_results = from_dataframe(df_search)
             
             # 선택된 영화 정보 가져오기
             if selected_rating_movie_id and df_movies is not None:
                 try:
-                    movie_row = df_movies[df_movies["movie_id"] == selected_rating_movie_id]                                                                               
+                    movie_row = df_movies[df_movies["movie_id"] == selected_rating_movie_id]                                                                                                                                                    
                     if not movie_row.empty:
-                        selected_rating_movie_info = from_dataframe(movie_row.head(1))[0]
+                        selected_rating_movie_info = from_dataframe(movie_row.head(1))[0]                                                                       
                 except Exception as e:
                     logger.error(f"평점 관리 영화 정보 조회 실패: {e}", exc_info=True)
+            
+            # 탐색된 영화 결과 가져오기
+            if explored_movie_ids and df_movies is not None:
+                try:
+                    movie_id_list = [mid.strip() for mid in explored_movie_ids.split(",") if mid.strip()]
+                    if movie_id_list:
+                        # movie_id 타입 변환 (데이터프레임과 동일한 타입으로)
+                        df_movies_id_type = df_movies["movie_id"].dtype
+                        if pd.api.types.is_integer_dtype(df_movies_id_type):
+                            movie_id_list = [int(mid) if mid.isdigit() else mid for mid in movie_id_list]
+                        else:
+                            movie_id_list = [str(mid) for mid in movie_id_list]
+                        
+                        explored_df = df_movies[df_movies["movie_id"].isin(movie_id_list)].copy()
+                        if not explored_df.empty:
+                            # 원래 순서 유지하기 위해 movie_id를 문자열로 변환하여 정렬
+                            explored_df["movie_id_str"] = explored_df["movie_id"].astype(str)
+                            movie_id_list_str = [str(mid) for mid in movie_id_list]
+                            explored_df = explored_df.set_index("movie_id_str").reindex(movie_id_list_str).reset_index(drop=True)
+                            explored_movies_list = from_dataframe(explored_df)
+                except Exception as e:
+                    logger.error(f"탐색 영화 정보 조회 실패: {e}", exc_info=True)
             
             # 사용자 평점 목록
             firestore_manager = FirestoreManager()
@@ -336,6 +360,8 @@ def home(
         "rating_movie_id": rating_movie_id or "",
         "selected_rating_movie_id": selected_rating_movie_id or "",
         "selected_rating_movie_info": selected_rating_movie_info,
+        "explored_movies_list": explored_movies_list,
+        "explored_movie_ids": explored_movie_ids or "",
         "user_ratings_list": user_ratings_list,
         "rating_stats": rating_stats,
         "explore_count": explore_count,

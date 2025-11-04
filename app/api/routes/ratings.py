@@ -15,6 +15,14 @@ except ImportError:
 
 from app.api.utils import get_current_user_from_cookies
 
+# 탐색 기능을 위한 import
+try:
+    from cold_start.show_random_movies import get_random_popular_movies
+    from modules.services.data_access import load_all_data
+    EXPLORE_AVAILABLE = True
+except ImportError:
+    EXPLORE_AVAILABLE = False
+
 router = APIRouter()
 
 
@@ -27,6 +35,8 @@ async def add_rating(
     rating_method: Optional[str] = Form("search"),
     query: Optional[str] = Form(None),
     selected_rating_movie_id: Optional[str] = Form(None),
+    explore_count: Optional[int] = Form(None),
+    explored_movie_ids: Optional[str] = Form(None),
 ):
     """평점 추가/업데이트"""
     if not FIREBASE_AVAILABLE:
@@ -56,6 +66,10 @@ async def add_rating(
                 redirect_params.append(f"query={query}")
             if selected_rating_movie_id:
                 redirect_params.append(f"selected_rating_movie_id={selected_rating_movie_id}")
+            if explore_count is not None:
+                redirect_params.append(f"explore_count={explore_count}")
+            if explored_movie_ids:
+                redirect_params.append(f"explored_movie_ids={explored_movie_ids}")
             redirect_url = f"/?{'&'.join(redirect_params)}"
             return RedirectResponse(url=redirect_url, status_code=303)
         else:
@@ -114,7 +128,30 @@ async def explore_movies(
     rating_method: Optional[str] = Form("explore"),
 ):
     """랜덤 영화 탐색"""
-    # 탐색 기능은 아직 구현되지 않음 (추후 구현)
-    redirect_url = f"/?page={page}&rating_method={rating_method}&explore_count={explore_count}"
-    return RedirectResponse(url=redirect_url, status_code=303)
+    if not EXPLORE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="탐색 기능이 사용 불가능합니다.")
+    
+    try:
+        # 데이터 로드
+        df_movies, df_ratings, _ = load_all_data()
+        
+        # 랜덤 영화 선택 (이미 본 영화는 제외하지 않음 - 간단한 구현)
+        random_movies, _ = get_random_popular_movies(
+            df_ratings=df_ratings,
+            df_movies=df_movies,
+            n_movies=explore_count,
+            exclude_movie_ids=None
+        )
+        
+        # 선택된 영화 ID들을 쿼리 파라미터로 전달
+        if not random_movies.empty:
+            explored_movie_ids = ",".join(random_movies["movie_id"].astype(str).tolist())
+            redirect_url = f"/?page={page}&rating_method={rating_method}&explore_count={explore_count}&explored_movie_ids={explored_movie_ids}"
+        else:
+            redirect_url = f"/?page={page}&rating_method={rating_method}&explore_count={explore_count}"
+        
+        return RedirectResponse(url=redirect_url, status_code=303)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"탐색 실패: {str(e)}")
 
