@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from modules.services.data_access import load_all_data, search_movies_cached
-from modules.services.recommender_service import get_recommender_service
+from modules.services.recommender_service import similar_movies as similar_movies_func
 from app.api.models import SearchResponse, SimilarMoviesResponse
 from app.api.utils import from_dataframe
 
@@ -32,7 +32,6 @@ def similar_movies(
     max_year: Optional[int] = Query(None, ge=1800),
 ):
     """Get similar movies for a given movie ID."""
-    recommender = get_recommender_service()
     try:
         df_movies, _, _ = load_all_data()
     except FileNotFoundError as exc:
@@ -53,7 +52,7 @@ def similar_movies(
         filters["max_year"] = max_year
 
     try:
-        similar_df = recommender.similar_movies(
+        similar_df = similar_movies_func(
             movie_id=movie_id,
             df_movies=df_movies,
             n_recommendations=top_n,

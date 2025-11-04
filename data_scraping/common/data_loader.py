@@ -40,6 +40,37 @@ def load_movie_data() -> pd.DataFrame:
         suffixes=('', '_tmdb')
     ).reset_index(drop=True)
     
+    # total_title 생성: title_tmdb와 original_title이 같으면 title_tmdb만, 다르면 "title_tmdb (original_title)" 형식
+    # NaN 처리: title_tmdb가 없으면 original_title 사용, 둘 다 없으면 빈 문자열
+    title_tmdb = df['title_tmdb']
+    original_title = df['original_title']
+    
+    # 두 제목이 모두 존재하고 같으면 title_tmdb만 사용
+    mask_same = (title_tmdb == original_title) & title_tmdb.notna() & original_title.notna()
+    
+    # 두 제목이 모두 존재하고 다르면 "title_tmdb (original_title)" 형식
+    mask_both_exist = title_tmdb.notna() & original_title.notna()
+    mask_different = mask_both_exist & ~mask_same
+    
+    # total_title 초기화
+    df['total_title'] = ''
+    
+    # 같은 경우: title_tmdb만 사용
+    df.loc[mask_same, 'total_title'] = title_tmdb[mask_same]
+    
+    # 다른 경우: "title_tmdb (original_title)" 형식
+    df.loc[mask_different, 'total_title'] = (
+        title_tmdb[mask_different].astype(str) + ' (' + original_title[mask_different].astype(str) + ')'
+    )
+    
+    # title_tmdb만 있는 경우
+    mask_only_tmdb = title_tmdb.notna() & original_title.isna()
+    df.loc[mask_only_tmdb, 'total_title'] = title_tmdb[mask_only_tmdb]
+    
+    # original_title만 있는 경우
+    mask_only_original = title_tmdb.isna() & original_title.notna()
+    df.loc[mask_only_original, 'total_title'] = original_title[mask_only_original]
+    
     return df
 
 

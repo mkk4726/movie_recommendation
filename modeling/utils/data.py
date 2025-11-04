@@ -234,7 +234,26 @@ def get_movie_id(
     return result.iloc[0]['movie_id']
 
 
-def search_movies(df_movies: pd.DataFrame, query: str, limit: int = 10) -> pd.DataFrame:
-    """영화 제목으로 검색"""
-    result = df_movies[df_movies['title'].str.contains(query, case=False, na=False)]
+def search_movies(df_movies: pd.DataFrame, query: str, limit: int = 10, column: str = 'total_title') -> pd.DataFrame:
+    """
+    영화 제목으로 검색
+    
+    Args:
+        df_movies: 영화 데이터프레임
+        query: 검색 쿼리
+        limit: 반환할 최대 결과 개수
+        column: 검색할 컬럼명 (기본값: 'total_title')
+    
+    Returns:
+        검색 결과 데이터프레임
+    """
+    # 컬럼이 존재하는지 확인
+    if column not in df_movies.columns:
+        # 컬럼이 없으면 'title'로 폴백
+        if 'title' in df_movies.columns:
+            column = 'title'
+        else:
+            raise ValueError(f"컬럼 '{column}' 또는 'title'이 데이터프레임에 없습니다.")
+    
+    result = df_movies[df_movies[column].str.contains(query, case=False, na=False)]
     return result.head(limit)

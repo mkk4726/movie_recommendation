@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로딩 중 - 볼거 없나?</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}" />
+    <style>
+      .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh;
+        text-align: center;
+        padding: 2rem;
+      }
+      
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid var(--muted-bg, #f0f0f0);
+        border-top: 4px solid var(--accent, #007bff);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 2rem;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-message {
+        font-size: 1.2rem;
+        color: var(--text-color, #262730);
+        margin-bottom: 1rem;
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+        background: var(--card-bg, #ffffff);
+        border-radius: 12px;
+        border: 1px solid var(--border-color, rgba(38, 39, 48, 0.2));
+        box-shadow: var(--shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        display: inline-block;
+        min-width: 200px;
+      }
+      
+      .loading-progress {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        width: 100%;
+        max-width: 400px;
+      }
+      
+      .progress-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: var(--card-bg, #ffffff);
+        border-radius: 12px;
+        border: 2px solid var(--border-color, rgba(38, 39, 48, 0.15));
+        box-shadow: var(--shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        transition: all 0.3s ease;
+      }
+      
+      .progress-item:hover {
+        border-color: var(--accent, #007bff);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .progress-check {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #6b7280;
+        flex-shrink: 0;
+        font-weight: bold;
+        border: 2px solid #d1d5db;
+      }
+      
+      .progress-check.completed {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+      }
+      
+      .progress-check::before {
+        content: '○';
+        font-size: 16px;
+        color: #6b7280;
+        font-weight: bold;
+      }
+      
+      .progress-check.completed::before {
+        content: '✓';
+        font-size: 18px;
+        color: white;
+        font-weight: bold;
+      }
+      
+      .progress-text {
+        flex: 1;
+        text-align: left;
+        font-size: 1rem;
+        color: var(--text-color, #262730);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      
+      .auto-refresh-note {
+        margin-top: 2rem;
+        font-size: 0.85rem;
+        color: var(--muted-text, #808495);
+      }
+    </style>
+    <script>
+      // 자동 새로고침 (3초마다)
+      setTimeout(function() {
+        window.location.reload();
+      }, 3000);
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container">
+        <h1>🎬 볼거 없나?</h1>
+        <p class="subtitle">
+          MovieLens + 하이브리드 추천 모델을 API와 간단한 웹 UI로 확인해보세요.
+        </p>
+      </div>
+    </header>
+    <main class="container">
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-message">{{ loading_message or "로딩 중..." }}</div>
+        
+        <div class="loading-progress">
+          <div class="progress-item">
+            <div class="progress-check {% if progress.model %}completed{% endif %}"></div>
+            <div class="progress-text">📦 추천 모델 로딩</div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-check {% if progress.data %}completed{% endif %}"></div>
+            <div class="progress-text">📊 데이터 로딩</div>
+          </div>
+        </div>
+        
+        <div class="auto-refresh-note">
+          페이지가 자동으로 새로고침됩니다...
+        </div>
+      </div>
+    </main>
+    <footer class="app-footer">
+      <div class="container">
+        <p>데이터: MovieLens ML-32M · 메타데이터 확장 준비 중</p>
+        <p>FastAPI + Jinja2 템플릿 예제</p>
+      </div>
+    </footer>
+  </body>
+</html>
+

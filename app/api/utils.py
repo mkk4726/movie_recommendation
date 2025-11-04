@@ -80,13 +80,48 @@ def from_dataframe(
 
     records = []
     for row in df.to_dict(orient="records"):
-        title = row.get("title") or row.get("movie_title")
+        # total_title이 있으면 우선 사용, 없으면 title 또는 movie_title 사용
+        title = row.get("total_title") or row.get("title") or row.get("movie_title")
         record = {
             "movie_id": str(row.get("movie_id", "")),
             "title": title,
+            "total_title": row.get("total_title"),  # total_title도 포함
             "genre": row.get("genre"),
             "year": _safe_year(row.get("year")),
         }
+        
+        # TMDB 관련 필드 추가
+        genres_tmdb = row.get("genres_tmdb")
+        if genres_tmdb and pd.notna(genres_tmdb):
+            record["genres_tmdb"] = str(genres_tmdb)
+        else:
+            record["genres_tmdb"] = None
+        
+        record["vote_average"] = _safe_number(row.get("vote_average"))
+        record["vote_count"] = _safe_number(row.get("vote_count"))
+        record["release_date"] = row.get("release_date") if pd.notna(row.get("release_date")) else None
+        record["overview"] = row.get("overview") if pd.notna(row.get("overview")) else None
+        
+        # 포스터 경로 (poster_path 우선, 없으면 backdrop_path)
+        poster_path = row.get("poster_path") or row.get("backdrop_path")
+        if poster_path and pd.notna(poster_path) and str(poster_path).strip():
+            poster_path_str = str(poster_path).strip()
+            # 슬래시가 없으면 추가
+            if not poster_path_str.startswith('/'):
+                poster_path_str = '/' + poster_path_str
+            record["poster_path"] = poster_path_str
+            record["poster_url"] = f"https://image.tmdb.org/t/p/w500{poster_path_str}"
+        else:
+            record["poster_path"] = None
+            record["poster_url"] = None
+        
+        # adult 필드
+        adult = row.get("adult")
+        if adult is not None:
+            record["adult"] = bool(adult) if not isinstance(adult, bool) else adult
+        else:
+            record["adult"] = False
+        
         if include_rating:
             record["rating"] = _safe_number(row.get("rating"))
         if include_predicted:

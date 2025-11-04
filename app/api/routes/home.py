@@ -8,10 +8,16 @@ from fastapi import APIRouter, Request, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import pandas as pd
+import yaml
 
 from modules.services.data_access import load_all_data, search_movies_cached, get_data_stats
-from modules.services.recommender_service import get_recommender_service
+from modules.services.recommender_service import (
+    get_recommender_service,
+    recommend_for_user as recommend_for_user_func,
+    similar_movies as similar_movies_func,
+)
 from app.api.utils import get_current_user_from_cookies, from_dataframe, _safe_year
+from app.api.app_state import get_loading_state
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +48,25 @@ def home(
     selected_movie_id: Optional[str] = Query(None, description="선택된 영화 ID"),
     similar_top_n: int = Query(10, ge=5, le=15),
     movie_genre: Optional[List[str]] = Query(None, description="장르 필터"),
-    movie_country: Optional[List[str]] = Query(None, description="국가 필터"),
-    movie_min_year: Optional[int] = Query(None, description="최소 연도"),
-    movie_max_year: Optional[int] = Query(None, description="최대 연도"),
+    movie_language: Optional[List[str]] = Query(None, description="언어 필터"),
     rating_method: Optional[str] = Query("search", description="평점 입력 방식"),
     rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),
     explore_count: int = Query(10, ge=5, le=20, description="탐색할 영화 개수"),
 ):
     """Render a simple HTML frontend for interacting with the recommender."""
+    # 로딩 상태 확인
+    loading_state = get_loading_state()
+    if loading_state["is_loading"]:
+        return templates.TemplateResponse(
+            "loading.html",
+            {
+                "request": request,
+                "loading_message": loading_state["loading_message"],
+                "progress": loading_state["progress"],
+            }
+        )
+    
     import time
     request_start = time.time()
     
@@ -156,7 +172,7 @@ def home(
                     errors.append(f"사용자 '{user_id}'를 평점 데이터에서 찾을 수 없습니다.")
             else:
                 try:
-                    top_watched_df, recommendations_df = recommender_service.recommend_for_user(
+                    top_watched_df, recommendations_df = recommend_for_user_func(
                         user_id=user_id,
                         df_movies=df_movies,
                         n=user_top_n,
@@ -180,14 +196,10 @@ def home(
                 filters = {}
                 if movie_genre:
                     filters["genre"] = movie_genre
-                if movie_min_year is not None:
-                    filters["min_year"] = movie_min_year
-                if movie_max_year is not None:
-                    filters["max_year"] = movie_max_year
-                if movie_country:
-                    filters["country"] = movie_country
+                if movie_language:
+                    filters["language"] = movie_language
                 
-                similar_df = recommender_service.similar_movies(
+                similar_df = similar_movies_func(
                     movie_id=selected_movie_id,
                     df_movies=df_movies,
                     n_recommendations=similar_top_n,
@@ -261,22 +273,9 @@ def home(
             errors.append(f"평점 데이터 로드 실패: {str(e)}")
     
     # 설정값 로드 (장르, 국가, 연도 옵션)
-    config_options = {
-        "genres": [
-            "Action", "Adventure", "Animation", "Children", "Comedy",
-            "Crime", "Documentary", "Drama", "Fantasy", "Film-Noir",
-            "Horror", "IMAX", "Musical", "Mystery", "Romance",
-            "Sci-Fi", "Thriller", "War", "Western"
-        ],
-        "countries": [
-            "한국", "일본", "중국", "홍콩", "대만", "인도",
-            "영국", "프랑스", "독일", "이탈리아", "스페인", "러시아",
-            "미국", "캐나다", "멕시코", "브라질", "아르헨티나",
-            "호주", "뉴질랜드", "이집트", "남아프리카공화국", "나이지리아"
-        ],
-        "min_year": 1950,
-        "max_year": 2026,
-    }
+    config_path = BASE_DIR / "config.yaml"
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config_options = yaml.safe_load(f)
     
     # 사용 가능한 사용자 목록 (사용자 기반 추천용)
     available_users = []
@@ -305,9 +304,7 @@ def home(
         "similar_top_n": similar_top_n,
         "similar_movies": similar_movies,
         "movie_genre": movie_genre or [],
-        "movie_country": movie_country or [],
-        "movie_min_year": movie_min_year or config_options["min_year"],
-        "movie_max_year": movie_max_year or config_options["max_year"],
+        "movie_language": movie_language or [],
         "config_options": config_options,
         "errors": errors,
         "stats": stats,

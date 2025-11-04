@@ -4,7 +4,7 @@ User recommendation API endpoints.
 from fastapi import APIRouter, HTTPException, Query
 
 from modules.services.data_access import load_all_data
-from modules.services.recommender_service import get_recommender_service
+from modules.services.recommender_service import recommend_for_user as recommend_for_user_func
 from app.api.models import UserRecommendationResponse
 from app.api.utils import from_dataframe
 
@@ -17,7 +17,6 @@ def recommend_for_user(
     top_n: int = Query(10, ge=1, le=50),
 ):
     """Get movie recommendations for a specific user."""
-    recommender = get_recommender_service()
     try:
         df_movies, df_ratings, _ = load_all_data()
     except FileNotFoundError as exc:
@@ -30,7 +29,7 @@ def recommend_for_user(
         )
 
     try:
-        top_watched_df, recommendations_df = recommender.recommend_for_user(
+        top_watched_df, recommendations_df = recommend_for_user_func(
             user_id=user_id,
             df_movies=df_movies,
             n=top_n,
