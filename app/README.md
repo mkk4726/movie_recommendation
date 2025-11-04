@@ -121,6 +121,24 @@ streamlit run app.py
 
 ## 배포
 
+### 백그라운드 실행 (Cloudflare Tunnel용 - 포트 8501)
+```bash
+# 프로젝트 루트 디렉토리에서 실행
+cd /Users/user/Desktop/movie_recommendation
+
+# nohup으로 백그라운드 실행 (포트 8501)
+nohup python app/main.py > fastapi.log 2>&1 &
+
+# 프로세스 확인
+ps aux | grep uvicorn
+
+# 로그 확인
+tail -f fastapi.log
+
+# 프로세스 종료
+pkill -f "uvicorn app.api.main:app"
+```
+
 ### 프로덕션 환경
 ```bash
 # Gunicorn과 함께 실행 (권장)
