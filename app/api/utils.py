@@ -102,6 +102,13 @@ def from_dataframe(
         record["release_date"] = row.get("release_date") if pd.notna(row.get("release_date")) else None
         record["overview"] = row.get("overview") if pd.notna(row.get("overview")) else None
         
+        # 언어 필드 추가
+        language = row.get("language")
+        if language and pd.notna(language):
+            record["language"] = str(language)
+        else:
+            record["language"] = None
+        
         # 포스터 경로 (poster_path 우선, 없으면 backdrop_path)
         poster_path = row.get("poster_path") or row.get("backdrop_path")
         if poster_path and pd.notna(poster_path) and str(poster_path).strip():
