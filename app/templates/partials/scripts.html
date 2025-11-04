@@ -116,5 +116,186 @@
       
       // DOM 로드 후 즉시 실행
       initAuthTabs();
+      
+      // 모든 폼 제출 및 변경 시 스크롤 위치 관리
+      function initScrollPositionManager() {
+        // 스크롤 위치 저장 함수
+        function saveScrollPosition(element) {
+          if (!element) return;
+          
+          const rect = element.getBoundingClientRect();
+          const scrollOffset = window.pageYOffset + rect.top;
+          sessionStorage.setItem('formScroll', scrollOffset.toString());
+          sessionStorage.setItem('formScrollTimestamp', Date.now().toString());
+          
+          // 요소의 ID나 클래스를 저장하여 복원 시 참조
+          const targetId = element.id || element.closest('[id]')?.id || '';
+          if (targetId) {
+            sessionStorage.setItem('formScrollTarget', targetId);
+          }
+        }
+        
+        // 모든 GET 폼에 대해 처리
+        const allForms = document.querySelectorAll('form[method="get"]');
+        allForms.forEach(form => {
+          form.addEventListener('submit', function(e) {
+            // 폼 위치 저장
+            saveScrollPosition(form);
+          });
+        });
+        
+        // select 요소의 자동 제출 처리 (data-auto-submit 속성 또는 onchange 속성)
+        const selectElements = document.querySelectorAll('select[data-auto-submit="true"], select[onchange*="submit"]');
+        selectElements.forEach(select => {
+          // 기존 onchange 이벤트 제거하고 새로 등록
+          const originalOnchange = select.getAttribute('onchange');
+          if (originalOnchange) {
+            select.removeAttribute('onchange');
+          }
+          
+          select.addEventListener('change', function(e) {
+            // 스크롤 위치 저장
+            saveScrollPosition(select);
+            // 폼 제출
+            const form = select.closest('form');
+            if (form) {
+              form.submit();
+            }
+          });
+        });
+        
+        // 라디오 버튼의 onchange 이벤트 처리 (페이지 전환)
+        const radioButtons = document.querySelectorAll('input[type="radio"][onchange]');
+        radioButtons.forEach(radio => {
+          const originalOnchange = radio.getAttribute('onchange');
+          if (originalOnchange && originalOnchange.includes('submit')) {
+            radio.removeAttribute('onchange');
+            radio.addEventListener('change', function(e) {
+              saveScrollPosition(radio);
+              const form = radio.closest('form');
+              if (form) {
+                form.submit();
+              }
+            });
+          }
+        });
+        
+        // 페이지 로드 후 스크롤 복원 (5초 이내의 저장된 스크롤만 사용)
+        const savedScroll = sessionStorage.getItem('formScroll');
+        const savedTimestamp = sessionStorage.getItem('formScrollTimestamp');
+        const savedTarget = sessionStorage.getItem('formScrollTarget');
+        
+        if (savedScroll && savedTimestamp) {
+          const timeDiff = Date.now() - parseInt(savedTimestamp, 10);
+          if (timeDiff < 5000) { // 5초 이내
+            // 약간의 지연을 두어 DOM이 완전히 로드된 후 스크롤
+            setTimeout(() => {
+              let scrollTarget = null;
+              
+              // 저장된 타겟 ID가 있으면 해당 요소로
+              if (savedTarget) {
+                scrollTarget = document.getElementById(savedTarget);
+              }
+              
+              // 타겟이 없으면 검색 결과 섹션 찾기
+              if (!scrollTarget) {
+                scrollTarget = document.querySelector('#search-results, #movie-search-results, #rating-search-results');
+              }
+              
+              if (scrollTarget) {
+                // 타겟 요소로 부드럽게 스크롤
+                const offset = 80; // 헤더 고려한 오프셋
+                const elementPosition = scrollTarget.getBoundingClientRect().top + window.pageYOffset;
+                window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+              } else {
+                // 저장된 위치로 스크롤
+                const scrollPos = parseInt(savedScroll, 10);
+                window.scrollTo({ top: scrollPos, behavior: 'smooth' });
+              }
+              
+              // 스크롤 정보 삭제
+              sessionStorage.removeItem('formScroll');
+              sessionStorage.removeItem('formScrollTimestamp');
+              sessionStorage.removeItem('formScrollTarget');
+            }, 400);
+          } else {
+            // 오래된 스크롤 정보는 삭제
+            sessionStorage.removeItem('formScroll');
+            sessionStorage.removeItem('formScrollTimestamp');
+            sessionStorage.removeItem('formScrollTarget');
+          }
+        }
+      }
+      
+      initScrollPositionManager();
+      
+      // 사이드바 토글 기능
+      function initSidebarToggle() {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarClose = document.getElementById('sidebar-close');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        
+        if (!sidebar || !sidebarToggle) return;
+        
+        // 사이드바 열기
+        function openSidebar() {
+          sidebar.classList.add('open');
+          if (sidebarOverlay) {
+            sidebarOverlay.classList.add('active');
+          }
+          document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+        }
+        
+        // 사이드바 닫기
+        function closeSidebar() {
+          sidebar.classList.remove('open');
+          if (sidebarOverlay) {
+            sidebarOverlay.classList.remove('active');
+          }
+          document.body.style.overflow = ''; // 배경 스크롤 복원
+        }
+        
+        // 토글 버튼 클릭
+        if (sidebarToggle) {
+          sidebarToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (sidebar.classList.contains('open')) {
+              closeSidebar();
+            } else {
+              openSidebar();
+            }
+          });
+        }
+        
+        // 닫기 버튼 클릭
+        if (sidebarClose) {
+          sidebarClose.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeSidebar();
+          });
+        }
+        
+        // 오버레이 클릭 시 닫기
+        if (sidebarOverlay) {
+          sidebarOverlay.addEventListener('click', function() {
+            closeSidebar();
+          });
+        }
+        
+        // ESC 키로 닫기
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            closeSidebar();
+          }
+        });
+        
+        // 사이드바 내부 클릭 시 이벤트 전파 방지
+        sidebar.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+      }
+      
+      initSidebarToggle();
     });
   </script>

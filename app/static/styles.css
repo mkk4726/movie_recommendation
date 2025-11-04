@@ -57,12 +57,20 @@ body {
   text-align: center;
 }
 
+.header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 3rem;
   font-weight: bold;
   color: #FF4B4B;
   letter-spacing: -0.02em;
+  flex: 1;
 }
 
 .subtitle {
@@ -264,6 +272,62 @@ button:hover {
   height: fit-content;
   position: sticky;
   top: 2rem;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-header {
+  display: none; /* 데스크탑에서는 숨김 */
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+  min-height: auto;
+  width: auto;
+}
+
+.sidebar-close-btn:hover {
+  color: var(--accent);
+  background: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.sidebar-toggle-btn {
+  display: none; /* 데스크탑에서는 숨김 */
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  min-height: auto;
+  width: auto;
+  box-shadow: var(--shadow);
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--accent-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 75, 75, 0.3);
+}
+
+.sidebar-toggle-icon {
+  display: block;
+  line-height: 1;
 }
 
 .main-content {
@@ -491,12 +555,61 @@ button:hover {
 @media (max-width: 968px) {
   .sidebar-container {
     flex-direction: column;
+    position: relative;
+  }
+  
+  .sidebar-toggle-btn {
+    display: block; /* 모바일에서 토글 버튼 표시 */
+  }
+  
+  .sidebar-header {
+    display: flex; /* 모바일에서 헤더 표시 */
   }
   
   .sidebar {
     width: 100%;
-    position: relative;
+    position: fixed !important;
     top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    height: 100vh;
+    overflow-y: auto;
+    border-radius: 0;
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 320px;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  /* 사이드바가 열려있을 때 배경 오버레이 */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+  }
+  
+  .main-content {
+    width: 100%;
   }
 }
 
@@ -516,6 +629,161 @@ button:hover {
 
   .meta.id {
     margin-left: 0;
+  }
+  
+  /* 모바일 검색 폼 최적화 */
+  form {
+    gap: 1rem;
+  }
+  
+  /* 검색 폼의 flex 컨테이너 */
+  form > div {
+    display: flex;
+    flex-direction: column !important;
+    gap: 0.75rem;
+  }
+  
+  form > div input[type="text"] {
+    width: 100% !important;
+    font-size: 16px !important; /* iOS 줌 방지 */
+  }
+  
+  form > div button {
+    width: 100% !important;
+    padding: 0.875rem;
+    font-size: 1rem;
+    min-height: 44px; /* 터치 타겟 크기 */
+  }
+  
+  /* 모바일 버튼 최적화 */
+  button {
+    min-height: 44px;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+  
+  /* 모바일 입력 필드 최적화 */
+  input[type="text"],
+  input[type="number"] {
+    min-height: 44px;
+    font-size: 16px; /* iOS 줌 방지 */
+    padding: 0.75rem;
+  }
+  
+  /* 모바일 select 요소 최적화 */
+  select {
+    min-height: 48px;
+    font-size: 17px !important; /* select 박스 내 선택된 텍스트 크기 */
+    padding: 0.875rem 1rem !important;
+    line-height: 1.5;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  /* select 옵션 텍스트 크기 (드롭다운 열렸을 때 보이는 목록) */
+  /* 참고: 모바일 브라우저에서는 option의 font-size가 제한적으로 적용될 수 있습니다 */
+  select option {
+    font-size: 19px !important;
+    padding: 0.875rem 1rem !important;
+    line-height: 1.7;
+    min-height: 48px;
+    /* iOS Safari에서 더 큰 텍스트를 위한 추가 설정 */
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  /* iOS Safari에서 select 내부 텍스트 크기 강제 */
+  select:not([multiple]) {
+    font-size: 17px !important;
+  }
+  
+  /* 드롭다운이 열렸을 때의 옵션 크기 (일부 브라우저용) */
+  @supports (-webkit-appearance: none) {
+    select option {
+      font-size: 19px !important;
+    }
+  }
+  
+  /* 모바일 label 최적화 */
+  label {
+    font-size: 1rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* 모바일 헤더 최적화 */
+  .app-header {
+    padding: 2rem 0 1.5rem;
+    text-align: left;
+  }
+  
+  .header-title-row {
+    text-align: left;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+    text-align: left;
+  }
+  
+  .subtitle {
+    text-align: left;
+  }
+  
+  /* 모바일 카드 간격 조정 */
+  .card + .card {
+    margin-top: 1.5rem;
+  }
+  
+  /* 모바일 영화 카드 최적화 */
+  .movie-card {
+    flex-direction: column !important;
+    padding: 1.25rem;
+  }
+  
+  .movie-card img {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 200px;
+    margin: 0 auto 1rem;
+  }
+  
+  /* 모바일 사이드바 최적화 */
+  .sidebar {
+    padding: 1.25rem;
+  }
+  
+  .container {
+    padding: 0 1rem;
+  }
+  
+  /* 모바일 그리드 레이아웃 조정 */
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* 모바일 폼 레이아웃 조정 */
+  form[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* 모바일 평점 입력 폼 최적화 */
+  .movie-card form[method="post"] > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem;
+  }
+  
+  .movie-card form[method="post"] > div label {
+    width: 100%;
+  }
+  
+  .movie-card form[method="post"] > div input[type="number"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .movie-card form[method="post"] > div button {
+    width: 100% !important;
   }
 }
 

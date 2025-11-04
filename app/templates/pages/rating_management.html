@@ -42,6 +42,7 @@
 
         {% if rating_search_results and rating_search_results|length > 0 %}
           <!-- 영화 선택 -->
+          <div id="rating-search-results">
           <form method="get" action="/" style="margin-bottom: 1.5rem;">
             <input type="hidden" name="page" value="rating_management" />
             <input type="hidden" name="rating_method" value="search" />
@@ -50,7 +51,7 @@
             <select 
               id="selected_rating_movie_id" 
               name="selected_rating_movie_id" 
-              onchange="this.form.submit()"
+              data-auto-submit="true"
               style="width: 100%; padding: 0.5rem;"
             >
               <option value="">-- 영화를 선택하세요 --</option>
@@ -61,6 +62,7 @@
               {% endfor %}
             </select>
           </form>
+          </div>
         {% elif search_query %}
         <div class="card error-card" style="margin-bottom: 1.5rem;">
           <p>검색 결과가 없습니다. 다른 키워드로 검색해보세요.</p>

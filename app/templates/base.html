@@ -9,14 +9,26 @@
   <body>
     <header class="app-header">
       <div class="container">
-        <h1>🎬 볼거 없나?</h1>
+        <div class="header-title-row">
+          <h1>🎬 볼거 없나?</h1>
+          <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 토글">
+            <span class="sidebar-toggle-icon">☰</span>
+          </button>
+        </div>
         <p class="subtitle">
           MovieLens + 하이브리드 추천 모델을 API와 간단한 웹 UI로 확인해보세요.
         </p>
       </div>
     </header>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <main class="container sidebar-container">
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h3 style="margin: 0;">메뉴</h3>
+          <button id="sidebar-close" class="sidebar-close-btn" aria-label="사이드바 닫기">
+            ✕
+          </button>
+        </div>
         {% block sidebar %}{% endblock %}
       </aside>
       <div class="main-content">
