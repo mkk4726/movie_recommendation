@@ -1,3 +1,4 @@
+  {% from "partials/movie_card.html" import movie_metadata_card %}
   <div class="page-content" id="page-movie_based" style="display: {% if current_page == 'movie_based' %}block{% else %}none{% endif %};">
     <section class="card">
       <h2>🎞️ 영화 기반 추천</h2>
@@ -52,75 +53,7 @@
         <!-- 선택한 영화 정보 -->
         <div style="margin-bottom: 1.5rem;">
           <h3 style="margin-bottom: 1rem;">📽️ 선택한 영화</h3>
-          <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
-            {% if selected_movie_info.poster_url %}
-            <div style="flex-shrink: 0;">
-              <img src="{{ selected_movie_info.poster_url }}" alt="{{ selected_movie_info.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
-            </div>
-            {% endif %}
-            <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
-              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
-                <h4 style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">{{ selected_movie_info.total_title or selected_movie_info.title }}</h4>
-                {% if selected_movie_info.adult %}
-                <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
-                {% endif %}
-              </div>
-              
-              {% if selected_movie_info.year or selected_movie_info.release_date %}
-              <p style="margin: 0.25rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-                {% if selected_movie_info.release_date %}
-                  📅 개봉일: {{ selected_movie_info.release_date }}
-                {% elif selected_movie_info.year %}
-                  📅 개봉년도: {{ selected_movie_info.year }}
-                {% endif %}
-              </p>
-              {% endif %}
-              
-              {% if selected_movie_info.genres_tmdb %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
-                {% for genre in selected_movie_info.genres_tmdb.split() %}
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ genre }}</span>
-                {% endfor %}
-              </div>
-              {% elif selected_movie_info.genre %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ selected_movie_info.genre }}</span>
-              </div>
-              {% endif %}
-              
-              {% if selected_movie_info.language %}
-              <p style="margin: 0.5rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-                🌍 언어: {{ selected_movie_info.language }}
-              </p>
-              {% endif %}
-              
-              {% if selected_movie_info.vote_average is not none or selected_movie_info.vote_count is not none %}
-              <div style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center;">
-                {% if selected_movie_info.vote_average is not none %}
-                <span style="color: #FFD700; font-weight: 600; font-size: 0.95rem;">
-                  ⭐ {{ '%.1f'|format(selected_movie_info.vote_average) }}/10
-                </span>
-                {% endif %}
-                {% if selected_movie_info.vote_count is not none %}
-                <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
-                  ({{ selected_movie_info.vote_count|int }}명 평가)
-                </span>
-                {% endif %}
-              </div>
-              {% endif %}
-              
-              {% if selected_movie_info.overview %}
-              <div style="margin: 0.75rem 0 0 0;">
-                <p id="selected-movie-overview" style="margin: 0 0 0.5rem 0; color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 0.9rem; max-height: 4.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                  {{ selected_movie_info.overview }}
-                </p>
-                <button onclick="toggleOverview('selected-movie-overview', 'selected-movie-overview-btn')" id="selected-movie-overview-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;">
-                  더보기
-                </button>
-              </div>
-              {% endif %}
-            </div>
-          </div>
+          {{ movie_metadata_card(selected_movie_info, show_index=False, overview_id_prefix='selected-movie-overview') }}
         </div>
 
         <!-- 필터 및 추천 폼 -->
@@ -197,79 +130,7 @@
           </p>
 
           {% for movie in similar_movies['items'] %}
-          <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
-            {% if movie.poster_url %}
-            <div style="flex-shrink: 0;">
-              <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
-            </div>
-            {% endif %}
-            <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
-              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
-                <h4 style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">{{ loop.index }}. {{ movie.title }}</h4>
-                {% if movie.adult %}
-                <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
-                {% endif %}
-              </div>
-              
-              {% if movie.year or movie.release_date %}
-              <p style="margin: 0.25rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-                {% if movie.release_date %}
-                  📅 개봉일: {{ movie.release_date }}
-                {% elif movie.year %}
-                  📅 개봉년도: {{ movie.year }}
-                {% endif %}
-              </p>
-              {% endif %}
-              
-              {% if movie.genres_tmdb %}
-              <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
-                {% for genre in movie.genres_tmdb.split() %}
-                <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ genre }}</span>
-                {% endfor %}
-              </div>
-              {% endif %}
-              
-              {% if movie.language %}
-              <p style="margin: 0.5rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-                🌍 언어: {{ movie.language }}
-              </p>
-              {% endif %}
-              
-              {% if movie.vote_average is not none or movie.vote_count is not none %}
-              <div style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center;">
-                {% if movie.vote_average is not none %}
-                <span style="color: #FFD700; font-weight: 600; font-size: 0.95rem;">
-                  ⭐ {{ '%.1f'|format(movie.vote_average) }}/10
-                </span>
-                {% endif %}
-                {% if movie.vote_count is not none %}
-                <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
-                  ({{ movie.vote_count|int }}명 평가)
-                </span>
-                {% endif %}
-              </div>
-              {% endif %}
-              
-              {% if movie.similarity %}
-              <p style="margin: 0.5rem 0;">
-                <span style="font-weight: 600; color: #FFD700; background: rgba(255,255,255,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem;">
-                  유사도: {{ '%.3f'|format(movie.similarity) }}
-                </span>
-              </p>
-              {% endif %}
-              
-              {% if movie.overview %}
-              <div style="margin: 0.75rem 0 0 0;">
-                <p id="movie-overview-{{ loop.index }}" style="margin: 0 0 0.5rem 0; color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 0.9rem; max-height: 4.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                  {{ movie.overview }}
-                </p>
-                <button onclick="toggleOverview('movie-overview-{{ loop.index }}', 'movie-overview-btn-{{ loop.index }}')" id="movie-overview-btn-{{ loop.index }}" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;">
-                  더보기
-                </button>
-              </div>
-              {% endif %}
-            </div>
-          </div>
+          {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=True, overview_id_prefix='movie-overview') }}
           {% endfor %}
         </div>
       {% elif selected_movie_id %}

@@ -125,6 +125,7 @@ def from_dataframe(
             "total_title": row.get("total_title"),  # total_title도 포함
             "genre": row.get("genre"),
             "year": _safe_year(row.get("year")),
+            "imdb_id": row.get("imdb_id") if pd.notna(row.get("imdb_id")) else None,
         }
         
         # TMDB 관련 필드 추가

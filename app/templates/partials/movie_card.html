@@ -1,0 +1,103 @@
+{% macro movie_metadata_card(movie, show_index=False, index=None, show_similarity=False, overview_id_prefix='movie-overview') %}
+  <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
+    {% if movie.poster_url %}
+    <div style="flex-shrink: 0;">
+      <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+    </div>
+    {% endif %}
+    <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
+      <!-- 제목 및 adult 등급 -->
+      <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
+        <h4 style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">
+          {% if show_index and index is not none %}{{ index }}. {% endif %}{{ movie.total_title or movie.title }}
+        </h4>
+        {% if movie.adult %}
+        <span style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
+        {% endif %}
+      </div>
+      
+      <!-- 개봉일/개봉년도 -->
+      {% if movie.year or movie.release_date %}
+      <p style="margin: 0.25rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
+        {% if movie.release_date %}
+          📅 개봉일: {{ movie.release_date }}
+        {% elif movie.year %}
+          📅 개봉년도: {{ movie.year }}
+        {% endif %}
+      </p>
+      {% endif %}
+      
+      <!-- 장르 -->
+      {% if movie.genres_tmdb %}
+      <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
+        {% for genre in movie.genres_tmdb.split() %}
+        <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ genre }}</span>
+        {% endfor %}
+      </div>
+      {% elif movie.genre %}
+      <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
+        <span style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ movie.genre }}</span>
+      </div>
+      {% endif %}
+      
+      <!-- 언어 -->
+      {% if movie.language %}
+      <p style="margin: 0.5rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
+        🌍 언어: {{ movie.language }}
+      </p>
+      {% endif %}
+      
+      <!-- 평점 -->
+      {% if movie.vote_average is not none or movie.vote_count is not none %}
+      <div style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center;">
+        {% if movie.vote_average is not none %}
+        <span style="color: #FFD700; font-weight: 600; font-size: 0.95rem;">
+          ⭐ {{ '%.1f'|format(movie.vote_average) }}/10
+        </span>
+        {% endif %}
+        {% if movie.vote_count is not none %}
+        <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
+          ({{ movie.vote_count|int }}명 평가)
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+      
+      <!-- IMDB 링크 -->
+      {% if movie.imdb_id %}
+      <p style="margin: 0.5rem 0;">
+        <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/" target="_blank" rel="noopener noreferrer" style="color: #FFD700; text-decoration: none; font-weight: 500; font-size: 0.9rem;">
+          🔗 IMDb에서 보기
+        </a>
+      </p>
+      {% endif %}
+      
+      <!-- 유사도 (선택적) -->
+      {% if show_similarity and movie.similarity %}
+      <p style="margin: 0.5rem 0;">
+        <span style="font-weight: 600; color: #FFD700; background: rgba(255,255,255,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem;">
+          유사도: {{ '%.3f'|format(movie.similarity) }}
+        </span>
+      </p>
+      {% endif %}
+      
+      <!-- 줄거리 -->
+      {% if movie.overview %}
+      <div style="margin: 0.75rem 0 0 0;">
+        {% if index is not none %}
+          {% set unique_overview_id = overview_id_prefix ~ '-' ~ index %}
+        {% else %}
+          {% set unique_overview_id = overview_id_prefix %}
+        {% endif %}
+        <p id="{{ unique_overview_id }}" style="margin: 0 0 0.5rem 0; color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 0.9rem; max-height: 4.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+          {{ movie.overview }}
+        </p>
+        <button onclick="toggleOverview('{{ unique_overview_id }}', '{{ unique_overview_id }}-btn')" id="{{ unique_overview_id }}-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;">
+          더보기
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
