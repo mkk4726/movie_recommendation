@@ -1,66 +1,23 @@
 # 볼거 없나?
 
-영화/시리즈를 추천하는 서비스를 개발하고 있습니다.
-**ML-32M (MovieLens 32M)** 데이터셋을 사용합니다.
+영화 추천 서비스를 개발하고 운영하고 있습니다.
+- [영화 추천 서비스 링크](https://movie.mingyuprojects.dev/)
 
-## 프로젝트 구조
-
-ML-32M Dataset 로딩 (data_scraping) -> 모델링 (modeling) -> 배포 (app, FastAPI)
-
-```
-movie_recommendation/
-├── app/                    # FastAPI 웹 애플리케이션
-│   ├── api.py             # FastAPI 애플리케이션 (메인)
-│   ├── main.py            # 실행 진입점
-│   ├── modules/           # FastAPI용 모듈
-│   │   ├── core/          # 경로 관리
-│   │   └── services/      # 데이터 및 추천 서비스 (FastAPI용)
-│   ├── static/            # 정적 파일 (CSS)
-│   ├── templates/         # Jinja2 템플릿 (HTML)
-│   ├── legacy/            # 레거시 Streamlit 앱
-│   │   └── streamlit/     # Streamlit 관련 파일들
-│   ├── requirements.txt   # 앱 의존성
-│   └── README.md          # 앱 문서
-├── data_scraping/          # 데이터 스크래핑 모듈
-│   ├── common/            # 공통 유틸리티
-│   ├── scrapers/          # 스크래퍼 클래스
-│   ├── data/              # 수집된 데이터
-│   ├── legacy/            # 레거시 코드
-│   └── README.md          # 스크래핑 상세 문서
-├── modeling/               # 모델링 및 분석
-│   ├── models/            # 추천 모델 구현
-│   ├── notebooks/         # Jupyter 노트북
-│   ├── utils/             # 모델링 유틸리티
-│   └── README.md          # 모델링 문서
-├── user_system/            # Firebase 사용자 인증 시스템
-├── pyproject.toml         # Poetry 의존성 관리
-├── poetry.lock            # Poetry 의존성 잠금 파일
-├── requirements.txt       # pip 의존성
-└── README.md             # 메인 문서
-```
-
-## 진행 상황
-
-### 🗃️ 데이터 현황
-- **ML-32M Dataset**: 87,585개 영화, 3,200만개+ 평점 사용 (협업 필터링)
-- **Legacy**: 왓챠피디아 크롤링 데이터는 법적 위험으로 인해 `data_scraping/legacy/`로 이동되어 더 이상 사용하지 않음
-- **향후 계획**: OMDb API 통합으로 메타데이터 보강 예정
-
-### 🤖 모델링
-- Interaction 기반: Matrix Factorization (SVD), Item-based Filtering 구현 완료
-- FastAPI 배포: REST API 기반 추천 서비스 (유저 기반 / 아이템 기반)
-- 레거시: Streamlit 앱은 `app/legacy/streamlit/`에 보관
+넷플릭스와 같은 OTT에서 뛰어난 추천 모델들을 사용하고 있지만, 막상 사용하다보면 "볼거 없나?"라는 의문과 함께 유튜브나 네이버 등을 통해 검색을 하곤 합니다.
+저뿐만 아니라 주변 지인들도 비슷한 경험을 했고, 이는 유튜브에 "넷플릭스 영화 추천"과 같은 동영상이 높은 조회수를 기록한 것을 통해 확인할 수 있습니다.
+이를 해결하기 위해 어떤 추천 서비스가 필요할지 고민하고 구현하고 있습니다.
 
 ---
 
-## 🎯 개발 방향: 데이터 파이프라인 아키텍처
+# 데이터셋
 
-현재 프로젝트는 **MovieLens Dataset + OMDb API** 조합으로 영화 추천 시스템을 구축하고 있습니다.
+ML-32M (MovieLens 32M)데이터셋을 사용합니다.
+이 데이터셋에 TMDB API를 통해 메타 데이터를 추가해 사용하고 있습니다.
 
-### 📊 전체 데이터 플로우
+## 📊 전체 데이터 플로우
 
 ```
-(MovieLens)          (OMDb API)
+(MovieLens)          (TMDB API)
       │                   │
       │                   │
       ▼                   ▼
@@ -78,68 +35,112 @@ movie_recommendation/
     추천 모델 / 데이터 분석 / 시각화
 ```
 
-### 🧩 각 데이터 소스의 역할
+---
 
-#### 1️⃣ **MovieLens Dataset** → 사용자 행동 (Interaction) 데이터
+# 프로젝트 구조
 
-- **출처**: [GroupLens Research](https://grouplens.org/datasets/movielens/)
-- **위치**: `data_scraping/ml-32m/` (ML-32M 크기 사용)
-- **주요 파일**:
-  - `ratings.csv`: 유저-영화 평점 (userId, movieId, rating, timestamp)
-  - `movies.csv`: 영화 기본 정보 (movieId, title, genres)
-  - `tags.csv`: 유저가 작성한 태그
-- **활용**: 협업 필터링, Matrix Factorization, Neural CF 등 유저-아이템 매트릭스 학습
+1. 데이터 수집: ML-32M 데이터셋을 data_scraping 모듈에서 로딩 및 가공
+2. 모델링: modeling 모듈에서 추천 모델을 개발하고 학습
+3. 서비스 배포: app(FastAPI) 모듈로 웹 서비스 운영
 
-#### 2️⃣ **OMDb API** → 영화 콘텐츠 메타데이터
-
-- **목적**: 영화 제목을 기반으로 추가 메타데이터 가져오기
-- **데이터**: title, year, director, actors, plot, imdbRating, poster, genre
-- **사용법**: MovieLens 영화 제목 → OMDb API 쿼리 → IMDb 데이터 병합
-
-### 🔄 데이터 결합 전략
-
-```python
-MovieLens 영화 제목 
-    ↓
-OMDb API 호출 (영화 제목 기반)
-    ↓
-추가 메타데이터 수집 (감독, 배우, 포스터, 줄거리 등)
-    ↓
-MovieLens 평점 데이터와 병합
-    ↓
-하이브리드 추천 모델 학습 준비 완료
 ```
-
-### 📈 활용 사례
-
-| 분야 | 활용 방법 |
-|------|----------|
-| 🎯 **추천 시스템** | 하이브리드 추천 (CF + 콘텐츠 기반) |
-| 🧠 **ML Feature Engineering** | 감독/배우/장르 임베딩 피처 생성 |
-| 📊 **시각화** | 장르별 평균 평점, 배우별 평점 분포 |
-| 🎥 **앱 서비스** | 포스터·설명 포함 UI 제작 |
-
-### ⚠️ 주의사항
-
-- **MovieLens 한계**: 최신 영화 데이터는 2023년 이전까지만 제공
-- **OMDb API 제한**: 무료 API는 하루 1,000건 제한 → **샘플링 + 캐싱 필수**
-- **라이선스**: 상업적 서비스에서는 OMDb 데이터 직접 재배포 불가
-
-### 🎬 다음 단계
-
-- [ ] OMDb API 통합 스크립트 작성
-- [ ] 메타데이터 캐싱 시스템 구축
-- [ ] 하이브리드 추천 모델 개발
-- [ ] 콘텐츠 기반 피처 엔지니어링
-- [ ] 포스터 포함 UI 개선
+movie_recommendation/
+├── app/                    # FastAPI 웹 애플리케이션
+│   ├── api/               # FastAPI 애플리케이션
+│   │   ├── main.py        # FastAPI 메인 애플리케이션
+│   │   ├── models.py      # 데이터 모델
+│   │   ├── app_state.py   # 애플리케이션 상태 관리
+│   │   ├── utils.py       # 유틸리티 함수
+│   │   └── routes/        # API 라우트
+│   │       ├── auth.py    # 인증 라우트
+│   │       ├── health.py  # 헬스 체크
+│   │       ├── home.py    # 홈 라우트
+│   │       ├── movies.py  # 영화 관련 라우트
+│   │       ├── ratings.py # 평점 관련 라우트
+│   │       └── users.py   # 사용자 관련 라우트
+│   ├── main.py            # 실행 진입점
+│   ├── modules/           # 애플리케이션 모듈
+│   │   ├── config/        # 설정 관리
+│   │   ├── core/          # 경로 관리
+│   │   ├── data/          # 데이터 처리
+│   │   ├── services/      # 비즈니스 로직 서비스
+│   │   │   ├── data_access.py
+│   │   │   └── recommender_service.py
+│   │   └── ui/            # UI 관련 모듈
+│   ├── static/            # 정적 파일 (CSS)
+│   ├── templates/         # Jinja2 템플릿 (HTML)
+│   │   ├── pages/         # 페이지 템플릿
+│   │   └── partials/      # 부분 템플릿
+│   ├── legacy/            # 레거시 Streamlit 앱
+│   │   └── streamlit/     # Streamlit 관련 파일들
+│   ├── config.yaml        # 애플리케이션 설정
+│   └── README.md          # 앱 문서
+├── data_scraping/          # 데이터 스크래핑 및 로딩 모듈
+│   ├── common/            # 공통 유틸리티
+│   │   ├── data_loader.py      # 데이터 로더
+│   │   ├── ml_data_loader.py   # MovieLens 데이터 로더
+│   │   ├── tmdb_loader.py      # TMDB API 로더
+│   │   ├── omdb_loader.py      # OMDB API 로더
+│   │   └── logger.py           # 로깅 유틸리티
+│   ├── data/              # 수집된 데이터
+│   │   ├── ml-32m/        # MovieLens 32M 데이터셋
+│   │   └── tmdb/          # TMDB 메타데이터
+│   ├── legacy/            # 레거시 크롤링 코드
+│   │   ├── scrapers/      # 스크래퍼 클래스
+│   │   └── assets/        # 스크래핑 관련 자산
+│   └── README.md          # 스크래핑 상세 문서
+├── modeling/               # 모델링 및 분석
+│   ├── models/            # 추천 모델 구현
+│   │   ├── svd/           # SVD 모델
+│   │   ├── item_based/    # 아이템 기반 협업 필터링
+│   │   ├── recommender/   # 추천 시스템
+│   │   └── query_search/  # 쿼리 검색 모델
+│   ├── notebooks/         # Jupyter 노트북
+│   ├── utils/             # 모델링 유틸리티
+│   └── README.md          # 모델링 문서
+├── cold_start/            # 콜드 스타트 처리
+│   └── show_random_movies.py
+├── user_system/            # Firebase 사용자 인증 시스템
+│   ├── firebase_app.py    # Firebase 앱 초기화
+│   ├── firebase_auth.py   # 인증 관련
+│   ├── firebase_config.py # Firebase 설정
+│   ├── firebase_firestore.py # Firestore 관련
+│   ├── firebase_recommender.py # Firebase 기반 추천
+│   └── README.md
+├── pyproject.toml         # Poetry 의존성 관리
+├── poetry.lock            # Poetry 의존성 잠금 파일
+├── requirements.txt       # pip 의존성
+└── README.md             # 메인 문서
+```
 
 ---
 
-## 📜 Legacy: 과거 시도 사항
+# 제공하는 기능들
 
-프로젝트 초기에는 다양한 데이터 소스와 방법론을 시도했습니다. 참고용으로 기록합니다.
+제가 운영하고 있는 서비스에서 제공하는 기능들과 어떤 고민을 했는지에 대해 정리했습니다.
 
-### 🎬 왓챠피디아 크롤링 시도
+## 유사한 영화 추천
+
+영화를 재밌게 본 후에 이와 비슷한 영화가 뭐가 있을지 검색하고 싶을 떄가 있습니다.
+이때 사용할 수 있는 기능입니다.
+
+현 시점(25.11.05)에서는 유저의 평점/상호작용 데이터를 바탕으로 한 아이템 기반 협업 필터링(item-based collaborative filtering) 방식의 유사 영화 추천이 제공됩니다.
+
+## 사용자 기반 추천
+
+user_id, item_id가 주어졌을 때 예측평점을 구하는 모델을 통해 평점을 예측하고 높은 영화를 추천하는 구조입니다.
+
+### 구현되어있는 모델
+- svd
+
+
+---
+
+# 📜 Legacy: 과거 시도들
+
+현재 서비스에서 사용하지 않지만 과거에 했던 시도들을 정리해두었습니다.
+
+## 🎬 왓챠피디아 크롤링 
 
 **시도 내용**:
 - 왓챠피디아에서 영화 정보, 코멘트, 평점 데이터를 크롤링하여 수집
@@ -148,13 +149,13 @@ MovieLens 평점 데이터와 병합
 
 **중단 사유**:
 - 🚨 **법적 위험**: 웹 크롤링 시 이용약관 위반 및 저작권 문제 우려
-- ⚖️ **상업적 사용 제한**: 스크래핑 데이터를 상업적으로 활용하기 어려움
+- ⚖️ **상업적 사용 제한**: 스크래핑 데이터를 상업적으로 활용하기 어려움 (학습용으로 사용하더라도 배포하는 과정에서 위험 요소가 있다고 보임)
 - 🔒 **서비스 안정성**: 데이터 소스 플랫폼의 정책 변경에 취약
 
 **전환 결정**:
 - 공개 데이터셋인 **MovieLens ML-32M**으로 전환 (법적 리스크 제로)
 - 크롤링 코드는 `data_scraping/legacy/` 디렉토리로 이동 보관 (참고용)
-- OMDb API 같은 공식 API 활용으로 메타데이터 보강 방향 전환
+- TMDB API 같은 공식 API 활용으로 메타데이터 보강 방향 전환
 
 **교훈**:
 - 프로젝트 초기에는 빠른 프로토타이핑이 가능했지만, 스케일링 시 법적 이슈가 장벽
