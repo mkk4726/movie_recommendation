@@ -99,7 +99,7 @@ def similar_movies(
     
     # 유사도 점수 포함해서 가져오기
     try:
-        fetch_n = n_recommendations * 3 if filters else n_recommendations
+        fetch_n = n_recommendations * 60 if filters else n_recommendations # filter가 적용될거 감안하고 더 많이 뽑기 (뽑은 결과 -> 필터 적용되기 때문에)
         
         similar_scores_df = recommender.item_based_model.predict(
             movie_id=movie_id,
