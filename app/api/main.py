@@ -20,7 +20,7 @@ else:
     print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 from modules.core import add_project_paths
-from app.api.routes import health, movies, users, auth, ratings, home
+from app.api.routes import health, movies, users, auth, ratings, home, search
 from app.api.app_state import set_loading, set_progress
 
 # Firebase 관련 import (선택적)
@@ -149,5 +149,6 @@ app.include_router(movies.router)
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(ratings.router)
+app.include_router(search.router)
 app.include_router(home.router)
 

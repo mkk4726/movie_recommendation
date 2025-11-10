@@ -86,6 +86,9 @@
             url.searchParams.delete('movie_genre');
             url.searchParams.delete('movie_language');
           }
+          if (selectedPage !== 'search') {
+            url.searchParams.delete('search_query');
+          }
           
           // 모바일에서 사이드바가 열려있으면 닫기
           const sidebar = document.getElementById('sidebar');

@@ -18,7 +18,19 @@ FastAPI를 통해 영화 추천 서비스를 제공하는 백엔드 애플리케
 - 영화 제목으로 검색
 - REST API: `GET /movies/search?query={query}`
 
-### 4. 웹 UI
+### 4. 자연어 검색 (Natural Language Search)
+- NER(Named Entity Recognition)을 사용한 자연어 검색
+- Qwen LLM 기반으로 쿼리에서 배우, 장르, 연도 등을 자동 추출
+- 추출된 엔티티를 기반으로 영화 필터링 및 관련성 점수 계산
+- REST API: 
+  - `GET /api/search/natural-language?query={query}` - 자연어 검색
+  - `GET /api/search/extract-entities?query={query}` - 엔티티만 추출 (디버깅용)
+- 예시 쿼리:
+  - "이병헌이 출연한 액션 영화 추천해줘"
+  - "2020년 로맨스 영화"
+  - "박찬욱 감독의 스릴러 영화"
+
+### 5. 웹 UI
 - Jinja2 템플릿 기반 간단한 웹 인터페이스 제공
 - `GET /` - 메인 페이지 (영화 검색, 추천 기능 포함)
 
@@ -76,6 +88,12 @@ uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
 ### 영화 기반 유사 영화 추천
 - `GET /movies/{movie_id}/similar?top_n={top_n}&genre={genre}&min_year={year}&max_year={year}`
   - 예: `/movies/1/similar?top_n=10&genre=Action`
+
+### 자연어 검색
+- `GET /api/search/natural-language?query={query}&limit={limit}&use_ranking={bool}`
+  - 예: `/api/search/natural-language?query=이병헌이%20출연한%20액션%20영화&limit=10`
+- `GET /api/search/extract-entities?query={query}`
+  - 예: `/api/search/extract-entities?query=2020년%20로맨스%20영화`
 
 ## 파일 구조
 

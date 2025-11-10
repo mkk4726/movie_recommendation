@@ -1,0 +1,52 @@
+  <div class="page-content" id="page-search" style="display: {% if current_page == 'search' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>🔍 자연어 검색</h2>
+      <p class="muted">자연어로 영화를 검색해보세요. 예: "이병헌이 출연한 액션 영화 추천해줘"</p>
+
+      <!-- 자연어 검색 입력 -->
+      <form method="get" action="/" style="margin-bottom: 1.5rem;">
+        <input type="hidden" name="page" value="search" />
+        <label for="search_query" style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block;">검색어를 입력하세요</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input
+            type="text"
+            id="search_query"
+            name="search_query"
+            placeholder="예: 액션 영화 추천해줘, 감동적인 영화 찾아줘..."
+            value="{{ search_query }}"
+            style="flex: 1; background-color: var(--card-bg); color: var(--text-color);"
+          />
+          <button type="submit">🔍 검색</button>
+        </div>
+      </form>
+
+      {% if search_query %}
+        <!-- 검색 결과 표시 -->
+        <div style="margin-top: 2rem;">
+          <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
+          <h3 style="margin-bottom: 1rem; color: var(--text-color);">📝 입력하신 내용</h3>
+          <div style="background: rgba(59, 130, 246, 0.08); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
+            <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; white-space: pre-wrap; color: var(--text-color); font-weight: 500;">{{ search_query }}</p>
+          </div>
+          
+          <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent); border-radius: 4px;">
+            <p style="margin: 0; color: var(--text-color); line-height: 1.6;">
+              💡 <strong>안내:</strong> 현재는 입력하신 검색어를 그대로 표시하고 있습니다. 
+              실제 검색 파이프라인은 <code>/api/search/natural-language</code> 엔드포인트에 구현되어 있습니다.
+            </p>
+          </div>
+        </div>
+      {% else %}
+        <!-- 검색 전 안내 메시지 -->
+        <div style="margin-top: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border-radius: 12px; text-align: center; border: 2px dashed rgba(59, 130, 246, 0.3);">
+          <p style="font-size: 1.15rem; color: var(--text-color); margin: 0 0 0.5rem 0; font-weight: 600;">
+            위의 검색창에 자연어로 검색어를 입력해보세요! 🎬
+          </p>
+          <p style="font-size: 0.95rem; color: var(--muted-text); margin: 0;">
+            배우, 장르, 연도 등을 자유롭게 조합하여 검색할 수 있습니다.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+

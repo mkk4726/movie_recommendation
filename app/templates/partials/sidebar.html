@@ -5,6 +5,16 @@
       <input 
         type="radio" 
         name="page" 
+        value="search" 
+        class="page-radio"
+        {% if current_page == "search" %}checked{% endif %}
+      />
+      <span>🔍 검색</span>
+    </label>
+    <label class="sidebar-radio-label">
+      <input 
+        type="radio" 
+        name="page" 
         value="movie_based" 
         class="page-radio"
         {% if current_page == "movie_based" %}checked{% endif %}
