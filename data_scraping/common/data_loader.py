@@ -74,6 +74,47 @@ def load_movie_data() -> pd.DataFrame:
     return df
 
 
+def load_movie_cast() -> pd.DataFrame:
+    """
+    TMDB 영화 출연진 및 제작진 데이터 로드
+    
+    Returns:
+        출연진/제작진 데이터 DataFrame
+        컬럼: adult, gender, id, known_for_department, name, original_name, 
+              popularity, profile_path, cast_id, character, credit_id, order, tmdb_id, imdb_id
+    """
+    import os
+    from pathlib import Path
+    
+    # 프로젝트 루트에서 cast_data.csv 경로 찾기
+    current_file = Path(__file__).resolve()
+    project_root = current_file.parent.parent.parent
+    cast_path = project_root / 'data_scraping' / 'data' / 'tmdb' / 'cast_data.csv'
+    
+    if not cast_path.exists():
+        raise FileNotFoundError(f"Cast data file not found: {cast_path}")
+    
+    # Cast 데이터 로드
+    df_cast = pd.read_csv(cast_path)
+    
+    # Links 데이터 로드하여 imdb_id 추가
+    df_links = load_links_data_ml()
+    
+    # tmdb_id 타입 통일 (float으로)
+    df_cast['tmdb_id'] = pd.to_numeric(df_cast['tmdb_id'], errors='coerce')
+    df_links['tmdb_id'] = pd.to_numeric(df_links['tmdb_id'], errors='coerce')
+    
+    # tmdb_id를 기준으로 imdb_id 병합
+    df_cast = pd.merge(
+        df_cast,
+        df_links[['tmdb_id', 'imdb_id']],
+        on='tmdb_id',
+        how='left'
+    )
+    
+    return df_cast
+
+
 def load_ratings_data(data_path: str = None, verbose: bool = False) -> pd.DataFrame:
     """
     ML-32M 사용자 평점 데이터 로딩

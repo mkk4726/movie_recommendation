@@ -6,9 +6,10 @@ import logging
 import sys
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
+import pandas as pd
 
-from modules.services.data_access import load_all_data
-from app.api.models import QuerySearchResponse
+from modules.services.data_access import load_all_data, load_cast_data
+from app.api.models import QuerySearchResponse, MovieCastInfo, CastMember
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ router = APIRouter()
 # QuerySearchPipeline 전역 변수 (지연 로딩)
 _search_pipeline = None
 _search_pipeline_error = None
+_cast_df = None
 
 
 def get_search_pipeline():
@@ -66,11 +68,88 @@ def get_search_pipeline():
         )
 
 
+def get_cast_data():
+    """Cast 데이터를 지연 로딩합니다 (캐시 사용)."""
+    global _cast_df
+    
+    if _cast_df is not None:
+        return _cast_df
+    
+    try:
+        logger.info("🔄 Cast 데이터 로딩 중...")
+        _cast_df = load_cast_data()  # 캐시된 함수 사용
+        logger.info(f"✅ Cast 데이터 로드 완료: {len(_cast_df)}개 항목")
+        return _cast_df
+    except Exception as e:
+        logger.error(f"❌ Cast 데이터 로딩 실패: {e}", exc_info=True)
+        return None
+
+
+def get_movie_cast_info(imdb_id: str, cast_df: pd.DataFrame) -> MovieCastInfo:
+    """
+    특정 영화의 출연진 및 제작진 정보를 가져옵니다.
+    
+    Args:
+        imdb_id: 영화 IMDB ID
+        cast_df: Cast 데이터프레임
+    
+    Returns:
+        MovieCastInfo 객체
+    """
+    if cast_df is None or imdb_id is None:
+        return MovieCastInfo()
+    
+    # 해당 영화의 cast 데이터 필터링
+    movie_cast = cast_df[cast_df['imdb_id'] == imdb_id]
+    
+    if movie_cast.empty:
+        return MovieCastInfo()
+    
+    # 배우 정보 (Acting, cast_id로 정렬, 상위 5명)
+    actors_data = movie_cast[movie_cast['known_for_department'] == 'Acting'].sort_values('cast_id').head(5)
+    actors = [
+        CastMember(
+            name=row['name'],
+            original_name=row['original_name'],
+            character=row['character'] if pd.notna(row['character']) else None,
+            profile_path=row['profile_path'] if pd.notna(row['profile_path']) else None
+        )
+        for _, row in actors_data.iterrows()
+    ]
+    
+    # 감독 정보 (Directing, cast_id로 정렬)
+    directors_data = movie_cast[movie_cast['known_for_department'] == 'Directing'].sort_values('cast_id')
+    directors = [
+        CastMember(
+            name=row['name'],
+            original_name=row['original_name'],
+            character=None,  # 감독은 character 없음
+            profile_path=row['profile_path'] if pd.notna(row['profile_path']) else None
+        )
+        for _, row in directors_data.iterrows()
+    ]
+    
+    # 작가 정보 (Writing, cast_id로 정렬)
+    writers_data = movie_cast[movie_cast['known_for_department'] == 'Writing'].sort_values('cast_id')
+    writers = [
+        CastMember(
+            name=row['name'],
+            original_name=row['original_name'],
+            character=None,  # 작가는 character 없음
+            profile_path=row['profile_path'] if pd.notna(row['profile_path']) else None
+        )
+        for _, row in writers_data.iterrows()
+    ]
+    
+    return MovieCastInfo(actors=actors, directors=directors, writers=writers)
+
+
 @router.get("/search/natural-language", response_model=QuerySearchResponse)
 def natural_language_search(
     query: str = Query(..., min_length=1, description="자연어 검색 쿼리"),
     limit: int = Query(20, ge=1, le=100, description="반환할 최대 결과 수"),
     min_score: float = Query(0.0, ge=0.0, description="최소 검색 스코어 임계값"),
+    include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
 ):
     """
     자연어 검색 API (BM25 기반)
@@ -95,6 +174,20 @@ def natural_language_search(
             top_k=limit,
             min_score=min_score
         )
+        
+        # 3. Cast 정보 추가 (옵션)
+        if include_cast:
+            cast_df = get_cast_data()
+            if cast_df is not None:
+                # 영화 데이터 로드하여 imdb_id 매핑
+                df_movies, _, _ = load_all_data()
+                movie_id_to_imdb = dict(zip(df_movies['movie_id'].astype(str), df_movies['imdb_id']))
+                
+                # 각 검색 결과에 cast 정보 추가
+                for result in response.results:
+                    imdb_id = movie_id_to_imdb.get(result.movie_id)
+                    if imdb_id:
+                        result.cast_info = get_movie_cast_info(imdb_id, cast_df)
         
         logger.info(f"✅ 검색 완료: {response.total_results}개 결과")
         return response

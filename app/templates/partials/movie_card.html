@@ -90,6 +90,85 @@
       </p>
       {% endif %}
       
+      <!-- Cast 정보 (배우, 감독, 작가) -->
+      {% if movie.cast_info %}
+      <div style="margin: 0.75rem 0;">
+        <!-- 감독 -->
+        {% if movie.cast_info.directors %}
+        <div style="margin-bottom: 0.75rem;">
+          <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
+            🎬 감독
+          </p>
+          <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            {% for director in movie.cast_info.directors %}
+            <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
+              {% if director.profile_path %}
+              <img src="https://image.tmdb.org/t/p/w185{{ director.profile_path }}" alt="{{ director.name }}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
+              {% else %}
+              <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">👤</div>
+              {% endif %}
+              <p style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
+                {{ director.name }}
+              </p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- 배우 -->
+        {% if movie.cast_info.actors %}
+        <div style="margin-bottom: 0.75rem;">
+          <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
+            🎭 출연
+          </p>
+          <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            {% for actor in movie.cast_info.actors %}
+            <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
+              {% if actor.profile_path %}
+              <img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}" alt="{{ actor.name }}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
+              {% else %}
+              <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">👤</div>
+              {% endif %}
+              <p style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
+                {{ actor.name }}
+              </p>
+              {% if actor.character %}
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.7rem; color: rgba(255,255,255,0.7); line-height: 1.2; word-wrap: break-word;">
+                ({{ actor.character }})
+              </p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- 작가 -->
+        {% if movie.cast_info.writers %}
+        <div style="margin-bottom: 0.75rem;">
+          <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
+            ✍️ 작가
+          </p>
+          <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            {% for writer in movie.cast_info.writers %}
+            <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
+              {% if writer.profile_path %}
+              <img src="https://image.tmdb.org/t/p/w185{{ writer.profile_path }}" alt="{{ writer.name }}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
+              {% else %}
+              <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">👤</div>
+              {% endif %}
+              <p style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
+                {{ writer.name }}
+              </p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
       <!-- 줄거리 -->
       {% if movie.overview %}
       <div style="margin: 0.75rem 0 0 0;">

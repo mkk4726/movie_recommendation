@@ -16,6 +16,7 @@ add_project_paths()
 from data_scraping.common.data_loader import (  # noqa: E402
     load_movie_data as _load_movie_data,
     load_ratings_data as _load_ratings_data,
+    load_movie_cast as _load_movie_cast,
 )
 from modeling.utils.data import (  # noqa: E402
     filter_by_min_counts as _filter_by_min_counts,
@@ -117,9 +118,23 @@ def load_all_data(
     return df_movies, df_ratings, df_filtered
 
 
+@lru_cache(maxsize=1)
+def load_cast_data() -> pd.DataFrame:
+    """
+    Load movie cast and crew data from disk (cached).
+    
+    Returns:
+        Cast DataFrame with columns: adult, gender, id, known_for_department, 
+        name, original_name, popularity, profile_path, cast_id, character, 
+        credit_id, order, tmdb_id, imdb_id
+    """
+    return _load_movie_cast()
+
+
 def invalidate_data_cache() -> None:
     """Clear cached datasets (useful after refreshing source files)."""
     load_all_data.cache_clear()
+    load_cast_data.cache_clear()
     search_movies_cached.cache_clear()
 
 

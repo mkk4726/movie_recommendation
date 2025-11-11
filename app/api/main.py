@@ -56,10 +56,19 @@ def _load_data_sync():
     """동기 함수로 데이터 로드"""
     set_loading(True, "📦 데이터 로딩 중...")
     logger.info("📦 데이터 사전 로드 시작...")
-    from modules.services.data_access import load_all_data
+    from modules.services.data_access import load_all_data, load_cast_data
     df_movies, df_ratings, df_filtered = load_all_data()
+    logger.info(f"✅ 영화/평점 데이터 로드 완료: 영화 {len(df_movies)}개, 평점 {len(df_ratings)}개")
+    
+    # Cast 데이터 로드
+    try:
+        df_cast = load_cast_data()
+        logger.info(f"✅ Cast 데이터 로드 완료: {len(df_cast)}개 항목")
+    except Exception as e:
+        logger.warning(f"⚠️ Cast 데이터 로드 실패 (계속 진행): {e}")
+    
     set_progress("data", True)
-    logger.info(f"✅ 데이터 로드 완료: 영화 {len(df_movies)}개, 평점 {len(df_ratings)}개")
+    logger.info("✅ 모든 데이터 로드 완료")
 
 
 def _load_search_pipeline_sync():

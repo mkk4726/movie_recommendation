@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 import pandas as pd
 import yaml
 
-from modules.services.data_access import load_all_data, search_movies_cached, get_data_stats
+from modules.services.data_access import load_all_data, search_movies_cached, get_data_stats, load_cast_data
 from modules.services.recommender_service import (
     get_recommender_service,
     recommend_for_user as recommend_for_user_func,
@@ -107,6 +107,13 @@ def home(
     df_movies = None
     df_ratings = None
     
+    # Cast 데이터 로드 (캐시됨, 한 번만 로드)
+    try:
+        cast_df = load_cast_data()
+    except Exception as e:
+        logger.warning(f"Cast 데이터 로드 실패 (cast 정보 없이 계속 진행): {e}")
+        cast_df = None
+    
     # 통계 정보는 캐시된 함수 사용 (사이드바 통계용)
     stats_start = time.time()
     try:
@@ -164,7 +171,7 @@ def home(
         if movie_search_query and movie_search_query.strip():
             try:
                 df_search = search_movies_cached(query=movie_search_query, limit=10)
-                movie_search_results = from_dataframe(df_search)
+                movie_search_results = from_dataframe(df_search, cast_df=cast_df)
             except Exception as e:
                 logger.error(f"영화 검색 실패: {e}", exc_info=True)
         
@@ -173,7 +180,7 @@ def home(
             try:
                 movie_row = df_movies[df_movies["movie_id"] == selected_movie_id]
                 if not movie_row.empty:
-                    selected_movie_info = from_dataframe(movie_row.head(1))[0]
+                    selected_movie_info = from_dataframe(movie_row.head(1), cast_df=cast_df)[0]
             except Exception as e:
                 logger.error(f"영화 정보 조회 실패: {e}", exc_info=True)
 
@@ -201,8 +208,8 @@ def home(
                     )
                     user_recommendations = {
                         "user_id": user_id,
-                        "top_watched": from_dataframe(top_watched_df, include_rating=True),
-                        "recommendations": from_dataframe(recommendations_df, include_predicted=True),
+                        "top_watched": from_dataframe(top_watched_df, include_rating=True, cast_df=cast_df),
+                        "recommendations": from_dataframe(recommendations_df, include_predicted=True, cast_df=cast_df),
                     }
                 except ValueError as exc:
                     errors.append(str(exc))
@@ -229,7 +236,7 @@ def home(
                 )
                 similar_movies = {
                     "movie_id": selected_movie_id,
-                    "items": from_dataframe(similar_df, include_similarity=True),
+                    "items": from_dataframe(similar_df, include_similarity=True, cast_df=cast_df),
                 }
             except ValueError as exc:
                 errors.append(str(exc))
@@ -272,7 +279,7 @@ def home(
                     df_search_movies = df_search_movies.set_index("movie_id_str").reindex(search_movie_ids_str).reset_index(drop=True)
                     
                     # from_dataframe으로 표준 형식 변환
-                    search_movies = from_dataframe(df_search_movies)
+                    search_movies = from_dataframe(df_search_movies, cast_df=cast_df)
                     
                     # 검색 점수 추가
                     for movie in search_movies:
@@ -318,14 +325,14 @@ def home(
                 # 평점 관리에서는 최대 200개까지 검색 결과 표시 (모든 결과를 보여주기 위해)                                                                    
                 rating_limit = 200  # 더 많은 결과 표시
                 df_search = search_movies_cached(query=query, limit=rating_limit)                                                                               
-                rating_search_results = from_dataframe(df_search)
+                rating_search_results = from_dataframe(df_search, cast_df=cast_df)
             
             # 선택된 영화 정보 가져오기
             if selected_rating_movie_id and df_movies is not None:
                 try:
                     movie_row = df_movies[df_movies["movie_id"] == selected_rating_movie_id]                                                                                                                                                    
                     if not movie_row.empty:
-                        selected_rating_movie_info = from_dataframe(movie_row.head(1))[0]                                                                       
+                        selected_rating_movie_info = from_dataframe(movie_row.head(1), cast_df=cast_df)[0]                                                                       
                 except Exception as e:
                     logger.error(f"평점 관리 영화 정보 조회 실패: {e}", exc_info=True)
             
@@ -347,7 +354,7 @@ def home(
                             explored_df["movie_id_str"] = explored_df["movie_id"].astype(str)
                             movie_id_list_str = [str(mid) for mid in movie_id_list]
                             explored_df = explored_df.set_index("movie_id_str").reindex(movie_id_list_str).reset_index(drop=True)
-                            explored_movies_list = from_dataframe(explored_df)
+                            explored_movies_list = from_dataframe(explored_df, cast_df=cast_df)
                 except Exception as e:
                     logger.error(f"탐색 영화 정보 조회 실패: {e}", exc_info=True)
             

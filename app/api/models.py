@@ -1,7 +1,7 @@
 """
 Pydantic models for API request/response validation.
 """
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -10,6 +10,7 @@ class MovieSummary(BaseModel):
     title: Optional[str] = None
     genre: Optional[str] = None
     year: Optional[int] = None
+    cast_info: Optional["MovieCastInfo"] = None
 
 
 class UserRatedMovie(MovieSummary):
@@ -24,6 +25,54 @@ class SimilarMovie(MovieSummary):
     similarity: Optional[float] = None
 
 
+class CastMember(BaseModel):
+    """출연진/제작진 정보"""
+    name: str = Field(..., description="이름")
+    original_name: str = Field(..., description="원어 이름")
+    character: Optional[str] = Field(default=None, description="배역/역할")
+    profile_path: Optional[str] = Field(default=None, description="프로필 이미지 경로")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "톰 행크스",
+                "original_name": "Tom Hanks",
+                "character": "Woody (voice)",
+                "profile_path": "/eKF1sGJRrZJbfBG1KirPt1cfNd3.jpg"
+            }
+        }
+
+
+class MovieCastInfo(BaseModel):
+    """영화 출연진 및 제작진 정보"""
+    actors: List[CastMember] = Field(default_factory=list, description="주연 배우 (최대 5명)")
+    directors: List[CastMember] = Field(default_factory=list, description="감독")
+    writers: List[CastMember] = Field(default_factory=list, description="작가")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "actors": [
+                    {
+                        "name": "톰 행크스",
+                        "original_name": "Tom Hanks",
+                        "character": "Woody (voice)",
+                        "profile_path": "/eKF1sGJRrZJbfBG1KirPt1cfNd3.jpg"
+                    }
+                ],
+                "directors": [
+                    {
+                        "name": "존 래시터",
+                        "original_name": "John Lasseter",
+                        "character": None,
+                        "profile_path": "/7EdqiNbr4FRjIhKHyPPdFfEEEFG.jpg"
+                    }
+                ],
+                "writers": []
+            }
+        }
+
+
 class SearchResultMovie(BaseModel):
     """검색 결과 영화 (QuerySearchPipeline 출력용)"""
     movie_id: str = Field(..., description="영화 ID")
@@ -36,6 +85,7 @@ class SearchResultMovie(BaseModel):
         description="매칭된 필드별 스코어"
     )
     year: Optional[int] = Field(default=None, description="개봉 연도")
+    cast_info: Optional[MovieCastInfo] = Field(default=None, description="출연진 및 제작진 정보")
     
     class Config:
         json_schema_extra = {
@@ -46,7 +96,19 @@ class SearchResultMovie(BaseModel):
                 "score": 15.42,
                 "overview": "Led by Woody, Andy's toys live happily...",
                 "matched_fields": {"title": 10.5, "overview": 4.92},
-                "year": 1995
+                "year": 1995,
+                "cast_info": {
+                    "actors": [
+                        {
+                            "name": "톰 행크스",
+                            "original_name": "Tom Hanks",
+                            "character": "Woody (voice)",
+                            "profile_path": "/eKF1sGJRrZJbfBG1KirPt1cfNd3.jpg"
+                        }
+                    ],
+                    "directors": [],
+                    "writers": []
+                }
             }
         }
 
