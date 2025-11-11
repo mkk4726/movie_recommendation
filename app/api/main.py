@@ -62,6 +62,19 @@ def _load_data_sync():
     logger.info(f"✅ 데이터 로드 완료: 영화 {len(df_movies)}개, 평점 {len(df_ratings)}개")
 
 
+def _load_search_pipeline_sync():
+    """동기 함수로 검색 파이프라인 로드"""
+    set_loading(True, "🔍 검색 파이프라인 로딩 중...")
+    logger.info("🔍 검색 파이프라인 사전 로드 시작...")
+    from app.api.routes.search import get_search_pipeline
+    try:
+        get_search_pipeline()
+        set_progress("search", True)
+        logger.info("✅ 검색 파이프라인 로드 완료")
+    except Exception as e:
+        logger.error(f"❌ 검색 파이프라인 로드 실패: {e}", exc_info=True)
+
+
 async def load_models_and_data():
     """백그라운드에서 모델과 데이터를 로드하는 함수"""
     # 로딩 상태 시작
@@ -84,6 +97,14 @@ async def load_models_and_data():
         logger.error(f"❌ 데이터 로드 중 오류 발생: {e}", exc_info=True)
         set_loading(False, "데이터 로드 실패")
         return
+    
+    # 검색 파이프라인 사전 로드 (비동기 스레드에서 실행)
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _load_search_pipeline_sync)
+    except Exception as e:
+        logger.error(f"❌ 검색 파이프라인 로드 중 오류 발생: {e}", exc_info=True)
+        # 검색 파이프라인 로드 실패는 치명적이지 않으므로 계속 진행
     
     # 로딩 완료
     set_loading(False, "준비 완료")

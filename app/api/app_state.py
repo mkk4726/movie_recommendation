@@ -12,6 +12,7 @@ _loading_state = {
     "progress": {
         "model": False,
         "data": False,
+        "search": False,
     }
 }
 _lock = threading.Lock()

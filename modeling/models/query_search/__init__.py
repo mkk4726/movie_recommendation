@@ -5,11 +5,22 @@ Query Search Module
 """
 
 from .lexical_search import BM25, MovieBM25, BM25Config, BM25SearchResult
+from .query_search import (
+    QuerySearchPipeline,
+    create_search_pipeline,
+    search_movies
+)
 
 __all__ = [
+    # Lexical Search (BM25)
     'BM25',
     'MovieBM25',
     'BM25Config',
-    'BM25SearchResult'
+    'BM25SearchResult',
+    
+    # Query Search Pipeline
+    'QuerySearchPipeline',
+    'create_search_pipeline',
+    'search_movies',
 ]
 

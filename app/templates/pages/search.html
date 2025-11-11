@@ -1,7 +1,8 @@
+  {% from "partials/movie_card.html" import movie_metadata_card %}
   <div class="page-content" id="page-search" style="display: {% if current_page == 'search' %}block{% else %}none{% endif %};">
     <section class="card">
       <h2>🔍 자연어 검색</h2>
-      <p class="muted">자연어로 영화를 검색해보세요. 예: "이병헌이 출연한 액션 영화 추천해줘"</p>
+      <p class="muted">자연어로 영화를 검색해보세요. 예: "장난감이 나오는 영화"</p>
 
       <!-- 자연어 검색 입력 -->
       <form method="get" action="/" style="margin-bottom: 1.5rem;">
@@ -16,23 +17,36 @@
             value="{{ search_query }}"
             style="flex: 1; background-color: var(--card-bg); color: var(--text-color);"
           />
-          <button type="submit">🔍 검색</button>
+          <button type="submit" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔍 검색</button>
         </div>
       </form>
 
-      {% if search_query %}
+      {% if search_results %}
         <!-- 검색 결과 표시 -->
         <div style="margin-top: 2rem;">
-          <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
-          <h3 style="margin-bottom: 1rem; color: var(--text-color);">📝 입력하신 내용</h3>
-          <div style="background: rgba(59, 130, 246, 0.08); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
-            <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; white-space: pre-wrap; color: var(--text-color); font-weight: 500;">{{ search_query }}</p>
-          </div>
+          <div class="divider" style="margin: 1.5rem 0;"></div>
+          <h3 style="margin-bottom: 1rem;">🎬 검색 결과</h3>
+          <p class="muted" style="margin-bottom: 1.5rem;">
+            검색어와 관련된 영화 {{ search_results.total_results }}개
+          </p>
           
-          <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--accent); border-radius: 4px;">
-            <p style="margin: 0; color: var(--text-color); line-height: 1.6;">
-              💡 <strong>안내:</strong> 현재는 입력하신 검색어를 그대로 표시하고 있습니다. 
-              실제 검색 파이프라인은 <code>/api/search/natural-language</code> 엔드포인트에 구현되어 있습니다.
+          {% if search_results.results %}
+            {% for movie in search_results.results %}
+            {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=False, show_score=True, overview_id_prefix='search-overview') }}
+            {% endfor %}
+          {% else %}
+            <div class="card error-card">
+              <p>⚠️ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
+            </div>
+          {% endif %}
+        </div>
+      {% elif search_query %}
+        <!-- 검색 중이거나 오류 발생 -->
+        <div style="margin-top: 2rem;">
+          <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
+          <div style="padding: 2rem; text-align: center; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <p style="margin: 0; color: var(--text-color);">
+              🔍 검색 중입니다...
             </p>
           </div>
         </div>

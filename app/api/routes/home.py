@@ -38,7 +38,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 @router.get("/", response_class=HTMLResponse)
 def home(
     request: Request,
-    page: Optional[str] = Query("movie_based", description="페이지 타입"),
+    page: Optional[str] = Query("search", description="페이지 타입"),
     query: Optional[str] = Query(None),
     limit: int = Query(5, ge=1, le=200),
     user_id: Optional[str] = Query(None),
@@ -131,6 +131,7 @@ def home(
         needs_full_data = (
             (current_page == "movie_based" and (selected_movie_id or movie_search_query)) or
             (current_page == "user_based" and (user_id or user_option == "me")) or
+            (current_page == "search" and search_query) or
             current_page == "rating_management"
         )
         
@@ -232,6 +233,72 @@ def home(
                 }
             except ValueError as exc:
                 errors.append(str(exc))
+    
+    # 자연어 검색 결과
+    search_results = None
+    if current_page == "search" and search_query and search_query.strip():
+        try:
+            from app.api.routes.search import get_search_pipeline
+            search_pipeline = get_search_pipeline()
+            
+            # 검색 실행
+            search_response = search_pipeline.search_to_response(
+                query=search_query,
+                top_k=limit,
+                min_score=0.0
+            )
+            
+            # 검색 결과를 DataFrame으로 변환하고 영화 메타데이터와 조인
+            if search_response.results:
+                # 검색 결과에서 movie_id와 score 추출
+                search_movie_ids = []
+                search_scores = {}
+                for result in search_response.results:
+                    search_movie_ids.append(result.movie_id)
+                    search_scores[result.movie_id] = result.score
+                
+                # df_movies가 없으면 로드
+                if df_movies is None:
+                    logger.info("검색 결과 메타데이터를 위해 영화 데이터 로드 중...")
+                    df_movies, _, _ = load_all_data()
+                
+                # movie_id로 전체 영화 데이터 조인
+                df_search_movies = df_movies[df_movies["movie_id"].isin(search_movie_ids)].copy()
+                
+                if not df_search_movies.empty:
+                    # 검색 결과 순서 유지
+                    df_search_movies["movie_id_str"] = df_search_movies["movie_id"].astype(str)
+                    search_movie_ids_str = [str(mid) for mid in search_movie_ids]
+                    df_search_movies = df_search_movies.set_index("movie_id_str").reindex(search_movie_ids_str).reset_index(drop=True)
+                    
+                    # from_dataframe으로 표준 형식 변환
+                    search_movies = from_dataframe(df_search_movies)
+                    
+                    # 검색 점수 추가
+                    for movie in search_movies:
+                        movie["score"] = search_scores.get(movie["movie_id"], 0.0)
+                    
+                    search_results = {
+                        "query": search_query,
+                        "total_results": len(search_movies),
+                        "results": search_movies
+                    }
+                    logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(search_movies)}개 결과 (메타데이터 포함)")
+                else:
+                    search_results = {
+                        "query": search_query,
+                        "total_results": 0,
+                        "results": []
+                    }
+            else:
+                search_results = {
+                    "query": search_query,
+                    "total_results": 0,
+                    "results": []
+                }
+        except Exception as e:
+            logger.error(f"자연어 검색 실패: {e}", exc_info=True)
+            errors.append(f"검색 중 오류가 발생했습니다: {str(e)}")
     
                 # 평점 관리 페이지 데이터 로드
     rating_search_results = []
@@ -335,6 +402,7 @@ def home(
         "title": "볼거 없나? 추천 서비스",
         "current_page": current_page,
         "search_query": search_query or "",
+        "search_results": search_results,
         "query": query or "",
         "search_limit": limit,
         "movie_search_query": movie_search_query or "",

@@ -1,4 +1,4 @@
-{% macro movie_metadata_card(movie, show_index=False, index=None, show_similarity=False, overview_id_prefix='movie-overview') %}
+{% macro movie_metadata_card(movie, show_index=False, index=None, show_similarity=False, show_score=False, overview_id_prefix='movie-overview') %}
   <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
     {% if movie.poster_url %}
     <div style="flex-shrink: 0;">
@@ -81,6 +81,15 @@
       </p>
       {% endif %}
       
+      <!-- 검색 점수 (선택적) -->
+      {% if show_score and movie.score is not none %}
+      <p style="margin: 0.5rem 0;">
+        <span style="font-weight: 600; color: #FFD700; background: rgba(255,255,255,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem;">
+          검색 점수: {{ '%.2f'|format(movie.score) }}
+        </span>
+      </p>
+      {% endif %}
+      
       <!-- 줄거리 -->
       {% if movie.overview %}
       <div style="margin: 0.75rem 0 0 0;">
@@ -95,6 +104,15 @@
         <button onclick="toggleOverview('{{ unique_overview_id }}', '{{ unique_overview_id }}-btn')" id="{{ unique_overview_id }}-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;">
           더보기
         </button>
+      </div>
+      {% endif %}
+      
+      <!-- 비슷한 영화 추천 버튼 (검색 결과에서만 표시) -->
+      {% if overview_id_prefix == 'search-overview' %}
+      <div style="margin: 0.75rem 0 0 0;">
+        <a href="/?page=movie_based&selected_movie_id={{ movie.movie_id }}&similar_top_n=10" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';">
+          🎬 비슷한 영화 추천
+        </a>
       </div>
       {% endif %}
     </div>
