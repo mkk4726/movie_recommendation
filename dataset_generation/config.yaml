@@ -1,0 +1,126 @@
+# Query Generation System 설정
+# LLM을 활용하여 영화 검색 쿼리를 자동 생성합니다.
+
+# ========================================
+# Query Generation 설정
+# ========================================
+query_generation:
+  # 모델 설정
+  model_name: "Qwen/Qwen2.5-1.5B-Instruct"  # 사용할 Qwen 모델
+  
+  # 허용된 모델명 목록
+  allowed_models:
+    - "Qwen/Qwen2.5-1.5B-Instruct"
+    - "Qwen/Qwen2.5-3B-Instruct"
+    - "Qwen/Qwen2.5-7B-Instruct"
+  
+  # 생성 파라미터
+  max_new_tokens: 256         # 최대 생성 토큰 수 (여러 쿼리 생성)
+  temperature: 0.5          # 생성 온도 (다양성 확보)
+  top_p: 0.85                 # Nucleus sampling 파라미터
+  do_sample: true             # 샘플링 활성화 (다양성 확보)
+
+  
+  # 생성 설정
+  queries_per_movie: 7        # 영화당 생성할 쿼리 수
+  batch_size: 1               # 배치 크기 (메모리 제약 고려)
+  
+  # 쿼리 유형 분포 (총합 1.0)
+  query_type_distribution:
+    plot: 0.25                # 줄거리 기반
+    actor: 0.20               # 배우 기반
+    director: 0.15            # 감독 기반
+    genre: 0.15               # 장르 기반
+    mood: 0.15                # 분위기/테마 기반
+    hybrid: 0.10              # 복합 쿼리
+  
+  # System Prompt
+  system_prompt: |
+    You are a Korean movie fan who creates natural search queries. 
+    Given movie metadata, generate diverse Korean search queries that real users might type.
+    
+    CRITICAL RULES:
+    1. Generate ONLY Korean queries (한국어로만 작성)
+    2. Make queries natural and conversational (자연스럽고 구어체로)
+    3. Vary query length and complexity (짧은 것부터 긴 것까지 다양하게)
+    4. Include different query types (plot, actor, director, genre, mood, hybrid)
+    5. Return ONLY a valid JSON array, no explanation or markdown
+    
+    Query Types:
+    - plot: Based on story/plot (예: "타임루프로 같은 날을 반복하는 영화")
+    - actor: Based on actors (예: "송강호가 나오는 스릴러")
+    - director: Based on director (예: "봉준호 감독의 괴물 영화")
+    - genre: Based on genre (예: "SF 액션 스릴러")
+    - mood: Based on mood/theme (예: "긴장감 넘치는 범죄 영화")
+    - hybrid: Combination (예: "2000년대 한국 범죄 스릴러")
+    
+    Output format (JSON array):
+    [
+      {"query": "...", "query_type": "plot", "language": "ko"},
+      {"query": "...", "query_type": "actor", "language": "ko"},
+      ...
+    ]
+  
+  # User Prompt Template
+  user_prompt_template: |
+    Generate {num_queries} diverse Korean search queries for this movie:
+    
+    Title: {title}
+    Original Title: {original_title}
+    Genres: {genres}
+    Overview: {overview}
+    Director: {director}
+    Actors: {actors}
+    Keywords: {keywords}
+    Release Year: {release_year}
+    
+    Create natural queries that Korean users would type to find this movie.
+    Include different query types: plot-based, actor-based, director-based, genre-based, mood-based, and hybrid queries.
+    
+    Return ONLY a JSON array with {num_queries} queries.
+
+# ========================================
+# 데이터 설정
+# ========================================
+data:
+  # TMDB 데이터 경로
+  tmdb_data_path: null        # null이면 자동 탐색
+  
+  # MovieLens 데이터 경로
+  movielens_data_path: null   # null이면 자동 탐색
+  
+  # 샘플링 설정
+  sample_size: null           # null이면 전체 데이터 사용
+  min_rating_count: 50        # 최소 평점 수 (인기도 필터)
+  
+  # 장르별 균형 샘플링
+  balance_by_genre: true      # 장르별 균형 유지
+  
+  # 시대별 다양성
+  balance_by_decade: true     # 연도별 균형 유지
+
+# ========================================
+# 출력 설정
+# ========================================
+output:
+  # 저장 경로
+  output_dir: "dataset_generation/output"
+  output_filename: "query_dataset.jsonl"
+  
+  # 저장 형식
+  save_format: "jsonl"        # jsonl 또는 csv
+  
+  # 메타데이터 포함
+  include_metadata: true      # 영화 메타데이터 포함 여부
+  
+  # 중복 체크
+  check_duplicate: true       # 중복 쿼리 체크
+
+# ========================================
+# 로깅 설정
+# ========================================
+logging:
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  log_file: "dataset_generation/query_generation.log"
+  verbose: true               # 상세 출력 여부
+
