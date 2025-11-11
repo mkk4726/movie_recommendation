@@ -40,7 +40,7 @@ def home(
     request: Request,
     page: Optional[str] = Query("search", description="페이지 타입"),
     query: Optional[str] = Query(None),
-    limit: int = Query(5, ge=1, le=200),
+    limit: int = Query(10, ge=1, le=200),
     user_id: Optional[str] = Query(None),
     user_top_n: int = Query(10, ge=5, le=20),
     user_option: Optional[str] = Query(None, description="사용자 선택 옵션: me 또는 other"),
