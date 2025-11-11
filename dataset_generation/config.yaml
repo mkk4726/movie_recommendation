@@ -6,7 +6,7 @@
 # ========================================
 query_generation:
   # 모델 설정
-  model_name: "Qwen/Qwen2.5-1.5B-Instruct"  # 사용할 Qwen 모델
+  model_name: "Qwen/Qwen2.5-7B-Instruct"  # 사용할 Qwen 모델
   
   # 허용된 모델명 목록
   allowed_models:
@@ -15,7 +15,7 @@ query_generation:
     - "Qwen/Qwen2.5-7B-Instruct"
   
   # 생성 파라미터
-  max_new_tokens: 256         # 최대 생성 토큰 수 (여러 쿼리 생성)
+  max_new_tokens: 512         # 최대 생성 토큰 수 (여러 쿼리 생성)
   temperature: 0.5          # 생성 온도 (다양성 확보)
   top_p: 0.85                 # Nucleus sampling 파라미터
   do_sample: true             # 샘플링 활성화 (다양성 확보)
@@ -45,21 +45,140 @@ query_generation:
     3. Vary query length and complexity (짧은 것부터 긴 것까지 다양하게)
     4. Include different query types (plot, actor, director, genre, mood, hybrid)
     5. Return ONLY a valid JSON array, no explanation or markdown
+    6. SKIP query types when data is "Unknown" or missing:
+       - If actor = "Unknown" → Skip actor queries
+       - If director = "Unknown" → Skip director queries
+       - If overview is empty/generic → Reduce plot queries
     
     Query Types:
-    - plot: Based on story/plot (예: "타임루프로 같은 날을 반복하는 영화")
-    - actor: Based on actors (예: "송강호가 나오는 스릴러")
-    - director: Based on director (예: "봉준호 감독의 괴물 영화")
-    - genre: Based on genre (예: "SF 액션 스릴러")
-    - mood: Based on mood/theme (예: "긴장감 넘치는 범죄 영화")
-    - hybrid: Combination (예: "2000년대 한국 범죄 스릴러")
+    - plot: Based on story/plot (줄거리 기반)
+    - actor: Based on actors (배우 기반)
+    - director: Based on director (감독 기반)
+    - genre: Based on genre (장르 기반)
+    - mood: Based on mood/theme (분위기/테마 기반)
+    - hybrid: Combination (복합 조건)
     
-    Output format (JSON array):
+    === FEW-SHOT EXAMPLES ===
+    
+    Example 1 - 기생충:
+    Input:
+    - title: 기생충
+    - original_title: Parasite
+    - genres: 드라마, 스릴러, 코미디
+    - overview: 전원 백수인 기택 가족이 부유한 박 사장 가족에게 취업하면서 벌어지는 이야기
+    - director: 봉준호
+    - actors: 송강호, 이선균, 조여정, 최우식, 박소담
+    - release_year: 2019
+    
+    Output:
     [
-      {"query": "...", "query_type": "plot", "language": "ko"},
-      {"query": "...", "query_type": "actor", "language": "ko"},
+      {"query": "백수 가족이 부자집에 취업하는 영화", "query_type": "plot", "language": "ko"},
+      {"query": "송강호 이선균 나오는 영화", "query_type": "actor", "language": "ko"},
+      {"query": "봉준호 감독 드라마", "query_type": "director", "language": "ko"},
+      {"query": "드라마 스릴러 코미디", "query_type": "genre", "language": "ko"},
+      {"query": "가족과 계급 다룬 영화", "query_type": "mood", "language": "ko"},
+      {"query": "2019년 봉준호 감독 드라마", "query_type": "hybrid", "language": "ko"},
+      {"query": "부유한 박 사장 집 이야기", "query_type": "plot", "language": "ko"}
+    ]
+    
+    Example 2 - 인터스텔라:
+    Input:
+    - title: 인터스텔라
+    - original_title: Interstellar
+    - genres: SF, 드라마, 모험
+    - overview: 황폐해진 지구를 떠나 인류의 새로운 보금자리를 찾기 위한 우주 탐험
+    - director: 크리스토퍼 놀란
+    - actors: 매튜 맥커너히, 앤 해서웨이, 제시카 차스테인
+    - release_year: 2014
+    
+    Output:
+    [
+      {"query": "지구 떠나서 새 행성 찾는 영화", "query_type": "plot", "language": "ko"},
+      {"query": "매튜 맥커너히 SF 영화", "query_type": "actor", "language": "ko"},
+      {"query": "크리스토퍼 놀란 감독 영화", "query_type": "director", "language": "ko"},
+      {"query": "SF 드라마 모험", "query_type": "genre", "language": "ko"},
+      {"query": "우주 탐험 영화", "query_type": "mood", "language": "ko"},
+      {"query": "2014년 놀란 감독 우주 영화", "query_type": "hybrid", "language": "ko"},
+      {"query": "황폐한 지구 인류 보금자리 찾는 영화", "query_type": "plot", "language": "ko"}
+    ]
+    
+    Example 3 - 범죄도시:
+    Input:
+    - title: 범죄도시
+    - original_title: The Outlaws
+    - genres: 액션, 범죄
+    - overview: 2004년 서울 가리봉동, 강력계 형사와 조직폭력배의 대결
+    - director: 강윤성
+    - actors: 마동석, 윤계상, 조재윤
+    - release_year: 2017
+    
+    Output:
+    [
+      {"query": "형사와 조직폭력배 대결하는 영화", "query_type": "plot", "language": "ko"},
+      {"query": "마동석 윤계상 액션", "query_type": "actor", "language": "ko"},
+      {"query": "강윤성 감독 영화", "query_type": "director", "language": "ko"},
+      {"query": "액션 범죄", "query_type": "genre", "language": "ko"},
+      {"query": "강력계 형사 영화", "query_type": "mood", "language": "ko"},
+      {"query": "2017년 가리봉동 액션", "query_type": "hybrid", "language": "ko"},
+      {"query": "서울 조직폭력배 이야기", "query_type": "plot", "language": "ko"}
+    ]
+    
+    Example 4 - 헤어질 결심:
+    Input:
+    - title: 헤어질 결심
+    - original_title: Decision to Leave
+    - genres: 미스터리, 스릴러, 로맨스
+    - overview: 산 정상에서 추락한 한 남자의 죽음을 수사하던 형사 해준이 용의자인 죽은 자의 아내 서래와 만나면서 벌어지는 이야기
+    - director: 박찬욱
+    - actors: 박해일, 탕웨이, 이정현, 고경표
+    - release_year: 2022
+    
+    Output:
+    [
+      {"query": "형사가 용의자 아내와 만나는 영화", "query_type": "plot", "language": "ko"},
+      {"query": "박해일 탕웨이 나오는 영화", "query_type": "actor", "language": "ko"},
+      {"query": "박찬욱 감독 스릴러", "query_type": "director", "language": "ko"},
+      {"query": "미스터리 스릴러 로맨스", "query_type": "genre", "language": "ko"},
+      {"query": "형사 수사 영화", "query_type": "mood", "language": "ko"},
+      {"query": "2022년 박찬욱 미스터리", "query_type": "hybrid", "language": "ko"},
+      {"query": "산 정상에서 추락한 남자 죽음 수사", "query_type": "plot", "language": "ko"}
+    ]
+    
+    Example 5 - Unknown 데이터 처리:
+    Input:
+    - title: Hunky Dory
+    - original_title: Hunky Dory
+    - genres: 음악 코미디
+    - overview: 1976년 여름, 비브는 연극 배우가 되겠다는 꿈을 접고 고향 사우스 웨일즈로 돌아간다.
+    - director: Unknown
+    - actors: Unknown
+    - release_year: 2011
+    
+    Output:
+    [
+      {"query": "연극 배우 꿈 접고 고향 돌아가는 영화", "query_type": "plot", "language": "ko"},
+      {"query": "음악 코미디", "query_type": "genre", "language": "ko"},
+      {"query": "사우스 웨일즈 배경 영화", "query_type": "mood", "language": "ko"},
+      {"query": "2011년 음악 영화", "query_type": "hybrid", "language": "ko"},
+      {"query": "1976년 배경 영화", "query_type": "plot", "language": "ko"}
+    ]
+    Note: actor와 director가 Unknown이므로 해당 query_type은 생성하지 않음. 5개만 생성.
+    
+    === OUTPUT FORMAT ===
+    Return ONLY a valid JSON array. Generate 5-7 queries based on available data:
+    - Include all available query types (plot, actor, director, genre, mood, hybrid)
+    - Skip query types when information is "Unknown" or missing
+    - Minimum 5 queries, maximum 7 queries
+    
+    [
+      {"query": "...", "query_type": "plot/actor/director/genre/mood/hybrid", "language": "ko"},
       ...
     ]
+    
+    IMPORTANT: 
+    1. Generate natural, diverse queries that real Korean users would actually search for!
+    2. Use ONLY information provided in the input - do NOT invent details!
+    3. Skip query types when data is Unknown/missing!
   
   # User Prompt Template
   user_prompt_template: |
@@ -71,7 +190,6 @@ query_generation:
     Overview: {overview}
     Director: {director}
     Actors: {actors}
-    Keywords: {keywords}
     Release Year: {release_year}
     
     Create natural queries that Korean users would type to find this movie.
