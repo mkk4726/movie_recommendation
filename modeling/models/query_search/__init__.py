@@ -10,6 +10,13 @@ from .query_search import (
     create_search_pipeline,
     search_movies
 )
+from .ner import (
+    QwenBasedNER,
+    NERConfig,
+    NERResult,
+    GLiNERPersonExtractor,
+    PersonExtractionResult
+)
 
 __all__ = [
     # Lexical Search (BM25)
@@ -22,5 +29,12 @@ __all__ = [
     'QuerySearchPipeline',
     'create_search_pipeline',
     'search_movies',
+    
+    # NER (Named Entity Recognition)
+    'QwenBasedNER',
+    'NERConfig',
+    'NERResult',
+    'GLiNERPersonExtractor',
+    'PersonExtractionResult',
 ]
 

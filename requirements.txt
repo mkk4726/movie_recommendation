@@ -38,3 +38,6 @@ transformers>=4.51.0
 accelerate>=0.33.0
 sentencepiece
 protobuf
+gliner2
+python-mecab-ko
+gliner

@@ -342,7 +342,7 @@ class QwenBasedNER:
 
 # 사용 예시
 if __name__ == "__main__":
-    # from modeling.models.NER import QwenBasedNER
+    # from modeling.models.query_search.ner.qwen_based import QwenBasedNER
 
     ner = QwenBasedNER()
     print(ner.config)
