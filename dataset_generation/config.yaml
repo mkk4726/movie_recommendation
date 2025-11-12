@@ -22,8 +22,8 @@ query_generation:
 
   
   # 생성 설정
-  queries_per_movie: 7        # 영화당 생성할 쿼리 수
-  batch_size: 1               # 배치 크기 (메모리 제약 고려)
+  queries_per_movie: 4       # 영화당 생성할 쿼리 수
+  batch_size: 10              # 배치 크기 (한 번에 처리할 영화 수, 메모리 관리용)
   
   # 쿼리 유형 분포 (총합 1.0)
   query_type_distribution:
@@ -193,7 +193,14 @@ query_generation:
     Release Year: {release_year}
     
     Create natural queries that Korean users would type to find this movie.
-    Include different query types: plot-based, actor-based, director-based, genre-based, mood-based, and hybrid queries.
+    
+    Target Query Type Distribution (aim for these ratios):
+    - plot (줄거리 기반): {plot_ratio}%
+    - actor (배우 기반): {actor_ratio}%
+    - director (감독 기반): {director_ratio}%
+    - genre (장르 기반): {genre_ratio}%
+    - mood (분위기/테마 기반): {mood_ratio}%
+    - hybrid (복합 쿼리): {hybrid_ratio}%
     
     Return ONLY a JSON array with {num_queries} queries.
 

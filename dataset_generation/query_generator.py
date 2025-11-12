@@ -27,6 +27,8 @@ class QueryGeneratorConfig:
     temperature: float = 0.5
     top_p: float = 0.85
     do_sample: bool = True
+    batch_size: int = 1
+    query_type_distribution: Optional[Dict[str, float]] = None
 
     @classmethod
     def from_yaml(cls, yaml_path: Optional[str] = None) -> "QueryGeneratorConfig":
@@ -65,6 +67,8 @@ class QueryGeneratorConfig:
             "temperature": qg_config.get("temperature", 0.5),
             "top_p": qg_config.get("top_p", 0.85),
             "do_sample": qg_config.get("do_sample", True),
+            "batch_size": qg_config.get("batch_size", 1),
+            "query_type_distribution": qg_config.get("query_type_distribution", None),
         }
 
         logger.info("✅ Query Generator 설정 로드 완료")
@@ -141,7 +145,8 @@ class QueryGenerator:
             do_sample: 샘플링 사용 여부
 
         Returns:
-            생성된 쿼리 리스트 [{"query": "...", "query_type": "...", "language": "ko"}, ...]
+            생성된 쿼리 리스트
+            [{"query": "...", "query_type": "...", "language": "ko"}, ...]
         """
         # 파라미터 설정
         num_queries = (
@@ -159,7 +164,8 @@ class QueryGenerator:
         # User Prompt 생성
         user_prompt = self._create_user_prompt(movie_data, num_queries)
 
-        logger.info(f"🎬 영화 '{movie_data.get('title', 'Unknown')}' 쿼리 생성 중...")
+        movie_title = movie_data.get("title", "Unknown")
+        logger.info(f"🎬 영화 '{movie_title}' 쿼리 생성 중...")
         logger.debug(f"User Prompt:\n{user_prompt}")
 
         # LLM으로 쿼리 생성
@@ -204,7 +210,115 @@ class QueryGenerator:
             "release_year": movie_data.get("release_year", "Unknown"),
         }
 
+        # query_type_distribution이 있으면 비율 정보 추가
+        if self.config.query_type_distribution:
+            dist = self.config.query_type_distribution
+            prompt_data.update(
+                {
+                    "plot_ratio": int(dist.get("plot", 0) * 100),
+                    "actor_ratio": int(dist.get("actor", 0) * 100),
+                    "director_ratio": int(dist.get("director", 0) * 100),
+                    "genre_ratio": int(dist.get("genre", 0) * 100),
+                    "mood_ratio": int(dist.get("mood", 0) * 100),
+                    "hybrid_ratio": int(dist.get("hybrid", 0) * 100),
+                }
+            )
+        else:
+            # 기본값 설정 (placeholder가 있을 경우를 대비)
+            prompt_data.update(
+                {
+                    "plot_ratio": 25,
+                    "actor_ratio": 20,
+                    "director_ratio": 15,
+                    "genre_ratio": 15,
+                    "mood_ratio": 15,
+                    "hybrid_ratio": 10,
+                }
+            )
+
         return self.config.user_prompt_template.format(**prompt_data)
+
+    def _create_batch_user_prompt(
+        self, movies_data: List[Dict[str, Any]], num_queries: int
+    ) -> str:
+        """
+        여러 영화 데이터를 기반으로 배치 User Prompt 생성
+
+        Args:
+            movies_data: 영화 메타데이터 리스트
+            num_queries: 각 영화당 생성할 쿼리 수
+
+        Returns:
+            포맷팅된 배치 User Prompt
+        """
+        # 비율 정보 준비
+        ratio_info = ""
+        if self.config.query_type_distribution:
+            dist = self.config.query_type_distribution
+            ratio_info = f"""
+    Target Query Type Distribution (aim for these ratios):
+    - plot (줄거리 기반): {int(dist.get('plot', 0) * 100)}%
+    - actor (배우 기반): {int(dist.get('actor', 0) * 100)}%
+    - director (감독 기반): {int(dist.get('director', 0) * 100)}%
+    - genre (장르 기반): {int(dist.get('genre', 0) * 100)}%
+    - mood (분위기/테마 기반): {int(dist.get('mood', 0) * 100)}%
+    - hybrid (복합 쿼리): {int(dist.get('hybrid', 0) * 100)}%
+"""
+        else:
+            ratio_info = """
+    Target Query Type Distribution (aim for these ratios):
+    - plot (줄거리 기반): 25%
+    - actor (배우 기반): 20%
+    - director (감독 기반): 15%
+    - genre (장르 기반): 15%
+    - mood (분위기/테마 기반): 15%
+    - hybrid (복합 쿼리): 10%
+"""
+
+        # 각 영화 정보 구성
+        movies_info = []
+        for i, movie_data in enumerate(movies_data, 1):
+            movie_info = f"""
+Movie {i}:
+- Title: {movie_data.get('title', 'Unknown')}
+- Original Title: {movie_data.get('original_title', 'Unknown')}
+- Genres: {movie_data.get('genres', 'Unknown')}
+- Overview: {movie_data.get('overview', 'No overview available')}
+- Director: {movie_data.get('director', 'Unknown')}
+- Actors: {movie_data.get('actors', 'Unknown')}
+- Release Year: {movie_data.get('release_year', 'Unknown')}
+"""
+            movies_info.append(movie_info)
+
+        # 배치 프롬프트 구성
+        num_movies = len(movies_data)
+        batch_prompt = f"""Generate {num_queries} diverse Korean search queries for EACH of the following {num_movies} movies:
+
+{"".join(movies_info)}
+
+Create natural queries that Korean users would type to find each movie.
+{ratio_info}
+
+Return a JSON object where each key is the movie number (1, 2, 3, ...)
+and the value is an array of {num_queries} queries for that movie.
+
+Example format:
+{{
+  "1": [
+    {{"query": "...", "query_type": "plot", "language": "ko"}},
+    {{"query": "...", "query_type": "actor", "language": "ko"}},
+    ...
+  ],
+  "2": [
+    {{"query": "...", "query_type": "plot", "language": "ko"}},
+    ...
+  ],
+  ...
+}}
+
+Return ONLY the JSON object, no explanation or markdown."""
+
+        return batch_prompt
 
     def _parse_response(self, response: str) -> List[Dict[str, str]]:
         """
@@ -257,15 +371,85 @@ class QueryGenerator:
             logger.error(f"응답 내용:\n{response}")
             return []
 
+    def _parse_batch_response(
+        self, response: str, num_movies: int
+    ) -> Dict[int, List[Dict[str, str]]]:
+        """
+        배치 LLM 응답을 파싱하여 영화별 쿼리 딕셔너리 추출
+
+        Args:
+            response: LLM 응답 텍스트
+            num_movies: 배치 내 영화 수
+
+        Returns:
+            영화 인덱스를 키로 하는 쿼리 리스트 딕셔너리
+            {1: [...], 2: [...], ...}
+        """
+        # JSON 코드 블록 제거
+        response = response.strip()
+        if response.startswith("```"):
+            lines = response.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            response = "\n".join(lines)
+
+        # JSON 파싱 시도
+        try:
+            batch_queries = json.loads(response)
+
+            # 딕셔너리인지 확인
+            if not isinstance(batch_queries, dict):
+                logger.warning(f"응답이 딕셔너리가 아닙니다: {type(batch_queries)}")
+                return {}
+
+            # 각 영화의 쿼리 검증 및 정제
+            result = {}
+            for movie_idx_str, queries in batch_queries.items():
+                try:
+                    movie_idx = int(movie_idx_str)
+                except ValueError:
+                    logger.warning(f"잘못된 영화 인덱스: {movie_idx_str}")
+                    continue
+
+                if not isinstance(queries, list):
+                    logger.warning(f"영화 {movie_idx}의 쿼리가 리스트가 아닙니다")
+                    continue
+
+                # 각 쿼리 검증
+                valid_queries = []
+                for query in queries:
+                    if isinstance(query, dict) and "query" in query:
+                        # 기본값 설정
+                        if "query_type" not in query:
+                            query["query_type"] = "unknown"
+                        if "language" not in query:
+                            query["language"] = "ko"
+                        valid_queries.append(query)
+                    else:
+                        logger.warning(f"잘못된 쿼리 형식: {query}")
+
+                result[movie_idx] = valid_queries
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 파싱 실패: {e}")
+            logger.error(f"응답 내용:\n{response}")
+            return {}
+
     def generate_queries_batch(
         self, movies_data: List[Dict[str, Any]], **kwargs
     ) -> List[Dict[str, Any]]:
         """
         여러 영화에 대해 배치로 쿼리 생성
+        batch_size > 1이면 여러 영화를 한 번의 LLM 호출로 처리하여 속도 향상
 
         Args:
             movies_data: 영화 메타데이터 리스트
             **kwargs: generate_queries에 전달할 추가 파라미터
+                - batch_size: 배치 크기 (None이면 config 값 사용)
 
         Returns:
             각 영화에 대한 결과 리스트
@@ -280,37 +464,128 @@ class QueryGenerator:
             ]
         """
         results = []
+        batch_size = kwargs.pop("batch_size", self.config.batch_size)
+        num_queries = kwargs.get("num_queries", self.config.queries_per_movie)
+        max_new_tokens = kwargs.get("max_new_tokens", self.config.max_new_tokens)
+        temperature = kwargs.get("temperature", self.config.temperature)
+        top_p = kwargs.get("top_p", self.config.top_p)
+        do_sample = kwargs.get("do_sample", self.config.do_sample)
 
-        for i, movie_data in enumerate(movies_data, 1):
-            logger.info(f"📊 진행: {i}/{len(movies_data)}")
+        # 영화 데이터를 배치 크기로 분할
+        total_movies = len(movies_data)
+        logger.info(f"📦 배치 크기: {batch_size}, 총 영화 수: {total_movies}")
+        logger.info(
+            f"🚀 배치 모드: {'단일 LLM 호출' if batch_size > 1 else '개별 처리'}"
+        )
 
-            try:
-                queries = self.generate_queries(movie_data, **kwargs)
-                results.append(
-                    {"movie": movie_data, "queries": queries, "success": True}
-                )
-            except Exception as e:
-                logger.error(
-                    f"❌ 영화 '{movie_data.get('title', 'Unknown')}' 쿼리 생성 실패: {e}"
-                )
-                results.append(
-                    {
-                        "movie": movie_data,
-                        "queries": [],
-                        "success": False,
-                        "error": str(e),
-                    }
-                )
+        for batch_start in range(0, total_movies, batch_size):
+            batch_end = min(batch_start + batch_size, total_movies)
+            batch = movies_data[batch_start:batch_end]
+            batch_len = len(batch)
+
+            logger.info(
+                f"📊 배치 진행: {batch_start + 1}-{batch_end}/" f"{total_movies}"
+            )
+
+            # batch_size가 1이면 개별 처리 (기존 방식)
+            if batch_size == 1:
+                movie_data = batch[0]
+                try:
+                    queries = self.generate_queries(movie_data, **kwargs)
+                    results.append(
+                        {
+                            "movie": movie_data,
+                            "queries": queries,
+                            "success": True,
+                        }
+                    )
+                except Exception as e:
+                    movie_title = movie_data.get("title", "Unknown")
+                    logger.error(f"❌ 영화 '{movie_title}' 쿼리 생성 실패: {e}")
+                    results.append(
+                        {
+                            "movie": movie_data,
+                            "queries": [],
+                            "success": False,
+                            "error": str(e),
+                        }
+                    )
+            else:
+                # batch_size > 1이면 한 번의 LLM 호출로 처리
+                try:
+                    # 배치 프롬프트 생성
+                    batch_prompt = self._create_batch_user_prompt(batch, num_queries)
+                    logger.debug(f"Batch Prompt:\n{batch_prompt}")
+
+                    # LLM으로 배치 쿼리 생성
+                    response = self.llm.generate(
+                        prompt=batch_prompt,
+                        system_prompt=self.config.system_prompt,
+                        max_new_tokens=max_new_tokens * batch_len,
+                        temperature=temperature,
+                        top_p=top_p,
+                        do_sample=do_sample,
+                    )
+                    logger.debug(f"Batch Response:\n{response}")
+
+                    # 배치 응답 파싱
+                    batch_queries_dict = self._parse_batch_response(response, batch_len)
+
+                    # 각 영화에 대한 결과 저장
+                    for i, movie_data in enumerate(batch, 1):
+                        if i in batch_queries_dict:
+                            queries = batch_queries_dict[i]
+                            results.append(
+                                {
+                                    "movie": movie_data,
+                                    "queries": queries,
+                                    "success": True,
+                                }
+                            )
+                            movie_title = movie_data.get("title", "Unknown")
+                            logger.info(
+                                f"✅ 영화 '{movie_title}': "
+                                f"{len(queries)}개 쿼리 생성"
+                            )
+                        else:
+                            movie_title = movie_data.get("title", "Unknown")
+                            logger.warning(
+                                f"⚠️ 영화 '{movie_title}': 응답에서 쿼리를 찾을 수 없음"
+                            )
+                            results.append(
+                                {
+                                    "movie": movie_data,
+                                    "queries": [],
+                                    "success": False,
+                                    "error": "응답에서 쿼리를 찾을 수 없음",
+                                }
+                            )
+
+                except Exception as e:
+                    logger.error(f"❌ 배치 처리 실패: {e}")
+                    # 배치 전체 실패 시 각 영화를 실패로 기록
+                    for movie_data in batch:
+                        results.append(
+                            {
+                                "movie": movie_data,
+                                "queries": [],
+                                "success": False,
+                                "error": str(e),
+                            }
+                        )
 
         # 통계 출력
         success_count = sum(1 for r in results if r["success"])
         total_queries = sum(len(r["queries"]) for r in results)
 
-        logger.info(f"\n{'='*60}")
-        logger.info(f"📊 배치 생성 완료")
+        logger.info("\n" + "=" * 60)
+        logger.info("📊 배치 생성 완료")
         logger.info(f"  - 성공: {success_count}/{len(movies_data)}")
         logger.info(f"  - 총 쿼리 수: {total_queries}")
-        logger.info(f"{'='*60}\n")
+        if batch_size > 1:
+            llm_calls = (total_movies + batch_size - 1) // batch_size
+            logger.info(f"  - LLM 호출 횟수: {llm_calls}")
+        logger.info("=" * 60 + "\n")
 
         return results
 
