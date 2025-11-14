@@ -8,8 +8,9 @@
 |------|------|------|------|
 | 001 | [데이터 소스 선택: MovieLens 32M](./001-data-source-selection.md) | TBD | 📝 Draft |
 | 002 | [추천 알고리즘 선택: SVD + Item-based CF](./002-recommendation-algorithm.md) | TBD | 📝 Draft |
-| 003 | [데이터베이스 선택: Firebase](./003-database-choice.md) | TBD | 📝 Draft |
+| 003 | [데이터베이스 선택: Firebase (Google Auth)](./003-database-choice.md) | 2025-10-25 | ✅ Accepted |
 | 004 | [검색 시스템: BM25 + NER](./004-search-system.md) | TBD | 📝 Draft |
+| 005 | [벡터 저장소 선택: FAISS](./005-vector-database.md) | 2025-11-14 | ✅ Accepted |
 
 ## 상태 표시
 - 📝 Draft: 초안 작성 중
