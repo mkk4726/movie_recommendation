@@ -41,3 +41,6 @@ protobuf
 gliner2
 python-mecab-ko
 gliner
+
+
+langdetect
