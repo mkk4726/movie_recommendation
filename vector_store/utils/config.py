@@ -20,7 +20,7 @@ def load_config(config_path: str = None) -> Dict[str, Any]:
         설정 딕셔너리
     """
     if config_path is None:
-        config_path = Path(__file__).parent / "config.yaml"
+        config_path = Path(__file__).parent.parent / "config.yaml"
     
     config_path = Path(config_path)
     
@@ -43,16 +43,6 @@ def get_index_path(config: Dict[str, Any] = None) -> Path:
     return base_dir / index_file
 
 
-def get_metadata_path(config: Dict[str, Any] = None) -> Path:
-    """메타데이터 파일 경로 반환"""
-    if config is None:
-        config = load_config()
-    
-    base_dir = Path(config['index']['base_dir'])
-    metadata_file = config['index']['metadata_file']
-    return base_dir / metadata_file
-
-
 def get_embeddings_path(config: Dict[str, Any] = None) -> Path:
     """임베딩 파일 경로 반환"""
     if config is None:
@@ -61,3 +51,4 @@ def get_embeddings_path(config: Dict[str, Any] = None) -> Path:
     base_dir = Path(config['index']['base_dir'])
     embeddings_file = config['index']['embeddings_file']
     return base_dir / embeddings_file
+

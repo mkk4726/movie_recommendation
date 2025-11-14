@@ -11,7 +11,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 from datetime import datetime
 
 import numpy as np
@@ -21,7 +21,7 @@ try:
 except ImportError:
     raise ImportError("FAISS is not installed. Install with: pip install faiss-cpu or faiss-gpu")
 
-from .config import load_config
+from .utils.config import load_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,16 +46,12 @@ class IndexBuilder:
         self.vector_dim = vector_dim
         self.distance_metric = distance_metric
         self.embeddings: List[np.ndarray] = []
-        self.metadata: List[Dict[str, Any]] = []
+        self.movie_ids: List[int] = []
     
     def add_item(
         self,
         embedding: np.ndarray,
         movie_id: int,
-        title: str,
-        genres: List[str],
-        year: int,
-        poster_url: str = "",
         **kwargs
     ) -> None:
         """
@@ -64,23 +60,13 @@ class IndexBuilder:
         Args:
             embedding: 이미지 임베딩 벡터
             movie_id: 영화 ID
-            title: 영화 제목
-            genres: 장르 리스트
-            year: 개봉 연도
-            poster_url: 포스터 URL
-            **kwargs: 추가 메타데이터
+            **kwargs: 호환성용 (무시됨)
         """
-        self.embeddings.append(embedding)
+        if movie_id is None:
+            raise ValueError("movie_id is required when adding an item")
         
-        metadata = {
-            "movie_id": movie_id,
-            "title": title,
-            "genres": genres,
-            "year": year,
-            "poster_url": poster_url,
-            **kwargs
-        }
-        self.metadata.append(metadata)
+        self.embeddings.append(embedding)
+        self.movie_ids.append(int(movie_id))
     
     def build(self) -> faiss.Index:
         """FAISS 인덱스 빌드"""
@@ -121,7 +107,7 @@ class IndexBuilder:
         save_embeddings: bool = True
     ) -> None:
         """
-        인덱스와 메타데이터 저장
+        인덱스 및 부가 파일 저장
         
         Args:
             output_dir: 출력 디렉토리
@@ -147,28 +133,28 @@ class IndexBuilder:
         faiss.write_index(index, str(versioned_index_path))
         logger.info(f"Versioned index saved to {versioned_index_path}")
         
-        # 메타데이터 저장
-        metadata_path = output_dir / f"metadata.json"
-        logger.info(f"Saving metadata to {metadata_path}")
-        with open(metadata_path, 'w', encoding='utf-8') as f:
-            json.dump(self.metadata, f, ensure_ascii=False, indent=2)
-        
-        # 버전별 메타데이터도 저장
-        versioned_metadata_path = output_dir / f"metadata_{timestamp}.json"
-        with open(versioned_metadata_path, 'w', encoding='utf-8') as f:
-            json.dump(self.metadata, f, ensure_ascii=False, indent=2)
-        logger.info(f"Versioned metadata saved to {versioned_metadata_path}")
-        
         # 임베딩 원본 저장 (선택)
         if save_embeddings:
             embeddings_array = np.vstack(self.embeddings).astype('float32')
-            embeddings_path = output_dir / f"embeddings.npy"
+            embeddings_path = output_dir / "embeddings.npy"
             logger.info(f"Saving embeddings to {embeddings_path}")
             np.save(embeddings_path, embeddings_array)
             
             versioned_embeddings_path = output_dir / f"embeddings_{timestamp}.npy"
             np.save(versioned_embeddings_path, embeddings_array)
             logger.info(f"Versioned embeddings saved to {versioned_embeddings_path}")
+        
+        # movie_id 저장
+        if self.movie_ids:
+            movie_ids_path = output_dir / "movie_ids.json"
+            logger.info(f"Saving movie IDs to {movie_ids_path}")
+            with open(movie_ids_path, 'w', encoding='utf-8') as f:
+                json.dump(self.movie_ids, f, ensure_ascii=False, indent=2)
+            
+            versioned_movie_ids_path = output_dir / f"movie_ids_{timestamp}.json"
+            with open(versioned_movie_ids_path, 'w', encoding='utf-8') as f:
+                json.dump(self.movie_ids, f, ensure_ascii=False, indent=2)
+            logger.info(f"Versioned movie IDs saved to {versioned_movie_ids_path}")
         
         # 통계 저장
         stats = {
@@ -177,7 +163,7 @@ class IndexBuilder:
             "distance_metric": self.distance_metric,
             "build_date": datetime.now().isoformat(),
             "index_size_mb": index_path.stat().st_size / (1024 * 1024),
-            "metadata_size_mb": metadata_path.stat().st_size / (1024 * 1024),
+            "movie_ids_saved": len(self.movie_ids),
         }
         
         stats_path = output_dir / "build_stats.json"
@@ -189,7 +175,6 @@ class IndexBuilder:
         logger.info("Build completed successfully!")
         logger.info(f"Total vectors: {stats['total_vectors']}")
         logger.info(f"Index size: {stats['index_size_mb']:.2f} MB")
-        logger.info(f"Metadata size: {stats['metadata_size_mb']:.2f} MB")
         logger.info("=" * 60)
 
 
@@ -229,10 +214,6 @@ def main():
         builder.add_item(
             embedding=dummy_embedding,
             movie_id=i,
-            title=f"Movie {i}",
-            genres=["Action", "Drama"],
-            year=2020 + (i % 5),
-            poster_url=f"https://example.com/poster_{i}.jpg"
         )
     
     # 인덱스 저장

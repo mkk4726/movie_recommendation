@@ -4,7 +4,6 @@
 index:
   base_dir: "vector_store/indices"  # 기본 디렉토리
   index_file: "movie_posters.index"
-  metadata_file: "metadata.json"
   embeddings_file: "embeddings.npy"  # 백업용 (선택)
 
 # 벡터 설정
@@ -21,4 +20,6 @@ search:
 build:
   save_embeddings: true  # 임베딩 원본 저장 여부
   save_versioned: true   # 버전별 파일 저장 여부
+  timeout: 10            # HTTP 요청 타임아웃 (초)
+  batch_size: 16         # 배치 크기 (사용 안함, 호환성용)
 

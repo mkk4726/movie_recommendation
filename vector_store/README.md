@@ -6,14 +6,18 @@ FAISS 기반 벡터 저장소 및 유사도 검색 모듈
 
 ```
 vector_store/
-├── __init__.py           # 모듈 초기화
-├── config.yaml           # 설정 파일
-├── config.py             # 설정 로더
-├── faiss_manager.py      # FAISS 인덱스 관리
-├── build_index.py        # 인덱스 생성 스크립트 (서버용)
-├── indices/              # 인덱스 파일 저장 (gitignore)
+├── __init__.py              # 모듈 초기화
+├── config.yaml              # 설정 파일
+├── utils/
+│   ├── __init__.py          # 설정 유틸 export
+│   └── config.py            # YAML 로더
+├── faiss_manager.py         # FAISS 인덱스 관리
+├── build_index.py           # 인덱스 빌더 클래스
+├── create_vector_store.py   # Vector Store 생성 실행 스크립트 ⭐
+├── example_usage.py         # 사용 예제
+├── indices/                 # 인덱스 파일 저장 (gitignore)
 │   ├── movie_posters.index
-│   ├── metadata.json
+│   ├── movie_ids.json
 │   └── embeddings.npy
 └── README.md
 ```
@@ -28,30 +32,38 @@ pip install faiss-cpu  # CPU 버전
 pip install faiss-gpu  # GPU 버전 (서버)
 ```
 
-### 2. 인덱스 생성 (서버에서)
+### 2. Vector Store 생성 (한 번만 실행)
+
+**방법 1: 커맨드라인 실행 (권장)**
+
+```bash
+# 기본 설정으로 실행
+python -m vector_store.create_vector_store
+```
+
+설정을 변경하려면 `vector_store/config.yaml` 파일을 수정하세요:
+- `index.base_dir`: 출력 디렉토리
+- `build.timeout`: HTTP 요청 타임아웃
+- `build.save_embeddings`: 임베딩 원본 저장 여부
+
+**방법 2: Python 코드로 실행**
 
 ```python
-from vector_store.build_index import IndexBuilder
-import numpy as np
+from pathlib import Path
+from vector_store.create_vector_store import VectorStoreCreator
 
-# 빌더 초기화
-builder = IndexBuilder(vector_dim=512, distance_metric="cosine")
+# Creator 초기화 (config.yaml 사용)
+creator = VectorStoreCreator()
 
-# 데이터 추가
-for movie in movies:
-    embedding = clip_model.encode_image(movie.poster)  # CLIP으로 임베딩 생성
-    builder.add_item(
-        embedding=embedding,
-        movie_id=movie.id,
-        title=movie.title,
-        genres=movie.genres,
-        year=movie.year,
-        poster_url=movie.poster_url
-    )
-
-# 인덱스 저장
-builder.save(output_dir="./indices", save_embeddings=True)
+# Vector Store 생성
+creator.create()
 ```
+
+이 스크립트는 자동으로:
+- 영화 데이터를 로드하고
+- TMDB에서 포스터 이미지를 다운로드하고
+- CLIP 모델로 임베딩을 생성하고
+- FAISS 인덱스를 빌드하여 저장합니다
 
 ### 3. 검색 (로컬에서)
 
@@ -62,19 +74,12 @@ from vector_store import FAISSManager
 manager = FAISSManager()
 manager.load()
 
-# 또는 커스텀 경로 사용
-manager = FAISSManager(
-    index_path="./indices/movie_posters.index",
-    metadata_path="./indices/metadata.json"
-)
-manager.load()
-
 # 유사도 검색
 query_vector = clip_model.encode_image(query_image)
 results = manager.search(query_vector, k=10)
 
 for result in results:
-    print(f"{result['title']} (score: {result['score']:.3f})")
+    print(f"index={result['index']} (score: {result['score']:.3f})")
 ```
 
 ## 📖 사용 예시
@@ -86,51 +91,7 @@ for result in results:
 results = manager.search(query_vector, k=10)
 ```
 
-### 필터링 검색
-
-```python
-# 장르 필터
-results = manager.search(
-    query_vector,
-    k=10,
-    filters={"genres": ["Action", "Sci-Fi"]}
-)
-
-# 연도 필터
-results = manager.search(
-    query_vector,
-    k=10,
-    filters={"year_min": 2010, "year_max": 2020}
-)
-
-# 복합 필터
-results = manager.search(
-    query_vector,
-    k=10,
-    filters={
-        "genres": ["Drama"],
-        "year_min": 2015,
-        "rating_min": 4.0
-    }
-)
-```
-
-### 영화 ID로 유사 영화 찾기
-
-```python
-# 특정 영화와 유사한 영화 검색
-similar_movies = manager.search_by_id(movie_id=1234, k=10)
-```
-
-### 메타데이터 조회
-
-```python
-# 인덱스로 조회
-metadata = manager.get_metadata(idx=0)
-
-# 영화 ID로 조회
-metadata = manager.get_metadata_by_movie_id(movie_id=1234)
-```
+필터링, 영화 ID 기반 검색, 메타데이터 조회 기능은 제거되었습니다. 필요한 경우 외부에서 별도 매핑을 관리하세요.
 
 ## 🔧 설정
 
@@ -141,7 +102,6 @@ metadata = manager.get_metadata_by_movie_id(movie_id=1234)
 index:
   base_dir: "vector_store/indices"
   index_file: "movie_posters.index"
-  metadata_file: "metadata.json"
   embeddings_file: "embeddings.npy"
 
 # 벡터 설정
@@ -172,18 +132,16 @@ config = load_config()
 config = load_config("path/to/custom_config.yaml")
 
 # 특정 경로 가져오기
-from vector_store import get_index_path, get_metadata_path
+from vector_store import get_index_path
 
 index_path = get_index_path(config)
-metadata_path = get_metadata_path(config)
 ```
 
 ## 📊 성능
 
 - **검색 속도**: ~0.5-1ms (8만 벡터 기준)
-- **필터링 포함**: ~2-5ms
-- **메모리 사용**: ~160MB (인덱스) + ~5MB (메타데이터)
-- **파일 크기**: ~165MB
+- **메모리 사용**: ~160MB (인덱스)
+- **파일 크기**: ~160MB + movie_ids JSON 수 KB
 
 ## 🔄 워크플로우
 
@@ -191,7 +149,7 @@ metadata_path = get_metadata_path(config)
 
 1. CLIP으로 이미지 임베딩 생성
 2. FAISS 인덱스 구축
-3. 파일 저장 (`.index`, `.json`, `.npy`)
+3. 파일 저장 (`.index`, `movie_ids.json`, `.npy`)
 4. 구글 드라이브에 업로드
 
 ### 로컬
@@ -199,23 +157,6 @@ metadata_path = get_metadata_path(config)
 1. 구글 드라이브에서 다운로드
 2. `FAISSManager`로 로드
 3. 검색 수행
-
-## 📝 파일 포맷
-
-### metadata.json
-
-```json
-[
-  {
-    "movie_id": 1,
-    "title": "Toy Story",
-    "genres": ["Animation", "Children", "Comedy"],
-    "year": 1995,
-    "poster_url": "https://..."
-  },
-  ...
-]
-```
 
 ### build_stats.json
 
@@ -225,8 +166,7 @@ metadata_path = get_metadata_path(config)
   "vector_dim": 512,
   "distance_metric": "cosine",
   "build_date": "2025-11-14T10:30:00",
-  "index_size_mb": 160.5,
-  "metadata_size_mb": 5.2
+  "index_size_mb": 160.5
 }
 ```
 
@@ -243,12 +183,12 @@ pip install faiss-cpu
 인덱스를 먼저 생성해야 합니다:
 
 ```bash
-python -m vector_store.build_index --output_dir ./vector_store/indices
+python -m vector_store.create_vector_store
 ```
 
 ### 검색 결과가 없음
 
-필터 조건이 너무 엄격한지 확인하세요. `search_multiplier`를 늘리면 더 많은 후보를 검색합니다.
+쿼리 벡터가 정규화되었는지 확인하고, `search_multiplier` 설정으로 검색 후보 수를 조정하세요.
 
 ## 🔗 관련 문서
 
@@ -264,8 +204,10 @@ python -m vector_store.build_index --output_dir ./vector_store/indices
 indices/
 ├── movie_posters.index          # 최신 버전 (심볼릭 링크처럼 사용)
 ├── movie_posters_20251114.index # 버전별 백업
-├── metadata.json
-└── metadata_20251114.json
+├── movie_ids.json
+├── movie_ids_20251114.json
+├── embeddings.npy
+└── embeddings_20251114.npy
 ```
 
 구글 드라이브에도 버전별로 업로드하여 롤백이 가능합니다.
