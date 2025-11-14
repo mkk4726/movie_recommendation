@@ -8,7 +8,7 @@ index:
 
 # 벡터 설정
 vector:
-  dim: 512  # CLIP ViT-B/32 차원
+  dim: 768  # Jina CLIP 기준
   distance_metric: "cosine"  # cosine, l2, ip
 
 # 검색 설정

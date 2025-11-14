@@ -45,3 +45,7 @@ gliner
 # Vector Store
 faiss-cpu>=1.7.4
 langdetect
+
+einops
+timm
+torchvision
