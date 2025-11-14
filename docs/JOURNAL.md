@@ -37,8 +37,8 @@
   - 자세한 비교 결과는 [`docs/experiments/25-11-14-clip test.md`](./experiments/25-11-14-clip-test.md) 참고.
   - "영어" 기준 JinaCLip이 쓸만하다.
 
-### [✨ 기능 개발] 언어 탐지 및 언어 번역 기능 개발
 
+### [✨ 기능 개발] 언어 탐지 및 언어 번역 기능 개발
 - **작업 배경**
   - CLIP model이 기본적으로 "영어" 데이터로 학습되었다보니, 성능 차이가 심함
   - 이를 위해 포스터 검색 파이프라인 앞에 붙일 "언어 탐지" 와 "언어 번역" 기능 필요
@@ -47,6 +47,15 @@
   - 언어 탐지 및 번역 기능 개발
     - [modeling/models/language](../../modeling/models/language)
 
+
+### [✨ 기능 개발] vDB 개발
+- **작업 배경**
+  - 자연어-포스터 검색을 위해 벡터 스토어가 필요한 상황
+
+- **작업 내용**
+  - faiss 기반 벡터 DB(vDB) 구축
+    - [vector_store/](../../vector_store/) 디렉토리 내 모듈 구현
+    - 상세 설계 및 결정 사항: [docs/decisions/005-vector-database.md](../decisions/005-vector-database.md)
 
 ---
 

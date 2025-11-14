@@ -42,5 +42,7 @@ gliner2
 python-mecab-ko
 gliner
 
+# Vector Store
+faiss-cpu>=1.7.4
 
 langdetect

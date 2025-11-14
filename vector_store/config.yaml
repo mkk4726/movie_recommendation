@@ -1,0 +1,24 @@
+# Vector Store Configuration
+
+# 인덱스 파일 경로
+index:
+  base_dir: "vector_store/indices"  # 기본 디렉토리
+  index_file: "movie_posters.index"
+  metadata_file: "metadata.json"
+  embeddings_file: "embeddings.npy"  # 백업용 (선택)
+
+# 벡터 설정
+vector:
+  dim: 512  # CLIP ViT-B/32 차원
+  distance_metric: "cosine"  # cosine, l2, ip
+
+# 검색 설정
+search:
+  default_k: 10  # 기본 검색 결과 수
+  search_multiplier: 10  # 필터링 시 추가 검색 배수
+
+# 빌드 설정
+build:
+  save_embeddings: true  # 임베딩 원본 저장 여부
+  save_versioned: true   # 버전별 파일 저장 여부
+

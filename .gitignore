@@ -55,6 +55,11 @@ modeling/models/pkls/
 *.pkl
 *.npz
 
+# Vector Store indices
+vector_store/indices/
+*.index
+*.npy
+
 # Environment variables
 .env
 .env.local
