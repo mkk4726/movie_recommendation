@@ -75,30 +75,37 @@ class IndexBuilder:
         
         logger.info(f"Building FAISS index with {len(self.embeddings)} vectors")
         
-        # NumPy 배열로 변환
-        embeddings_array = np.vstack(self.embeddings).astype('float32')
-        logger.info(f"Embeddings shape: {embeddings_array.shape}")
-        
-        # L2 정규화 (Cosine similarity를 위해)
-        if self.distance_metric == "cosine":
-            logger.info("Normalizing vectors for cosine similarity")
-            faiss.normalize_L2(embeddings_array)
-        
-        # FAISS 인덱스 생성
-        if self.distance_metric == "cosine":
-            # Inner Product (정규화 후 = Cosine similarity)
-            index = faiss.IndexFlatIP(self.vector_dim)
-        elif self.distance_metric == "l2":
-            index = faiss.IndexFlatL2(self.vector_dim)
-        else:
-            raise ValueError(f"Unsupported distance metric: {self.distance_metric}")
-        
-        # 벡터 추가
-        logger.info("Adding vectors to index...")
-        index.add(embeddings_array)
-        logger.info(f"Index built: {index.ntotal} vectors")
-        
-        return index
+        try:
+            # NumPy 배열로 변환
+            logger.info("Converting embeddings to numpy array...")
+            embeddings_array = np.vstack(self.embeddings).astype('float32')
+            logger.info(f"Embeddings shape: {embeddings_array.shape}")
+            
+            # L2 정규화 (Cosine similarity를 위해)
+            if self.distance_metric == "cosine":
+                logger.info("Normalizing vectors for cosine similarity...")
+                faiss.normalize_L2(embeddings_array)
+                logger.info("Normalization completed")
+            
+            # FAISS 인덱스 생성
+            logger.info(f"Creating FAISS index with metric: {self.distance_metric}")
+            if self.distance_metric == "cosine":
+                # Inner Product (정규화 후 = Cosine similarity)
+                index = faiss.IndexFlatIP(self.vector_dim)
+            elif self.distance_metric == "l2":
+                index = faiss.IndexFlatL2(self.vector_dim)
+            else:
+                raise ValueError(f"Unsupported distance metric: {self.distance_metric}")
+            
+            # 벡터 추가
+            logger.info("Adding vectors to index...")
+            index.add(embeddings_array)
+            logger.info(f"Index built: {index.ntotal} vectors")
+            
+            return index
+        except Exception as e:
+            logger.error(f"Error building index: {e}", exc_info=True)
+            raise
     
     def save(
         self,
@@ -115,18 +122,33 @@ class IndexBuilder:
             save_embeddings: 임베딩 원본도 저장할지 여부 (백업용)
         """
         output_dir = Path(output_dir)
+        # 상대 경로인 경우 절대 경로로 변환
+        if not output_dir.is_absolute():
+            # 현재 작업 디렉토리 기준으로 변환
+            output_dir = Path.cwd() / output_dir
+        
+        logger.info(f"Output directory (absolute): {output_dir.resolve()}")
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # 타임스탬프 추가 (버전 관리)
         timestamp = datetime.now().strftime("%Y%m%d")
         
         # 인덱스 빌드
-        index = self.build()
+        try:
+            index = self.build()
+        except Exception as e:
+            logger.error(f"Failed to build index: {e}", exc_info=True)
+            raise
         
         # 인덱스 저장
         index_path = output_dir / f"{index_name}.index"
         logger.info(f"Saving index to {index_path}")
-        faiss.write_index(index, str(index_path))
+        try:
+            faiss.write_index(index, str(index_path))
+            logger.info(f"Index saved successfully: {index_path}")
+        except Exception as e:
+            logger.error(f"Failed to save index: {e}", exc_info=True)
+            raise
         
         # 버전별 인덱스도 저장
         versioned_index_path = output_dir / f"{index_name}_{timestamp}.index"

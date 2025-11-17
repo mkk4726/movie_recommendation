@@ -66,11 +66,16 @@ class VectorStoreCreator:
         Args:
             output_dir: 출력 디렉토리 (None이면 config 사용)
         """
-        # 출력 디렉토리 설정
+        # 출력 디렉토리 설정 (프로젝트 루트 기준 절대 경로)
         if output_dir is None:
-            output_dir = Path(self.config['index']['base_dir'])
+            # 프로젝트 루트 기준으로 vector_store/indices 경로 생성
+            base_dir_str = self.config['index']['base_dir']
+            output_dir = project_root / base_dir_str
         else:
             output_dir = Path(output_dir)
+            # 상대 경로인 경우 프로젝트 루트 기준으로 변환
+            if not output_dir.is_absolute():
+                output_dir = project_root / output_dir
         
         logger.info("=" * 80)
         logger.info("Vector Store 생성 시작")
@@ -169,8 +174,9 @@ def main():
         logger.info("설정 파일 로딩 중...")
         config = load_config()
         
-        # 출력 디렉토리
-        output_dir = Path(config['index']['base_dir'])
+        # 출력 디렉토리 (프로젝트 루트 기준 절대 경로)
+        base_dir_str = config['index']['base_dir']
+        output_dir = project_root / base_dir_str
         
         # Vector Store 생성
         creator = VectorStoreCreator(config=config)
