@@ -14,7 +14,7 @@ vector_store/
 ├── faiss_manager.py         # FAISS 인덱스 관리
 ├── build_index.py           # 인덱스 빌더 클래스
 ├── create_vector_store.py   # Vector Store 생성 실행 스크립트 ⭐
-├── example_usage.py         # 사용 예제
+├── test_search.py           # 검색 테스트 스크립트 🧪
 ├── indices/                 # 인덱스 파일 저장 (gitignore)
 │   ├── movie_posters.index
 │   ├── movie_ids.json
@@ -75,7 +75,22 @@ creator.create()
 - CLIP 모델로 임베딩을 생성하고
 - FAISS 인덱스를 빌드하여 저장합니다
 
-### 3. 검색 (로컬에서)
+### 3. 검색 테스트
+
+**방법 1: 테스트 스크립트 실행 (권장)**
+
+```bash
+# 기본 테스트 실행 (랜덤 벡터, 배치 검색, 텍스트 검색)
+python -m vector_store.test_search
+```
+
+이 스크립트는 자동으로:
+- 인덱스를 로드하고
+- 랜덤 벡터로 검색 성능을 측정하고
+- 배치 검색 처리량을 테스트하고
+- CLIP 모델로 텍스트 검색을 수행합니다
+
+**방법 2: Python 코드로 직접 검색**
 
 ```python
 from vector_store import FAISSManager
@@ -102,6 +117,62 @@ results = manager.search(query_vector, k=10)
 ```
 
 필터링, 영화 ID 기반 검색, 메타데이터 조회 기능은 제거되었습니다. 필요한 경우 외부에서 별도 매핑을 관리하세요.
+
+### 검색 테스트 스크립트 사용법
+
+`test_search.py`는 다양한 검색 테스트를 제공합니다:
+
+```python
+from vector_store.test_search import VectorSearchTester
+
+# 테스터 초기화
+tester = VectorSearchTester()
+
+# 1. 인덱스 통계 정보
+tester.test_statistics()
+
+# 2. 랜덤 벡터 검색 (성능 측정)
+tester.test_random_search(k=10, num_queries=5)
+
+# 3. 배치 검색 (처리량 측정)
+tester.test_batch_search(batch_size=100, k=10)
+
+# 4. 영화 데이터 로드 (포스터 시각화용)
+tester.load_movie_data()
+
+# 5. CLIP 인코더 로드
+tester.load_encoder(model_key="jina-clip")
+
+# 6. 텍스트 검색 (포스터 이미지 시각화 포함)
+tester.test_text_search("action movie with explosions", k=10, visualize=True)
+
+# 7. 이미지 검색 (쿼리 이미지와 결과 함께 시각화)
+tester.test_image_search("path/to/image.jpg", k=10, visualize=True)
+
+# 8. 시각화만 따로 실행
+results = tester.manager.search(query_vector, k=10)
+tester.visualize_results(results, query_image_path="path/to/query.jpg")
+```
+
+**시각화 기능:**
+- `visualize=True` 옵션으로 검색 결과를 포스터 이미지 그리드로 표시
+- matplotlib을 사용하여 영화 제목과 유사도 점수와 함께 표시
+- 이미지 검색 시 쿼리 이미지도 함께 표시
+- 필요한 패키지: `matplotlib`, `requests`, `PIL`
+
+**테스트 결과 예시:**
+```
+랜덤 벡터 검색 테스트 (k=10, queries=5)
+쿼리 1:
+  검색 시간: 0.85ms
+  결과 수: 10개
+    1. index= 12345, score=0.8234
+    2. index= 67890, score=0.8102
+    3. index= 23456, score=0.7998
+
+평균 검색 시간: 0.87ms
+초당 쿼리 수: 1149.4 QPS
+```
 
 ## 🔧 설정
 
@@ -160,6 +231,7 @@ index_path = get_index_path(config)
 - **파일 크기**: ~160MB + movie_ids JSON 수 KB
 
 ### 빌드 성능 최적화
+
 벡터 스토어 생성 시 다음 최적화 기법을 사용합니다:
 
 1. **멀티스레딩 다운로드**: 최대 20개 스레드로 동시 이미지 다운로드
@@ -168,13 +240,89 @@ index_path = get_index_path(config)
 4. **메모리 효율**: 100개씩 배치 단위로 처리하여 메모리 사용 최소화
 
 **예상 처리 속도**: 
-- GPU 사용 시: ~500-1000 영화/분
+- GPU 사용 시: ~500-1000 영화/분 (순차 처리 대비 **5-10배** 향상)
 - CPU 사용 시: ~100-200 영화/분
 
-설정 조정으로 성능 튜닝 가능:
-- `download_batch_size`: 메모리가 충분하면 증가 (200-500)
-- `encoding_batch_size`: GPU 메모리에 따라 조정 (16-64)
-- `max_workers`: CPU 코어 수에 따라 조정 (10-50)
+**처리 시간 예측**:
+| 영화 수 | 이전 | 개선 후 | 절감 시간 |
+|--------|------|---------|----------|
+| 10,000 | ~100분 | ~10-20분 | ~80-90분 |
+| 50,000 | ~500분 | ~50-100분 | ~400-450분 |
+| 80,000 | ~800분 | ~80-160분 | ~640-720분 |
+
+### 환경별 권장 설정
+
+#### 고성능 GPU 서버 (A100, V100)
+```yaml
+download_batch_size: 200
+encoding_batch_size: 64
+max_workers: 30
+```
+
+#### 중급 GPU (RTX 3090, 4090)
+```yaml
+download_batch_size: 100
+encoding_batch_size: 32
+max_workers: 20
+```
+
+#### 저사양 GPU (GTX 1080, RTX 2060)
+```yaml
+download_batch_size: 50
+encoding_batch_size: 16
+max_workers: 10
+```
+
+#### CPU 전용
+```yaml
+download_batch_size: 50
+encoding_batch_size: 8
+max_workers: 10
+```
+
+### 성능 튜닝 가이드
+
+1. **GPU 활용도 확인**
+   ```bash
+   watch -n 1 nvidia-smi
+   ```
+   - GPU 사용률이 낮으면 `encoding_batch_size` 증가
+
+2. **네트워크 대역폭 확인**
+   ```bash
+   iftop
+   ```
+   - 대역폭 여유 있으면 `max_workers` 증가
+
+3. **메모리 사용량 확인**
+   ```bash
+   htop
+   ```
+   - 메모리 여유 있으면 `download_batch_size` 증가
+
+### 트러블슈팅
+
+**메모리 부족**
+```yaml
+download_batch_size: 50
+encoding_batch_size: 16
+```
+
+**GPU 메모리 부족**
+```yaml
+encoding_batch_size: 8
+```
+
+**네트워크 타임아웃 빈번**
+```yaml
+timeout: 30
+max_retries: 5
+```
+
+**다운로드 속도 느림**
+```yaml
+max_workers: 50
+```
 
 ## 🔄 워크플로우
 
