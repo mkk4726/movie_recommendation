@@ -168,7 +168,14 @@ def enrich_search_results(
             year=int(movie_data['year']) if pd.notna(movie_data.get('year')) else None,
             overview=movie_data.get('overview') if pd.notna(movie_data.get('overview')) else None,
             poster_url=poster_url,
-            cast_info=cast_info
+            cast_info=cast_info,
+            # 추가 메타데이터
+            imdb_id=movie_data.get('imdb_id') if pd.notna(movie_data.get('imdb_id')) else None,
+            release_date=movie_data.get('release_date') if pd.notna(movie_data.get('release_date')) else None,
+            vote_average=float(movie_data['vote_average']) if pd.notna(movie_data.get('vote_average')) else None,
+            vote_count=int(movie_data['vote_count']) if pd.notna(movie_data.get('vote_count')) else None,
+            adult=bool(movie_data['adult']) if pd.notna(movie_data.get('adult')) else None,
+            language=movie_data.get('language') if pd.notna(movie_data.get('language')) else None
         )
         
         enriched_results.append(enriched_result)

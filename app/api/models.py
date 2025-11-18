@@ -165,6 +165,13 @@ class PosterSearchResultMovie(BaseModel):
     overview: Optional[str] = Field(default=None, description="영화 줄거리/개요")
     poster_url: Optional[str] = Field(default=None, description="포스터 이미지 URL")
     cast_info: Optional[MovieCastInfo] = Field(default=None, description="출연진 및 제작진 정보")
+    # 추가 메타데이터
+    imdb_id: Optional[str] = Field(default=None, description="IMDB ID")
+    release_date: Optional[str] = Field(default=None, description="개봉일")
+    vote_average: Optional[float] = Field(default=None, description="평균 평점")
+    vote_count: Optional[int] = Field(default=None, description="평점 개수")
+    adult: Optional[bool] = Field(default=None, description="성인 영화 여부")
+    language: Optional[str] = Field(default=None, description="언어")
     
     class Config:
         json_schema_extra = {

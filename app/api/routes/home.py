@@ -314,7 +314,7 @@ def home(
         try:
             from app.api.routes.poster_search import poster_search_by_text
             
-            # 포스터 검색 실행
+            # 포스터 검색 실행 (이미 모든 메타데이터 포함)
             poster_response = poster_search_by_text(
                 query=poster_query,
                 limit=limit,
@@ -323,12 +323,7 @@ def home(
             
             # 검색 결과를 표준 형식으로 변환
             if poster_response.results:
-                # df_movies가 없으면 로드
-                if df_movies is None:
-                    logger.info("포스터 검색 결과 메타데이터를 위해 영화 데이터 로드 중...")
-                    df_movies, _, _ = load_all_data()
-                
-                # PosterSearchResultMovie를 딕셔너리로 변환
+                # PosterSearchResultMovie를 딕셔너리로 변환 (이미 모든 메타데이터 포함)
                 poster_movies = []
                 for result in poster_response.results:
                     movie_dict = {
@@ -342,21 +337,14 @@ def home(
                         "poster_url": result.poster_url,
                         "similarity": result.score,  # 유사도로 표시
                         "cast_info": result.cast_info,
+                        # 추가 메타데이터
+                        "imdb_id": result.imdb_id,
+                        "release_date": result.release_date,
+                        "vote_average": result.vote_average,
+                        "vote_count": result.vote_count,
+                        "adult": result.adult,
+                        "language": result.language,
                     }
-                    
-                    # df_movies에서 추가 메타데이터 가져오기
-                    movie_row = df_movies[df_movies["movie_id"] == result.movie_id]
-                    if not movie_row.empty:
-                        row = movie_row.iloc[0]
-                        movie_dict.update({
-                            "imdb_id": row.get("imdb_id"),
-                            "release_date": row.get("release_date"),
-                            "vote_average": row.get("vote_average"),
-                            "vote_count": row.get("vote_count"),
-                            "adult": row.get("adult"),
-                            "language": row.get("language"),
-                        })
-                    
                     poster_movies.append(movie_dict)
                 
                 poster_search_results = {
