@@ -35,9 +35,12 @@
   - 검색 기능 정상 동작 확인
   - 각 쿼리별로 관련성 높은 영화 포스터 검색 성공
   - 검색 결과 시각화 이미지 생성 완료:
-    - ![액션 영화 검색 결과](../assets/search_results_action_movie_with_explosions_20251118_120426.png)
-    - ![로맨틱 코미디 검색 결과](../assets/search_results_romantic_comedy_20251118_120434.png)
-    - ![다크 스릴러 검색 결과](../assets/search_results_dark_thriller_20251118_120441.png)
+    - query: action_movie_with_explosions
+      ![액션 영화 검색 결과](./assets/search_results_action_movie_with_explosions_20251118_120426.png)
+    - query: romantic_comedy
+      ![로맨틱 코미디 검색 결과](./assets/search_results_romantic_comedy_20251118_120434.png)
+    - query: dark_thriller
+      ![다크 스릴러 검색 결과](./assets/search_results_dark_thriller_20251118_120441.png)
   - 생각보다 성능이 되게 괜찮다!!!
 
 - **배운 점**
