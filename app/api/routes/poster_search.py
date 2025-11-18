@@ -24,12 +24,14 @@ def get_cast_data():
     """Cast 데이터를 지연 로딩합니다 (캐시 사용)."""
     global _cast_df, _cast_by_imdb_id
     
+    # 이미 로드되어 있으면 바로 반환 (로그 없이)
     if _cast_df is not None:
         return _cast_df, _cast_by_imdb_id
     
     try:
+        # 처음 로드하는 경우에만 로그 출력
         logger.info("🔄 Cast 데이터 로딩 중...")
-        _cast_df = load_cast_data()  # 캐시된 함수 사용
+        _cast_df = load_cast_data()  # 캐시된 함수 사용 (이미 로드되었다면 캐시에서 가져옴)
         logger.info(f"✅ Cast 데이터 로드 완료: {len(_cast_df)}개 항목")
         
         # imdb_id로 그룹화하여 빠른 조회를 위한 딕셔너리 생성
@@ -176,7 +178,7 @@ def enrich_search_results(
 
 @router.get("/search/poster", response_model=PosterSearchResponse)
 def poster_search_by_text(
-    query: str = Query(..., min_length=1, description="텍스트 검색 쿼리"),
+    query: str = Query(..., min_length=1, description="텍스트 검색 쿼리 (영어 또는 한국어)"),
     limit: int = Query(10, ge=1, le=50, description="반환할 최대 결과 수"),
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
 ):
@@ -184,13 +186,20 @@ def poster_search_by_text(
     텍스트로 포스터 검색 API (CLIP 기반)
     
     CLIP 모델을 사용하여 텍스트 쿼리와 유사한 포스터를 가진 영화를 검색합니다.
+    영어 검색이 더 정확하지만, 한국어도 지원됩니다 (자동 번역).
     
-    예시:
+    예시 (영어):
     - "action movie with explosions"
     - "romantic sunset scene"
     - "dark thriller atmosphere"
     - "colorful animation"
     - "space adventure with stars"
+    
+    예시 (한국어):
+    - "폭발이 있는 액션 영화"
+    - "로맨틱한 석양 장면"
+    - "어두운 스릴러 분위기"
+    - "화려한 애니메이션"
     """
     try:
         # 1. CLIP 검색 서비스 가져오기

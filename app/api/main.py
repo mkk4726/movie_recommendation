@@ -56,14 +56,15 @@ def _load_data_sync():
     """동기 함수로 데이터 로드"""
     set_loading(True, "📦 데이터 로딩 중...")
     logger.info("📦 데이터 사전 로드 시작...")
-    from modules.services.data_access import load_all_data, load_cast_data
+    from modules.services.data_access import load_all_data
+    from app.api.routes.poster_search import get_cast_data
+    
     df_movies, df_ratings, df_filtered = load_all_data()
     logger.info(f"✅ 영화/평점 데이터 로드 완료: 영화 {len(df_movies)}개, 평점 {len(df_ratings)}개")
     
-    # Cast 데이터 로드
+    # Cast 데이터 로드 및 인덱싱
     try:
-        df_cast = load_cast_data()
-        logger.info(f"✅ Cast 데이터 로드 완료: {len(df_cast)}개 항목")
+        get_cast_data()  # 전역 캐시를 사용하여 로드 및 인덱싱
     except Exception as e:
         logger.warning(f"⚠️ Cast 데이터 로드 실패 (계속 진행): {e}")
     
@@ -97,6 +98,12 @@ def _load_poster_search_pipeline_sync():
         if clip_service.pipeline is not None:
             clip_service.pipeline._ensure_loaded()
             logger.info("✅ CLIP 인코더, FAISS 인덱스, movie_ids 사전 로드 완료")
+            
+            # 언어 감지 및 번역 모듈 미리 로드
+            logger.info("🔄 언어 감지 및 번역 모듈 사전 로드 중...")
+            clip_service.pipeline._load_language_modules()
+            logger.info("✅ 언어 감지 및 번역 모듈 사전 로드 완료")
+        
         set_progress("poster_search", True)
         logger.info("✅ 포스터 검색 파이프라인 로드 완료")
     except Exception as e:
@@ -148,6 +155,7 @@ async def load_models_and_data():
     logger.info("=" * 80)
     logger.info("🎉 모든 모델 및 데이터 캐시 로드 완료!")
     logger.info("✅ FastAPI 서버 준비 완료 - 요청 대기 중...")
+    logger.info("⏱️  백그라운드 로딩 완료 시각: %s", __import__('datetime').datetime.now().strftime("%H:%M:%S"))
     logger.info("=" * 80)
 
 

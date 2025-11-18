@@ -13,6 +13,7 @@ _loading_state = {
         "model": False,
         "data": False,
         "search": False,
+        "poster_search": False,
     }
 }
 _lock = threading.Lock()
