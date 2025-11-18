@@ -140,6 +140,8 @@ streamlit run app.py
 ## 배포
 
 ### 백그라운드 실행 (Cloudflare Tunnel용 - 포트 8501)
+
+#### 1. FastAPI 앱 실행
 ```bash
 # 프로젝트 루트 디렉토리에서 실행
 cd /Users/user/Desktop/movie_recommendation
@@ -156,6 +158,128 @@ tail -f fastapi.log
 # 프로세스 종료
 pkill -f "uvicorn app.api.main:app"
 ```
+
+#### 2. Cloudflare Tunnel 조회 및 관리
+```bash
+# Tunnel 목록 조회
+cloudflared tunnel list
+
+# 특정 Tunnel 상세 정보 조회
+cloudflared tunnel info my-streamlit-tunnel
+
+# Tunnel 상태 확인
+cloudflared tunnel info my-streamlit-tunnel --output json
+```
+
+#### 3. Cloudflare Tunnel 실행
+```bash
+# Cloudflare Tunnel 실행 (포그라운드)
+cloudflared tunnel run my-streamlit-tunnel
+
+# Cloudflare Tunnel 백그라운드 실행
+nohup cloudflared tunnel run my-streamlit-tunnel > cloudflared.log 2>&1 &
+
+# Cloudflare Tunnel 프로세스 확인
+ps aux | grep cloudflared
+
+# Cloudflare Tunnel 로그 확인
+tail -f cloudflared.log
+
+# Cloudflare Tunnel 종료
+pkill -f "cloudflared tunnel"
+```
+
+#### 4. 전체 배포 프로세스 (한 번에 실행)
+```bash
+# 프로젝트 루트 디렉토리에서 실행
+cd /Users/user/Desktop/movie_recommendation
+
+# 1. FastAPI 앱 백그라운드 실행
+nohup python app/main.py > fastapi.log 2>&1 &
+
+# 2. Cloudflare Tunnel 백그라운드 실행
+nohup cloudflared tunnel run my-streamlit-tunnel > cloudflared.log 2>&1 &
+
+# 3. 프로세스 확인
+ps aux | grep -E "(uvicorn|cloudflared)" | grep -v grep
+
+# 4. 로그 확인
+tail -f fastapi.log      # FastAPI 로그
+tail -f cloudflared.log  # Cloudflare Tunnel 로그
+```
+
+#### 5. macOS 시스템 잠금 방지 (시스템이 잠들어도 계속 실행)
+
+macOS에서 시스템이 잠들어도 Cloudflare Tunnel이 계속 실행되도록 하는 방법:
+
+**방법 1: caffeinate 사용 (간단한 방법)**
+```bash
+# caffeinate로 시스템이 잠들지 않게 하면서 실행
+caffeinate -d cloudflared tunnel run my-streamlit-tunnel
+
+# 백그라운드 실행
+nohup caffeinate -d cloudflared tunnel run my-streamlit-tunnel > cloudflared.log 2>&1 &
+```
+
+**방법 2: launchd 서비스로 등록 (권장 - 재부팅 후에도 자동 실행)**
+
+1. launchd plist 파일 생성:
+```bash
+# plist 파일 생성
+cat > ~/Library/LaunchAgents/com.cloudflare.tunnel.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cloudflare.tunnel</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/cloudflared</string>
+        <string>tunnel</string>
+        <string>run</string>
+        <string>my-streamlit-tunnel</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/user/Desktop/movie_recommendation/cloudflared.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/user/Desktop/movie_recommendation/cloudflared.log</string>
+</dict>
+</plist>
+EOF
+```
+
+2. 서비스 로드 및 시작:
+```bash
+# 서비스 로드
+launchctl load ~/Library/LaunchAgents/com.cloudflare.tunnel.plist
+
+# 서비스 시작
+launchctl start com.cloudflare.tunnel
+
+# 서비스 상태 확인
+launchctl list | grep cloudflare
+
+# 서비스 중지
+launchctl stop com.cloudflare.tunnel
+
+# 서비스 언로드 (완전 제거)
+launchctl unload ~/Library/LaunchAgents/com.cloudflare.tunnel.plist
+```
+
+**참고:**
+- `caffeinate -d`: 디스플레이가 잠들지 않게 함 (배터리 소모 주의)
+- `launchd`: 시스템 서비스로 등록하여 재부팅 후에도 자동 실행
+- plist 파일의 경로(`/opt/homebrew/bin/cloudflared`)는 실제 cloudflared 설치 경로에 맞게 수정 필요
+  - 확인: `which cloudflared`
+- Cloudflare Tunnel 설정 파일: `~/.cloudflared/config.yml`
+- Tunnel 이름: `my-streamlit-tunnel`
+- 로컬 포트: `8501`
+- 도메인: `movie.mingyuprojects.dev`
 
 ### 프로덕션 환경
 ```bash
