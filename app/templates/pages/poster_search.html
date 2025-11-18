@@ -1,0 +1,71 @@
+  {% from "partials/movie_card.html" import movie_metadata_card %}
+  <div class="page-content" id="page-poster-search" style="display: {% if current_page == 'poster_search' %}block{% else %}none{% endif %};">
+    <section class="card">
+      <h2>🖼️ 포스터 검색 (CLIP)</h2>
+      <p class="muted">텍스트 설명으로 비슷한 포스터를 가진 영화를 찾아보세요. CLIP 모델이 텍스트와 이미지의 유사도를 계산합니다.</p>
+
+      <!-- 텍스트 검색 폼 -->
+      <form method="get" action="/" style="margin: 1.5rem 0;">
+        <input type="hidden" name="page" value="poster_search" />
+        <label for="poster_query" style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block;">
+          포스터 설명을 입력하세요
+        </label>
+        <p class="muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+          예: "action movie with explosions", "romantic sunset scene", "dark thriller atmosphere", "colorful animation"
+        </p>
+        <div style="display: flex; gap: 0.5rem;">
+          <input
+            type="text"
+            id="poster_query"
+            name="poster_query"
+            placeholder="예: space adventure with stars, horror movie atmosphere..."
+            value="{{ poster_query }}"
+            style="flex: 1; background-color: var(--card-bg); color: var(--text-color);"
+          />
+          <button type="submit" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔍 검색</button>
+        </div>
+      </form>
+
+      {% if poster_search_results %}
+        <!-- 검색 결과 표시 -->
+        <div style="margin-top: 2rem;">
+          <div class="divider" style="margin: 1.5rem 0;"></div>
+          <h3 style="margin-bottom: 1rem;">🎬 검색 결과</h3>
+          <p class="muted" style="margin-bottom: 1.5rem;">
+            "{{ poster_search_results.query }}"와 유사한 포스터 {{ poster_search_results.total_results }}개
+          </p>
+          
+          {% if poster_search_results.results %}
+            {% for movie in poster_search_results.results %}
+            {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=True, show_score=False, overview_id_prefix='poster-overview') }}
+            {% endfor %}
+          {% else %}
+            <div class="card error-card">
+              <p>⚠️ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
+            </div>
+          {% endif %}
+        </div>
+      {% elif poster_query %}
+        <!-- 검색 중이거나 오류 발생 -->
+        <div style="margin-top: 2rem;">
+          <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
+          <div style="padding: 2rem; text-align: center; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <p style="margin: 0; color: var(--text-color);">
+              🔍 검색 중입니다...
+            </p>
+          </div>
+        </div>
+      {% else %}
+        <!-- 검색 전 안내 메시지 -->
+        <div style="margin-top: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border-radius: 12px; text-align: center; border: 2px dashed rgba(59, 130, 246, 0.3);">
+          <p style="font-size: 1.15rem; color: var(--text-color); margin: 0 0 0.5rem 0; font-weight: 600;">
+            텍스트로 포스터를 검색해보세요! 🎬
+          </p>
+          <p style="font-size: 0.95rem; color: var(--muted-text); margin: 0;">
+            CLIP 모델을 사용하여 비슷한 분위기의 영화를 찾아드립니다.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+

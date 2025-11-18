@@ -15,6 +15,16 @@
       <input 
         type="radio" 
         name="page" 
+        value="poster_search" 
+        class="page-radio"
+        {% if current_page == "poster_search" %}checked{% endif %}
+      />
+      <span>🖼️ 포스터 검색</span>
+    </label>
+    <label class="sidebar-radio-label">
+      <input 
+        type="radio" 
+        name="page" 
         value="movie_based" 
         class="page-radio"
         {% if current_page == "movie_based" %}checked{% endif %}

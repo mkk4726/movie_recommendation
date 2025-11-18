@@ -50,7 +50,8 @@ def home(
     movie_genre: Optional[List[str]] = Query(None, description="장르 필터"),
     movie_language: Optional[List[str]] = Query(None, description="언어 필터"),
     search_query: Optional[str] = Query(None, description="자연어 검색 쿼리"),
-        rating_method: Optional[str] = Query("search", description="평점 입력 방식"),                                                                               
+    poster_query: Optional[str] = Query(None, description="포스터 검색 쿼리"),
+    rating_method: Optional[str] = Query("search", description="평점 입력 방식"),                                                                               
     rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),                                                                            
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),                                                                        
     selected_rating_movie_id: Optional[str] = Query(None, description="평점 관리에서 선택된 영화 ID"),                                                                        
@@ -303,9 +304,78 @@ def home(
                     "total_results": 0,
                     "results": []
                 }
-        except Exception as e:
-            logger.error(f"자연어 검색 실패: {e}", exc_info=True)
-            errors.append(f"검색 중 오류가 발생했습니다: {str(e)}")
+        except Exception as exc:
+            logger.error(f"❌ 자연어 검색 실패: {exc}", exc_info=True)
+            errors.append(f"검색 중 오류가 발생했습니다: {str(exc)}")
+    
+    # 포스터 검색 결과
+    poster_search_results = None
+    if current_page == "poster_search" and poster_query and poster_query.strip():
+        try:
+            from app.api.routes.poster_search import poster_search_by_text
+            
+            # 포스터 검색 실행
+            poster_response = poster_search_by_text(
+                query=poster_query,
+                limit=limit,
+                include_cast=True
+            )
+            
+            # 검색 결과를 표준 형식으로 변환
+            if poster_response.results:
+                # df_movies가 없으면 로드
+                if df_movies is None:
+                    logger.info("포스터 검색 결과 메타데이터를 위해 영화 데이터 로드 중...")
+                    df_movies, _, _ = load_all_data()
+                
+                # PosterSearchResultMovie를 딕셔너리로 변환
+                poster_movies = []
+                for result in poster_response.results:
+                    movie_dict = {
+                        "movie_id": result.movie_id,
+                        "title": result.title,
+                        "total_title": result.title,  # 호환성을 위해
+                        "genres": result.genres,
+                        "genres_tmdb": result.genres,  # 호환성을 위해
+                        "year": result.year,
+                        "overview": result.overview,
+                        "poster_url": result.poster_url,
+                        "similarity": result.score,  # 유사도로 표시
+                        "cast_info": result.cast_info,
+                    }
+                    
+                    # df_movies에서 추가 메타데이터 가져오기
+                    movie_row = df_movies[df_movies["movie_id"] == result.movie_id]
+                    if not movie_row.empty:
+                        row = movie_row.iloc[0]
+                        movie_dict.update({
+                            "imdb_id": row.get("imdb_id"),
+                            "release_date": row.get("release_date"),
+                            "vote_average": row.get("vote_average"),
+                            "vote_count": row.get("vote_count"),
+                            "adult": row.get("adult"),
+                            "language": row.get("language"),
+                        })
+                    
+                    poster_movies.append(movie_dict)
+                
+                poster_search_results = {
+                    "query": poster_query,
+                    "query_type": "text",
+                    "total_results": len(poster_movies),
+                    "results": poster_movies
+                }
+                logger.info(f"🖼️ 포스터 검색 완료: '{poster_query}' -> {len(poster_movies)}개 결과")
+            else:
+                poster_search_results = {
+                    "query": poster_query,
+                    "query_type": "text",
+                    "total_results": 0,
+                    "results": []
+                }
+        except Exception as exc:
+            logger.error(f"❌ 포스터 검색 실패: {exc}", exc_info=True)
+            errors.append(f"포스터 검색 중 오류가 발생했습니다: {str(exc)}")
     
                 # 평점 관리 페이지 데이터 로드
     rating_search_results = []
@@ -410,6 +480,8 @@ def home(
         "current_page": current_page,
         "search_query": search_query or "",
         "search_results": search_results,
+        "poster_query": poster_query or "",
+        "poster_search_results": poster_search_results,
         "query": query or "",
         "search_limit": limit,
         "movie_search_query": movie_search_query or "",

@@ -154,3 +154,57 @@ class QuerySearchResponse(BaseModel):
             }
         }
 
+
+class PosterSearchResultMovie(BaseModel):
+    """포스터 검색 결과 영화"""
+    movie_id: str = Field(..., description="영화 ID")
+    score: float = Field(..., description="유사도 점수 (코사인 유사도)")
+    title: Optional[str] = Field(default=None, description="영화 제목")
+    genres: Optional[str] = Field(default=None, description="장르")
+    year: Optional[int] = Field(default=None, description="개봉 연도")
+    overview: Optional[str] = Field(default=None, description="영화 줄거리/개요")
+    poster_url: Optional[str] = Field(default=None, description="포스터 이미지 URL")
+    cast_info: Optional[MovieCastInfo] = Field(default=None, description="출연진 및 제작진 정보")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "movie_id": "1",
+                "score": 0.92,
+                "title": "Toy Story",
+                "genres": "Adventure|Animation|Children|Comedy|Fantasy",
+                "year": 1995,
+                "overview": "Led by Woody, Andy's toys live happily...",
+                "poster_url": "https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg",
+                "cast_info": None
+            }
+        }
+
+
+class PosterSearchResponse(BaseModel):
+    """포스터 검색 결과 응답"""
+    query_type: str = Field(..., description="검색 타입 (text 또는 image)")
+    query: Optional[str] = Field(default=None, description="검색 쿼리 (텍스트인 경우)")
+    total_results: int = Field(..., description="전체 결과 개수")
+    results: List[PosterSearchResultMovie] = Field(..., description="검색 결과 리스트")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query_type": "text",
+                "query": "action movie with explosions",
+                "total_results": 10,
+                "results": [
+                    {
+                        "movie_id": "1",
+                        "score": 0.92,
+                        "title": "Toy Story",
+                        "genres": "Adventure|Animation|Children|Comedy|Fantasy",
+                        "year": 1995,
+                        "overview": "Led by Woody, Andy's toys live happily...",
+                        "poster_url": "https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg"
+                    }
+                ]
+            }
+        }
+

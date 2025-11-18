@@ -20,7 +20,7 @@ else:
     print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 from modules.core import add_project_paths
-from app.api.routes import health, movies, users, auth, ratings, home, search
+from app.api.routes import health, movies, users, auth, ratings, home, search, poster_search
 from app.api.app_state import set_loading, set_progress
 
 # Firebase 관련 import (선택적)
@@ -84,6 +84,25 @@ def _load_search_pipeline_sync():
         logger.error(f"❌ 검색 파이프라인 로드 실패: {e}", exc_info=True)
 
 
+def _load_poster_search_pipeline_sync():
+    """동기 함수로 포스터 검색 파이프라인 로드"""
+    set_loading(True, "🖼️ 포스터 검색 파이프라인 로딩 중...")
+    logger.info("🖼️ 포스터 검색 파이프라인 사전 로드 시작...")
+    from app.modules.services.clip_service import get_clip_search_service
+    try:
+        clip_service = get_clip_search_service()
+        # 파이프라인을 실제로 로드하기 위해 _ensure_loaded 호출
+        clip_service._ensure_loaded()
+        # 파이프라인 내부의 인코더, FAISS, movie_ids도 미리 로드
+        if clip_service.pipeline is not None:
+            clip_service.pipeline._ensure_loaded()
+            logger.info("✅ CLIP 인코더, FAISS 인덱스, movie_ids 사전 로드 완료")
+        set_progress("poster_search", True)
+        logger.info("✅ 포스터 검색 파이프라인 로드 완료")
+    except Exception as e:
+        logger.error(f"❌ 포스터 검색 파이프라인 로드 실패: {e}", exc_info=True)
+
+
 async def load_models_and_data():
     """백그라운드에서 모델과 데이터를 로드하는 함수"""
     # 로딩 상태 시작
@@ -114,6 +133,14 @@ async def load_models_and_data():
     except Exception as e:
         logger.error(f"❌ 검색 파이프라인 로드 중 오류 발생: {e}", exc_info=True)
         # 검색 파이프라인 로드 실패는 치명적이지 않으므로 계속 진행
+    
+    # 포스터 검색 파이프라인 사전 로드 (비동기 스레드에서 실행)
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _load_poster_search_pipeline_sync)
+    except Exception as e:
+        logger.error(f"❌ 포스터 검색 파이프라인 로드 중 오류 발생: {e}", exc_info=True)
+        # 포스터 검색 파이프라인 로드 실패는 치명적이지 않으므로 계속 진행
     
     # 로딩 완료
     set_loading(False, "준비 완료")
@@ -180,5 +207,6 @@ app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(ratings.router)
 app.include_router(search.router)
+app.include_router(poster_search.router)
 app.include_router(home.router)
 
