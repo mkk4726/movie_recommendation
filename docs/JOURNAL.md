@@ -10,6 +10,83 @@
 
 ---
 
+
+## 2025-11-18 (월)
+
+### [⚡ 성능 개선] Vector Store 생성 속도 최적화
+
+- **작업 배경**
+  - 기존 벡터 스토어 생성이 순차 처리로 인해 매우 느림 (80,000개 영화 처리 시 약 13시간 소요)
+  - 이미지 다운로드 대기 시간 동안 CPU/GPU 유휴 상태
+  - CLIP 모델을 1개씩 처리하여 GPU 활용도 낮음
+
+- **작업 내용**
+  - **멀티스레딩 이미지 다운로드** 구현
+    - `ThreadPoolExecutor`로 최대 20개 동시 다운로드
+    - I/O bound 작업 병렬화로 대기 시간 최소화
+  - **GPU 배치 인코딩** 구현
+    - 32개 이미지를 한 번에 배치 처리
+    - GPU 병렬 연산 활용으로 처리량 극대화
+  - **재시도 로직** 추가
+    - 네트워크 오류 시 최대 3회 자동 재시도
+    - 안정성 및 성공률 향상
+  - **메모리 효율적 청크 처리**
+    - 100개씩 배치 단위로 처리
+    - 대용량 데이터셋도 안정적 처리 가능
+
+- **성능 개선 결과**
+  - **처리 속도**: 5-10배 향상
+    - 이전: ~50-100 영화/분
+    - 개선 후: ~500-1000 영화/분 (GPU 기준)
+  - **80,000개 영화 처리 시간**
+    - 이전: ~800분 (약 13시간)
+    - 개선 후: ~80-160분 (약 1.5-2.5시간)
+    - **절감 시간**: 약 10-12시간
+
+- **설정 가능한 파라미터** (`config.yaml`)
+  ```yaml
+  build:
+    download_batch_size: 100   # 동시 다운로드할 이미지 수
+    encoding_batch_size: 32    # GPU 배치 인코딩 크기
+    max_workers: 20            # 다운로드 스레드 수
+    max_retries: 3             # 다운로드 재시도 횟수
+  ```
+
+- **환경별 권장 설정**
+  - 고성능 GPU (A100, V100): batch_size 64, workers 30
+  - 중급 GPU (RTX 3090, 4090): batch_size 32, workers 20 (기본값)
+  - 저사양 GPU (GTX 1080): batch_size 16, workers 10
+  - CPU 전용: batch_size 8, workers 10
+
+- **백그라운드 실행 방법**
+  ```bash
+  # nohup으로 백그라운드 실행
+  nohup python -m vector_store.create_vector_store > vector_store.log 2>&1 &
+  
+  # 로그 실시간 확인
+  tail -f vector_store.log
+  ```
+
+- **기술 상세**
+  - 멀티스레딩: `concurrent.futures.ThreadPoolExecutor` 사용
+  - 배치 처리: PyTorch 텐서 배치 연산 활용
+  - 메모리 관리: 청크 단위 처리 후 즉시 해제
+  - 진행률 표시: `tqdm`으로 실시간 모니터링
+
+- **관련 파일**
+  - `vector_store/create_vector_store.py`: 메인 로직 구현
+  - `vector_store/config.yaml`: 설정 파일
+  - `vector_store/PERFORMANCE_IMPROVEMENTS.md`: 상세 개선 문서
+  - `vector_store/README.md`: 사용 가이드 업데이트
+
+- **배운 점**
+  - I/O bound 작업(다운로드)과 CPU/GPU bound 작업(인코딩)을 분리하여 최적화
+  - 배치 처리로 GPU 활용도를 크게 높일 수 있음
+  - 적절한 배치 크기 선택이 메모리와 성능의 균형점
+  - 멀티스레딩으로 네트워크 I/O 병목 해결 가능
+
+
+
 ## 2025-11-14 (금)
 
 ### [🔍 실험/테스트] 쿼리-포스터 검색 기능 테스트

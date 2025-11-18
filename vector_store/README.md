@@ -39,11 +39,21 @@ pip install faiss-gpu  # GPU 버전 (서버)
 ```bash
 # 기본 설정으로 실행
 python -m vector_store.create_vector_store
+
+# 백그라운드 실행 (nohup)
+nohup python -m vector_store.create_vector_store > vector_store.log 2>&1 &
+
+# 로그 확인
+tail -f vector_store.log
 ```
 
 설정을 변경하려면 `vector_store/config.yaml` 파일을 수정하세요:
 - `index.base_dir`: 출력 디렉토리
 - `build.timeout`: HTTP 요청 타임아웃
+- `build.download_batch_size`: 동시 다운로드할 이미지 수 (기본: 100)
+- `build.encoding_batch_size`: GPU 배치 인코딩 크기 (기본: 32)
+- `build.max_workers`: 다운로드 스레드 수 (기본: 20)
+- `build.max_retries`: 다운로드 재시도 횟수 (기본: 3)
 - `build.save_embeddings`: 임베딩 원본 저장 여부
 
 **방법 2: Python 코드로 실행**
@@ -106,7 +116,7 @@ index:
 
 # 벡터 설정
 vector:
-  dim: 512  # CLIP 벡터 차원
+  dim: 768  # Jina CLIP 벡터 차원
   distance_metric: "cosine"  # cosine, l2, ip
 
 # 검색 설정
@@ -116,8 +126,13 @@ search:
 
 # 빌드 설정
 build:
-  save_embeddings: true  # 임베딩 원본 저장 여부
-  save_versioned: true   # 버전별 파일 저장 여부
+  save_embeddings: true      # 임베딩 원본 저장 여부
+  save_versioned: true       # 버전별 파일 저장 여부
+  timeout: 10                # HTTP 요청 타임아웃 (초)
+  download_batch_size: 100   # 동시 다운로드할 이미지 수
+  encoding_batch_size: 32    # GPU 배치 인코딩 크기
+  max_workers: 20            # 다운로드 스레드 수
+  max_retries: 3             # 다운로드 재시도 횟수
 ```
 
 ### 설정 로드
@@ -139,9 +154,27 @@ index_path = get_index_path(config)
 
 ## 📊 성능
 
+### 검색 성능
 - **검색 속도**: ~0.5-1ms (8만 벡터 기준)
 - **메모리 사용**: ~160MB (인덱스)
 - **파일 크기**: ~160MB + movie_ids JSON 수 KB
+
+### 빌드 성능 최적화
+벡터 스토어 생성 시 다음 최적화 기법을 사용합니다:
+
+1. **멀티스레딩 다운로드**: 최대 20개 스레드로 동시 이미지 다운로드
+2. **배치 인코딩**: GPU에서 32개 이미지를 한 번에 인코딩
+3. **재시도 로직**: 네트워크 오류 시 최대 3회 재시도
+4. **메모리 효율**: 100개씩 배치 단위로 처리하여 메모리 사용 최소화
+
+**예상 처리 속도**: 
+- GPU 사용 시: ~500-1000 영화/분
+- CPU 사용 시: ~100-200 영화/분
+
+설정 조정으로 성능 튜닝 가능:
+- `download_batch_size`: 메모리가 충분하면 증가 (200-500)
+- `encoding_batch_size`: GPU 메모리에 따라 조정 (16-64)
+- `max_workers`: CPU 코어 수에 따라 조정 (10-50)
 
 ## 🔄 워크플로우
 

@@ -18,8 +18,11 @@ search:
 
 # 빌드 설정
 build:
-  save_embeddings: true  # 임베딩 원본 저장 여부
-  save_versioned: true   # 버전별 파일 저장 여부
-  timeout: 10            # HTTP 요청 타임아웃 (초)
-  batch_size: 16         # 배치 크기 (사용 안함, 호환성용)
+  save_embeddings: true      # 임베딩 원본 저장 여부
+  save_versioned: true       # 버전별 파일 저장 여부
+  timeout: 10                # HTTP 요청 타임아웃 (초)
+  download_batch_size: 100   # 동시 다운로드할 이미지 수
+  encoding_batch_size: 32    # GPU 배치 인코딩 크기
+  max_workers: 20            # 다운로드 스레드 수
+  max_retries: 3             # 다운로드 재시도 횟수
 
