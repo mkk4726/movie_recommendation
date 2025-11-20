@@ -49,3 +49,5 @@ langdetect
 einops
 timm
 torchvision
+matplotlib
+seaborn
