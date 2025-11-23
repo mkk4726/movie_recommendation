@@ -504,7 +504,7 @@
   }
 
   // 클릭 이벤트 로깅 함수
-  async function logClickEvent(movieId, position, clickType) {
+  async function logClickEvent(movieId, position, clickType, linkType) {
     if (!currentSearchSessionId) {
       console.log('검색 세션 ID가 없어 클릭 로깅을 건너뜁니다.');
       return;
@@ -515,7 +515,8 @@
         session_id: currentSearchSessionId,
         movie_id: movieId,
         position: position,
-        search_query: currentSearchQuery
+        search_query: currentSearchQuery,
+        link_type: linkType  // 링크 타입 추가
       };
 
       console.log(`${clickType} 클릭 로깅:`, clickData);
@@ -538,14 +539,13 @@
     }
   }
 
-
-  // IMDb 링크 클릭 트래킹
+  // 영화 링크 클릭 트래킹 (IMDb + 구글 검색)
   document.addEventListener('DOMContentLoaded', function () {
-    // 모든 IMDb 링크에 클릭 이벤트 추가
-    const imdbLinks = document.querySelectorAll('a[href*="imdb.com"]');
-    console.log(`IMDb 링크 ${imdbLinks.length}개 발견`);
+    // 모든 영화 관련 링크에 클릭 이벤트 추가
+    const movieLinks = document.querySelectorAll('.movie-link-btn');
+    console.log(`영화 링크 ${movieLinks.length}개 발견`);
 
-    imdbLinks.forEach((link, index) => {
+    movieLinks.forEach((link, index) => {
       link.addEventListener('click', function (e) {
         // 링크의 상위 영화 카드 찾기
         const movieCard = this.closest('.movie-card');
@@ -557,15 +557,20 @@
         // 영화 카드에서 직접 movie_id 가져오기
         const movieId = movieCard.getAttribute('data-movie-id');
 
-        console.log('IMDb 링크 클릭:', {
+        // 링크 타입 확인 (imdb 또는 google_search)
+        const linkType = this.getAttribute('data-link-type') || 'unknown';
+        const linkText = linkType === 'imdb' ? 'IMDb 링크' : '구글 검색';
+
+        console.log(`${linkText} 클릭:`, {
           movieId: movieId,
           position: index,
+          linkType: linkType,
           sessionId: currentSearchSessionId
         });
 
         if (movieId && currentSearchSessionId) {
           // 클릭 로깅 (비동기로 실행하지만 링크는 바로 열림)
-          logClickEvent(movieId, index, 'IMDb 링크');
+          logClickEvent(movieId, index, linkText, linkType);
         } else {
           console.warn('클릭 로깅 불가:', {
             movieId: movieId,
@@ -575,4 +580,5 @@
       });
     });
   });
+
 </script>

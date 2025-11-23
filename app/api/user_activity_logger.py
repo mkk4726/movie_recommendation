@@ -164,7 +164,8 @@ class UserActivityLogger:
         session_id: str,
         movie_id: str,
         position: int,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        link_type: Optional[str] = None
     ) -> None:
         """
         Log a click event on a search result.
@@ -175,6 +176,7 @@ class UserActivityLogger:
             movie_id: ID of clicked movie
             position: Position in search results (0-indexed)
             search_query: Original search query (optional, for convenience)
+            link_type: Link type (imdb, google_search, etc.)
         """
         ip = self._get_client_ip(request)
         
@@ -187,6 +189,9 @@ class UserActivityLogger:
         
         if search_query:
             log_data["search_query"] = search_query
+        
+        if link_type:
+            log_data["link_type"] = link_type
         
         self._append_log(ActivityType.SEARCH_RESULT_CLICK, log_data)
     

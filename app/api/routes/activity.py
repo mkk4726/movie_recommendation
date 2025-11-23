@@ -33,10 +33,11 @@ async def log_click_event(
             session_id=click_event.session_id,
             movie_id=click_event.movie_id,
             position=click_event.position,
-            search_query=click_event.search_query
+            search_query=click_event.search_query,
+            link_type=click_event.link_type
         )
         
-        logger.info(f"✅ 클릭 로깅 완료: session={click_event.session_id}, movie={click_event.movie_id}, pos={click_event.position}")
+        logger.info(f"✅ 클릭 로깅 완료: session={click_event.session_id}, movie={click_event.movie_id}, pos={click_event.position}, type={click_event.link_type}")
         
         return {
             "status": "success",

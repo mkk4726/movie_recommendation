@@ -226,6 +226,7 @@ class ClickEventRequest(BaseModel):
     movie_id: str = Field(..., description="클릭한 영화 ID")
     position: int = Field(..., ge=0, description="검색 결과 내 순위 (0-indexed)")
     search_query: Optional[str] = Field(default=None, description="검색 쿼리 (참조용)")
+    link_type: Optional[str] = Field(default=None, description="링크 타입 (imdb, google_search 등)")
 
 
 class CTRDataPoint(BaseModel):

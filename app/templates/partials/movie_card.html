@@ -72,23 +72,47 @@ overview_id_prefix='movie-overview') %}
     </div>
     {% endif %}
 
-    <!-- IMDB 링크 -->
-    {% if movie.imdb_id %}
+    <!-- IMDB 링크 및 보는 곳 검색 -->
+    {% if movie.imdb_id or movie.title %}
     <div style="margin: 0.75rem 0;">
-      <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/" target="_blank" rel="noopener noreferrer" style="display: inline-block; 
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        {% if movie.imdb_id %}
+        <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/" target="_blank" rel="noopener noreferrer"
+          class="movie-link-btn imdb-link" data-link-type="imdb" style="display: inline-block; 
                   background: linear-gradient(135deg, #F5C518 0%, #E6B800 100%); 
                   color: #000000; 
                   text-decoration: none; 
                   font-weight: 700; 
-                  font-size: 1rem; 
-                  padding: 0.75rem 1.5rem; 
+                  font-size: 0.95rem; 
+                  padding: 0.65rem 1.25rem; 
                   border-radius: 8px; 
                   transition: all 0.2s ease;
                   box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);"
-        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(245, 197, 24, 0.5)';"
-        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(245, 197, 24, 0.3)';">
-        🎬 IMDb에서 더 알아보기
-      </a>
+          onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(245, 197, 24, 0.5)';"
+          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(245, 197, 24, 0.3)';">
+          🎬 IMDb에서 더 알아보기
+        </a>
+        {% endif %}
+
+        {% if movie.title or movie.total_title %}
+        <a href="https://www.google.com/search?q={{ (movie.total_title or movie.title) | urlencode }}+보는+곳"
+          target="_blank" rel="noopener noreferrer" class="movie-link-btn google-search-link"
+          data-link-type="google_search" style="display: inline-block; 
+                  background: linear-gradient(135deg, #4285F4 0%, #3367D6 100%); 
+                  color: #ffffff; 
+                  text-decoration: none; 
+                  font-weight: 700; 
+                  font-size: 0.95rem; 
+                  padding: 0.65rem 1.25rem; 
+                  border-radius: 8px; 
+                  transition: all 0.2s ease;
+                  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);"
+          onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(66, 133, 244, 0.5)';"
+          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(66, 133, 244, 0.3)';">
+          🔍 보는 곳 검색
+        </a>
+        {% endif %}
+      </div>
       <p style="margin: 0.5rem 0 0 0; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-style: italic;">
         💡 더 궁금하다면 클릭해서 자세한 정보를 확인해보세요!
       </p>
