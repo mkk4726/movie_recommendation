@@ -4,7 +4,7 @@ Poster Search API endpoints using CLIP and FAISS.
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 import pandas as pd
 
 from app.modules.services.clip_service import get_clip_search_service, ClipServiceError
@@ -185,6 +185,7 @@ def enrich_search_results(
 
 @router.get("/search/poster", response_model=PosterSearchResponse)
 def poster_search_by_text(
+    request: Request,
     query: str = Query(..., min_length=1, description="텍스트 검색 쿼리 (영어 또는 한국어)"),
     limit: int = Query(10, ge=1, le=50, description="반환할 최대 결과 수"),
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
@@ -226,12 +227,34 @@ def poster_search_by_text(
             include_cast=include_cast
         )
         
-        # 5. 응답 생성
+        # 5. 활동 로깅 추가
+        session_id = None
+        try:
+            from app.api.user_activity_logger import get_activity_logger
+            activity_logger = get_activity_logger()
+            
+            # 결과 영화 ID 리스트 추출
+            result_movie_ids = [r.movie_id for r in enriched_results]
+            
+            # 검색 로깅 (세션 ID 생성)
+            session_id = activity_logger.log_search(
+                request=request,
+                query=query,
+                result_count=len(enriched_results),
+                result_movie_ids=result_movie_ids,
+                search_type="poster"
+            )
+            logger.info(f"✅ 포스터 검색 로깅 완료: session_id={session_id}")
+        except Exception as log_error:
+            logger.warning(f"포스터 검색 로깅 실패 (계속 진행): {log_error}")
+        
+        # 6. 응답 생성
         response = PosterSearchResponse(
             query_type="text",
             query=query,
             total_results=len(enriched_results),
-            results=enriched_results
+            results=enriched_results,
+            session_id=session_id
         )
         
         logger.info(f"✅ 포스터 텍스트 검색 완료: {response.total_results}개 결과")

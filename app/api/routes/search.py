@@ -5,7 +5,7 @@ Natural Language Search API endpoints using QuerySearchPipeline.
 import logging
 import sys
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 import pandas as pd
 
 from modules.services.data_access import load_all_data, load_cast_data
@@ -146,6 +146,7 @@ def get_movie_cast_info(imdb_id: str, cast_df: pd.DataFrame) -> MovieCastInfo:
 
 @router.get("/search/natural-language", response_model=QuerySearchResponse)
 def natural_language_search(
+    request: Request,
     query: str = Query(..., min_length=1, description="자연어 검색 쿼리"),
     limit: int = Query(20, ge=1, le=100, description="반환할 최대 결과 수"),
     min_score: float = Query(0.0, ge=0.0, description="최소 검색 스코어 임계값"),
@@ -188,6 +189,31 @@ def natural_language_search(
                     imdb_id = movie_id_to_imdb.get(result.movie_id)
                     if imdb_id:
                         result.cast_info = get_movie_cast_info(imdb_id, cast_df)
+        
+        # 4. 활동 로깅 및 세션 ID 생성
+        session_id = None
+        try:
+            from app.api.user_activity_logger import get_activity_logger
+            activity_logger = get_activity_logger()
+            
+            # 결과 영화 ID 리스트 추출
+            result_movie_ids = [r.movie_id for r in response.results]
+            
+            # 검색 로깅 (IP 자동 추출, 세션 ID 반환)
+            session_id = activity_logger.log_search(
+                request=request,
+                query=query,
+                result_count=response.total_results,
+                result_movie_ids=result_movie_ids,
+                search_type="natural_language"
+            )
+            logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
+        except Exception as log_error:
+            # 로깅 실패는 치명적이지 않으므로 경고만 출력
+            logger.warning(f"검색 로깅 실패 (계속 진행): {log_error}")
+        
+        # 5. 응답에 세션 ID 추가
+        response.session_id = session_id
         
         logger.info(f"✅ 검색 완료: {response.total_results}개 결과")
         return response

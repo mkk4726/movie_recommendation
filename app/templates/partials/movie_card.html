@@ -1,5 +1,5 @@
 {% macro movie_metadata_card(movie, show_index=False, index=None, show_similarity=False, show_score=False, overview_id_prefix='movie-overview') %}
-  <div class="movie-card" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
+  <div class="movie-card" data-movie-id="{{ movie.movie_id }}" style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
     {% if movie.poster_url %}
     <div style="flex-shrink: 0;">
       <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />

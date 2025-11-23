@@ -1,491 +1,578 @@
-  <script>
-      // 영화 개요 더보기/접기 토글 함수
-      function toggleOverview(overviewId, btnId) {
-        const overview = document.getElementById(overviewId);
-        const btn = document.getElementById(btnId);
-        
-        if (overview.style.maxHeight === 'none' || overview.style.maxHeight === '') {
-          // 접기: 3줄까지만 보이도록
-          overview.style.maxHeight = '4.8em';
-          overview.style.display = '-webkit-box';
-          overview.style.webkitLineClamp = '3';
-          overview.style.webkitBoxOrient = 'vertical';
-          overview.style.overflow = 'hidden';
-          overview.style.textOverflow = 'ellipsis';
-          btn.textContent = '더보기';
-        } else {
-          // 더보기: 전체 내용 보이도록
-          overview.style.maxHeight = 'none';
-          overview.style.display = 'block';
-          overview.style.setProperty('-webkit-line-clamp', 'none');
-          overview.style.setProperty('-webkit-box-orient', 'initial');
-          overview.style.overflow = 'visible';
-          overview.style.textOverflow = 'initial';
-          btn.textContent = '접기';
-        }
+<script>
+  // 영화 개요 더보기/접기 토글 함수
+  function toggleOverview(overviewId, btnId) {
+    const overview = document.getElementById(overviewId);
+    const btn = document.getElementById(btnId);
+
+    if (overview.style.maxHeight === 'none' || overview.style.maxHeight === '') {
+      // 접기: 3줄까지만 보이도록
+      overview.style.maxHeight = '4.8em';
+      overview.style.display = '-webkit-box';
+      overview.style.webkitLineClamp = '3';
+      overview.style.webkitBoxOrient = 'vertical';
+      overview.style.overflow = 'hidden';
+      overview.style.textOverflow = 'ellipsis';
+      btn.textContent = '더보기';
+    } else {
+      // 더보기: 전체 내용 보이도록
+      overview.style.maxHeight = 'none';
+      overview.style.display = 'block';
+      overview.style.setProperty('-webkit-line-clamp', 'none');
+      overview.style.setProperty('-webkit-box-orient', 'initial');
+      overview.style.overflow = 'visible';
+      overview.style.textOverflow = 'initial';
+      btn.textContent = '접기';
+    }
+  }
+
+  // 사용자 옵션 변경 핸들러
+  function handleUserOptionChange(option) {
+    const form = document.getElementById('user-based-form');
+    if (option === 'me') {
+      // '나' 선택 시 user_id 필드 제거
+      const userIdInput = document.getElementById('user_id');
+      if (userIdInput) {
+        userIdInput.remove();
       }
-      
-      // 사용자 옵션 변경 핸들러
-      function handleUserOptionChange(option) {
-        const form = document.getElementById('user-based-form');
-        if (option === 'me') {
-          // '나' 선택 시 user_id 필드 제거
-          const userIdInput = document.getElementById('user_id');
-          if (userIdInput) {
-            userIdInput.remove();
-          }
-        } else {
-          // '다른 사용자' 선택 시 폼 제출
-          form.submit();
-        }
+    } else {
+      // '다른 사용자' 선택 시 폼 제출
+      form.submit();
+    }
+  }
+
+  // 모바일 디바이스 감지 (페이지 로드 전에 실행되어야 함)
+  (function detectMobile() {
+    // 터치 이벤트 지원 여부 확인
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // User Agent 확인 (모바일 디바이스)
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+
+    // 화면 크기 확인
+    const isSmallScreen = window.innerWidth <= 968 || screen.width <= 968;
+
+    // 터치 디바이스이거나 모바일 User Agent이고 화면이 작은 경우
+    if ((hasTouch || isMobileUA) && isSmallScreen) {
+      document.documentElement.classList.add('is-mobile');
+      document.body.classList.add('is-mobile');
+    }
+  })();
+
+  // 페이지 전환 로직
+  document.addEventListener('DOMContentLoaded', function () {
+    const radioButtons = document.querySelectorAll('.page-radio');
+
+    function handlePageChange(radio) {
+      const selectedPage = radio.value;
+      const url = new URL(window.location);
+      url.searchParams.set('page', selectedPage);
+      // 기존 결과 파라미터 제거 (새 페이지로 전환)
+      if (selectedPage !== 'rating_management') {
+        url.searchParams.delete('query');
+        url.searchParams.delete('limit');
+        url.searchParams.delete('rating_method');
+        url.searchParams.delete('rating_movie_id');
+      }
+      if (selectedPage !== 'user_based') {
+        url.searchParams.delete('user_id');
+        url.searchParams.delete('user_top_n');
+        url.searchParams.delete('user_option');
+      }
+      if (selectedPage !== 'movie_based') {
+        url.searchParams.delete('movie_search_query');
+        url.searchParams.delete('selected_movie_id');
+        url.searchParams.delete('similar_top_n');
+        url.searchParams.delete('movie_genre');
+        url.searchParams.delete('movie_language');
+      }
+      if (selectedPage !== 'search') {
+        url.searchParams.delete('search_query');
       }
 
-      // 모바일 디바이스 감지 (페이지 로드 전에 실행되어야 함)
-      (function detectMobile() {
-        // 터치 이벤트 지원 여부 확인
-        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        
-        // User Agent 확인 (모바일 디바이스)
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-        
-        // 화면 크기 확인
-        const isSmallScreen = window.innerWidth <= 968 || screen.width <= 968;
-        
-        // 터치 디바이스이거나 모바일 User Agent이고 화면이 작은 경우
-        if ((hasTouch || isMobileUA) && isSmallScreen) {
-          document.documentElement.classList.add('is-mobile');
-          document.body.classList.add('is-mobile');
+      // 모바일에서 사이드바가 열려있으면 닫기
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('open')) {
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.remove('open');
+        if (sidebarOverlay) {
+          sidebarOverlay.classList.remove('active');
         }
-      })();
-      
-      // 페이지 전환 로직
-      document.addEventListener('DOMContentLoaded', function() {
-        const radioButtons = document.querySelectorAll('.page-radio');
-        
-        function handlePageChange(radio) {
-          const selectedPage = radio.value;
-          const url = new URL(window.location);
-          url.searchParams.set('page', selectedPage);
-          // 기존 결과 파라미터 제거 (새 페이지로 전환)
-          if (selectedPage !== 'rating_management') {
-            url.searchParams.delete('query');
-            url.searchParams.delete('limit');
-            url.searchParams.delete('rating_method');
-            url.searchParams.delete('rating_movie_id');
-          }
-          if (selectedPage !== 'user_based') {
-            url.searchParams.delete('user_id');
-            url.searchParams.delete('user_top_n');
-            url.searchParams.delete('user_option');
-          }
-          if (selectedPage !== 'movie_based') {
-            url.searchParams.delete('movie_search_query');
-            url.searchParams.delete('selected_movie_id');
-            url.searchParams.delete('similar_top_n');
-            url.searchParams.delete('movie_genre');
-            url.searchParams.delete('movie_language');
-          }
-          if (selectedPage !== 'search') {
-            url.searchParams.delete('search_query');
-          }
-          
-          // 모바일에서 사이드바가 열려있으면 닫기
-          const sidebar = document.getElementById('sidebar');
-          if (sidebar && sidebar.classList.contains('open')) {
-            const sidebarOverlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.remove('open');
-            if (sidebarOverlay) {
-              sidebarOverlay.classList.remove('active');
-            }
-            document.body.style.overflow = '';
-          }
-          
-          window.location.href = url.toString();
-        }
-        
-        radioButtons.forEach(radio => {
-          // change 이벤트 (데스크톱 + 모바일)
-          radio.addEventListener('change', function() {
+        document.body.style.overflow = '';
+      }
+
+      window.location.href = url.toString();
+    }
+
+    radioButtons.forEach(radio => {
+      // change 이벤트 (데스크톱 + 모바일)
+      radio.addEventListener('change', function () {
+        handlePageChange(this);
+      });
+
+      // 모바일 터치 이벤트도 추가
+      radio.addEventListener('touchend', function (e) {
+        e.stopPropagation();
+        // 약간의 지연 후 change 이벤트 확인
+        setTimeout(() => {
+          if (this.checked) {
             handlePageChange(this);
-          });
-          
-          // 모바일 터치 이벤트도 추가
-          radio.addEventListener('touchend', function(e) {
-            e.stopPropagation();
-            // 약간의 지연 후 change 이벤트 확인
-            setTimeout(() => {
-              if (this.checked) {
-                handlePageChange(this);
-              }
-            }, 100);
-          });
-        });
-
-      // 인증 탭 전환 로직
-      function initAuthTabs() {
-        const authTabs = document.querySelectorAll('input[name="auth-tab"]');
-        const loginContent = document.getElementById('login-content');
-        const signupContent = document.getElementById('signup-content');
-        
-        if (!loginContent || !signupContent) {
-          return; // 탭이 없으면 실행하지 않음
-        }
-        
-        // 탭 전환 함수
-        function switchTab(tabId) {
-          if (tabId === 'tab-login') {
-            loginContent.style.display = 'block';
-            signupContent.style.display = 'none';
-          } else if (tabId === 'tab-signup') {
-            loginContent.style.display = 'none';
-            signupContent.style.display = 'block';
           }
-        }
-        
-        // 탭 변경 이벤트 리스너
-        authTabs.forEach(tab => {
-          tab.addEventListener('change', function() {
-            switchTab(this.id);
-          });
-        });
-        
-        // 탭 라벨에 터치 이벤트 추가 (모바일 지원)
-        const tabLabels = document.querySelectorAll('.tab-label');
-        tabLabels.forEach(label => {
-          label.addEventListener('click', function(e) {
-            const forAttr = label.getAttribute('for');
-            if (forAttr) {
-              const tab = document.getElementById(forAttr);
-              if (tab) {
-                tab.checked = true;
-                tab.dispatchEvent(new Event('change', { bubbles: true }));
-                switchTab(forAttr);
-              }
-            }
-          });
-          
-          // 터치 이벤트도 추가
-          label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            const forAttr = label.getAttribute('for');
-            if (forAttr) {
-              const tab = document.getElementById(forAttr);
-              if (tab) {
-                tab.checked = true;
-                tab.dispatchEvent(new Event('change', { bubbles: true }));
-                switchTab(forAttr);
-              }
-            }
-          });
-        });
+        }, 100);
+      });
+    });
 
-        // 초기 탭 상태 설정
-        const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
-        if (checkedTab) {
-          switchTab(checkedTab.id);
-        } else {
-          // 기본적으로 로그인 탭 표시
-          const loginTab = document.getElementById('tab-login');
-          if (loginTab) {
-            loginTab.checked = true;
-            switchTab('tab-login');
-          }
+    // 인증 탭 전환 로직
+    function initAuthTabs() {
+      const authTabs = document.querySelectorAll('input[name="auth-tab"]');
+      const loginContent = document.getElementById('login-content');
+      const signupContent = document.getElementById('signup-content');
+
+      if (!loginContent || !signupContent) {
+        return; // 탭이 없으면 실행하지 않음
+      }
+
+      // 탭 전환 함수
+      function switchTab(tabId) {
+        if (tabId === 'tab-login') {
+          loginContent.style.display = 'block';
+          signupContent.style.display = 'none';
+        } else if (tabId === 'tab-signup') {
+          loginContent.style.display = 'none';
+          signupContent.style.display = 'block';
         }
       }
-      
-      // DOM 로드 후 즉시 실행
-      initAuthTabs();
-      
-      // 모든 폼 제출 및 변경 시 스크롤 위치 관리
-      function initScrollPositionManager() {
-        // 스크롤 위치 저장 함수
-        function saveScrollPosition(element) {
-          if (!element) return;
-          
-          const rect = element.getBoundingClientRect();
-          const scrollOffset = window.pageYOffset + rect.top;
-          sessionStorage.setItem('formScroll', scrollOffset.toString());
-          sessionStorage.setItem('formScrollTimestamp', Date.now().toString());
-          
-          // 요소의 ID나 클래스를 저장하여 복원 시 참조
-          const targetId = element.id || element.closest('[id]')?.id || '';
-          if (targetId) {
-            sessionStorage.setItem('formScrollTarget', targetId);
-          }
-        }
-        
-        // 모든 GET 폼에 대해 처리
-        const allForms = document.querySelectorAll('form[method="get"]');
-        allForms.forEach(form => {
-          form.addEventListener('submit', function(e) {
-            // 폼 위치 저장
-            saveScrollPosition(form);
-          });
+
+      // 탭 변경 이벤트 리스너
+      authTabs.forEach(tab => {
+        tab.addEventListener('change', function () {
+          switchTab(this.id);
         });
-        
-        // select 요소의 자동 제출 처리 (data-auto-submit 속성 또는 onchange 속성)
-        const selectElements = document.querySelectorAll('select[data-auto-submit="true"], select[onchange*="submit"]');
-        selectElements.forEach(select => {
-          // 기존 onchange 이벤트 제거하고 새로 등록
-          const originalOnchange = select.getAttribute('onchange');
-          if (originalOnchange) {
-            select.removeAttribute('onchange');
+      });
+
+      // 탭 라벨에 터치 이벤트 추가 (모바일 지원)
+      const tabLabels = document.querySelectorAll('.tab-label');
+      tabLabels.forEach(label => {
+        label.addEventListener('click', function (e) {
+          const forAttr = label.getAttribute('for');
+          if (forAttr) {
+            const tab = document.getElementById(forAttr);
+            if (tab) {
+              tab.checked = true;
+              tab.dispatchEvent(new Event('change', { bubbles: true }));
+              switchTab(forAttr);
+            }
           }
-          
-          select.addEventListener('change', function(e) {
-            // 스크롤 위치 저장
-            saveScrollPosition(select);
-            // 폼 제출
-            const form = select.closest('form');
+        });
+
+        // 터치 이벤트도 추가
+        label.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          const forAttr = label.getAttribute('for');
+          if (forAttr) {
+            const tab = document.getElementById(forAttr);
+            if (tab) {
+              tab.checked = true;
+              tab.dispatchEvent(new Event('change', { bubbles: true }));
+              switchTab(forAttr);
+            }
+          }
+        });
+      });
+
+      // 초기 탭 상태 설정
+      const checkedTab = document.querySelector('input[name="auth-tab"]:checked');
+      if (checkedTab) {
+        switchTab(checkedTab.id);
+      } else {
+        // 기본적으로 로그인 탭 표시
+        const loginTab = document.getElementById('tab-login');
+        if (loginTab) {
+          loginTab.checked = true;
+          switchTab('tab-login');
+        }
+      }
+    }
+
+    // DOM 로드 후 즉시 실행
+    initAuthTabs();
+
+    // 모든 폼 제출 및 변경 시 스크롤 위치 관리
+    function initScrollPositionManager() {
+      // 스크롤 위치 저장 함수
+      function saveScrollPosition(element) {
+        if (!element) return;
+
+        const rect = element.getBoundingClientRect();
+        const scrollOffset = window.pageYOffset + rect.top;
+        sessionStorage.setItem('formScroll', scrollOffset.toString());
+        sessionStorage.setItem('formScrollTimestamp', Date.now().toString());
+
+        // 요소의 ID나 클래스를 저장하여 복원 시 참조
+        const targetId = element.id || element.closest('[id]')?.id || '';
+        if (targetId) {
+          sessionStorage.setItem('formScrollTarget', targetId);
+        }
+      }
+
+      // 모든 GET 폼에 대해 처리
+      const allForms = document.querySelectorAll('form[method="get"]');
+      allForms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+          // 폼 위치 저장
+          saveScrollPosition(form);
+        });
+      });
+
+      // select 요소의 자동 제출 처리 (data-auto-submit 속성 또는 onchange 속성)
+      const selectElements = document.querySelectorAll('select[data-auto-submit="true"], select[onchange*="submit"]');
+      selectElements.forEach(select => {
+        // 기존 onchange 이벤트 제거하고 새로 등록
+        const originalOnchange = select.getAttribute('onchange');
+        if (originalOnchange) {
+          select.removeAttribute('onchange');
+        }
+
+        select.addEventListener('change', function (e) {
+          // 스크롤 위치 저장
+          saveScrollPosition(select);
+          // 폼 제출
+          const form = select.closest('form');
+          if (form) {
+            form.submit();
+          }
+        });
+      });
+
+      // 라디오 버튼의 onchange 이벤트 처리 (페이지 전환)
+      const radioButtons = document.querySelectorAll('input[type="radio"][onchange]');
+      radioButtons.forEach(radio => {
+        const originalOnchange = radio.getAttribute('onchange');
+        if (originalOnchange && originalOnchange.includes('submit')) {
+          radio.removeAttribute('onchange');
+          radio.addEventListener('change', function (e) {
+            saveScrollPosition(radio);
+            const form = radio.closest('form');
             if (form) {
               form.submit();
             }
           });
-        });
-        
-        // 라디오 버튼의 onchange 이벤트 처리 (페이지 전환)
-        const radioButtons = document.querySelectorAll('input[type="radio"][onchange]');
-        radioButtons.forEach(radio => {
-          const originalOnchange = radio.getAttribute('onchange');
-          if (originalOnchange && originalOnchange.includes('submit')) {
-            radio.removeAttribute('onchange');
-            radio.addEventListener('change', function(e) {
-              saveScrollPosition(radio);
-              const form = radio.closest('form');
-              if (form) {
-                form.submit();
-              }
-            });
-          }
-        });
-        
-        // 페이지 로드 후 스크롤 복원 (5초 이내의 저장된 스크롤만 사용)
-        const savedScroll = sessionStorage.getItem('formScroll');
-        const savedTimestamp = sessionStorage.getItem('formScrollTimestamp');
-        const savedTarget = sessionStorage.getItem('formScrollTarget');
-        
-        if (savedScroll && savedTimestamp) {
-          const timeDiff = Date.now() - parseInt(savedTimestamp, 10);
-          if (timeDiff < 5000) { // 5초 이내
-            // 약간의 지연을 두어 DOM이 완전히 로드된 후 스크롤
-            setTimeout(() => {
-              let scrollTarget = null;
-              
-              // 저장된 타겟 ID가 있으면 해당 요소로
-              if (savedTarget) {
-                scrollTarget = document.getElementById(savedTarget);
-              }
-              
-              // 타겟이 없으면 검색 결과 섹션 찾기
-              if (!scrollTarget) {
-                scrollTarget = document.querySelector('#search-results, #movie-search-results, #rating-search-results');
-              }
-              
-              if (scrollTarget) {
-                // 타겟 요소로 부드럽게 스크롤
-                const offset = 80; // 헤더 고려한 오프셋
-                const elementPosition = scrollTarget.getBoundingClientRect().top + window.pageYOffset;
-                window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
-              } else {
-                // 저장된 위치로 스크롤
-                const scrollPos = parseInt(savedScroll, 10);
-                window.scrollTo({ top: scrollPos, behavior: 'smooth' });
-              }
-              
-              // 스크롤 정보 삭제
-              sessionStorage.removeItem('formScroll');
-              sessionStorage.removeItem('formScrollTimestamp');
-              sessionStorage.removeItem('formScrollTarget');
-            }, 400);
-          } else {
-            // 오래된 스크롤 정보는 삭제
+        }
+      });
+
+      // 페이지 로드 후 스크롤 복원 (5초 이내의 저장된 스크롤만 사용)
+      const savedScroll = sessionStorage.getItem('formScroll');
+      const savedTimestamp = sessionStorage.getItem('formScrollTimestamp');
+      const savedTarget = sessionStorage.getItem('formScrollTarget');
+
+      if (savedScroll && savedTimestamp) {
+        const timeDiff = Date.now() - parseInt(savedTimestamp, 10);
+        if (timeDiff < 5000) { // 5초 이내
+          // 약간의 지연을 두어 DOM이 완전히 로드된 후 스크롤
+          setTimeout(() => {
+            let scrollTarget = null;
+
+            // 저장된 타겟 ID가 있으면 해당 요소로
+            if (savedTarget) {
+              scrollTarget = document.getElementById(savedTarget);
+            }
+
+            // 타겟이 없으면 검색 결과 섹션 찾기
+            if (!scrollTarget) {
+              scrollTarget = document.querySelector('#search-results, #movie-search-results, #rating-search-results');
+            }
+
+            if (scrollTarget) {
+              // 타겟 요소로 부드럽게 스크롤
+              const offset = 80; // 헤더 고려한 오프셋
+              const elementPosition = scrollTarget.getBoundingClientRect().top + window.pageYOffset;
+              window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+            } else {
+              // 저장된 위치로 스크롤
+              const scrollPos = parseInt(savedScroll, 10);
+              window.scrollTo({ top: scrollPos, behavior: 'smooth' });
+            }
+
+            // 스크롤 정보 삭제
             sessionStorage.removeItem('formScroll');
             sessionStorage.removeItem('formScrollTimestamp');
             sessionStorage.removeItem('formScrollTarget');
-          }
+          }, 400);
+        } else {
+          // 오래된 스크롤 정보는 삭제
+          sessionStorage.removeItem('formScroll');
+          sessionStorage.removeItem('formScrollTimestamp');
+          sessionStorage.removeItem('formScrollTarget');
         }
       }
-      
-      initScrollPositionManager();
-      
-      // 사이드바 토글 기능
-      function initSidebarToggle() {
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const sidebarClose = document.getElementById('sidebar-close');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        
-        if (!sidebar || !sidebarToggle) return;
-        
-        // 사이드바 열기
-        function openSidebar() {
-          sidebar.classList.add('open');
-          if (sidebarOverlay) {
-            sidebarOverlay.classList.add('active');
-          }
-          document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
-        }
-        
-        // 사이드바 닫기
-        function closeSidebar() {
-          sidebar.classList.remove('open');
-          if (sidebarOverlay) {
-            sidebarOverlay.classList.remove('active');
-          }
-          document.body.style.overflow = ''; // 배경 스크롤 복원
-        }
-        
-        // 모바일 터치 이벤트 헬퍼 함수
-        function addTouchAndClickListeners(element, handler) {
-          if (!element) return;
-          
-          let touchStartTime = 0;
-          let touchStartX = 0;
-          let touchStartY = 0;
-          
-          // 터치 시작
-          element.addEventListener('touchstart', function(e) {
-            touchStartTime = Date.now();
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-          }, { passive: true });
-          
-          // 터치 종료 (클릭으로 간주)
-          element.addEventListener('touchend', function(e) {
-            const touchEndTime = Date.now();
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            
-            // 터치 시간이 짧고(300ms 이하) 이동 거리가 작으면(10px 이하) 클릭으로 간주
-            if (touchEndTime - touchStartTime < 300 && 
-                Math.abs(touchEndX - touchStartX) < 10 && 
-                Math.abs(touchEndY - touchStartY) < 10) {
-              e.preventDefault();
-              handler(e);
-            }
-          });
-          
-          // 클릭 이벤트 (데스크톱용)
-          element.addEventListener('click', function(e) {
-            handler(e);
-          });
-        }
-        
-        // 토글 버튼 클릭/터치
-        if (sidebarToggle) {
-          addTouchAndClickListeners(sidebarToggle, function(e) {
-            e.stopPropagation();
-            if (sidebar.classList.contains('open')) {
-              closeSidebar();
-            } else {
-              openSidebar();
-            }
-          });
-        }
-        
-        // 닫기 버튼 클릭/터치
-        if (sidebarClose) {
-          addTouchAndClickListeners(sidebarClose, function(e) {
-            e.stopPropagation();
-            closeSidebar();
-          });
-        }
-        
-        // 오버레이 클릭 시 닫기
+    }
+
+    initScrollPositionManager();
+
+    // 사이드바 토글 기능
+    function initSidebarToggle() {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebarClose = document.getElementById('sidebar-close');
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+      if (!sidebar || !sidebarToggle) return;
+
+      // 사이드바 열기
+      function openSidebar() {
+        sidebar.classList.add('open');
         if (sidebarOverlay) {
-          addTouchAndClickListeners(sidebarOverlay, function() {
-            closeSidebar();
-          });
+          sidebarOverlay.classList.add('active');
         }
-        
-        // ESC 키로 닫기
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-            closeSidebar();
+        document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+      }
+
+      // 사이드바 닫기
+      function closeSidebar() {
+        sidebar.classList.remove('open');
+        if (sidebarOverlay) {
+          sidebarOverlay.classList.remove('active');
+        }
+        document.body.style.overflow = ''; // 배경 스크롤 복원
+      }
+
+      // 모바일 터치 이벤트 헬퍼 함수
+      function addTouchAndClickListeners(element, handler) {
+        if (!element) return;
+
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        // 터치 시작
+        element.addEventListener('touchstart', function (e) {
+          touchStartTime = Date.now();
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        // 터치 종료 (클릭으로 간주)
+        element.addEventListener('touchend', function (e) {
+          const touchEndTime = Date.now();
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+
+          // 터치 시간이 짧고(300ms 이하) 이동 거리가 작으면(10px 이하) 클릭으로 간주
+          if (touchEndTime - touchStartTime < 300 &&
+            Math.abs(touchEndX - touchStartX) < 10 &&
+            Math.abs(touchEndY - touchStartY) < 10) {
+            e.preventDefault();
+            handler(e);
           }
         });
-        
-        // 사이드바 내부 클릭 시 이벤트 전파 방지 (하지만 내부 요소는 정상 동작)
-        sidebar.addEventListener('click', function(e) {
-          // 라디오 버튼, 버튼, 링크 등은 정상적으로 동작하도록
-          const target = e.target;
-          if (target.tagName === 'INPUT' || 
-              target.tagName === 'BUTTON' || 
-              target.tagName === 'A' ||
-              target.closest('label') ||
-              target.closest('button') ||
-              target.closest('a')) {
-            return; // 이벤트 전파 허용
-          }
+
+        // 클릭 이벤트 (데스크톱용)
+        element.addEventListener('click', function (e) {
+          handler(e);
+        });
+      }
+
+      // 토글 버튼 클릭/터치
+      if (sidebarToggle) {
+        addTouchAndClickListeners(sidebarToggle, function (e) {
           e.stopPropagation();
+          if (sidebar.classList.contains('open')) {
+            closeSidebar();
+          } else {
+            openSidebar();
+          }
         });
-        
-        // 라디오 버튼 클릭 영역 확대를 위한 라벨 터치 이벤트
-        const radioLabels = document.querySelectorAll('.sidebar-radio-label');
-        radioLabels.forEach(label => {
-          let touchStartTime = 0;
-          
-          // 라벨 자체를 클릭/터치할 때
-          label.addEventListener('click', function(e) {
-            e.stopPropagation();
+      }
+
+      // 닫기 버튼 클릭/터치
+      if (sidebarClose) {
+        addTouchAndClickListeners(sidebarClose, function (e) {
+          e.stopPropagation();
+          closeSidebar();
+        });
+      }
+
+      // 오버레이 클릭 시 닫기
+      if (sidebarOverlay) {
+        addTouchAndClickListeners(sidebarOverlay, function () {
+          closeSidebar();
+        });
+      }
+
+      // ESC 키로 닫기
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+          closeSidebar();
+        }
+      });
+
+      // 사이드바 내부 클릭 시 이벤트 전파 방지 (하지만 내부 요소는 정상 동작)
+      sidebar.addEventListener('click', function (e) {
+        // 라디오 버튼, 버튼, 링크 등은 정상적으로 동작하도록
+        const target = e.target;
+        if (target.tagName === 'INPUT' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'A' ||
+          target.closest('label') ||
+          target.closest('button') ||
+          target.closest('a')) {
+          return; // 이벤트 전파 허용
+        }
+        e.stopPropagation();
+      });
+
+      // 라디오 버튼 클릭 영역 확대를 위한 라벨 터치 이벤트
+      const radioLabels = document.querySelectorAll('.sidebar-radio-label');
+      radioLabels.forEach(label => {
+        let touchStartTime = 0;
+
+        // 라벨 자체를 클릭/터치할 때
+        label.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const radio = label.querySelector('input[type="radio"]');
+          if (radio && !radio.checked) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        // 터치 시작
+        label.addEventListener('touchstart', function (e) {
+          touchStartTime = Date.now();
+          e.stopPropagation();
+        }, { passive: true });
+
+        // 터치 종료
+        label.addEventListener('touchend', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const touchDuration = Date.now() - touchStartTime;
+
+          // 빠른 터치만 클릭으로 간주 (300ms 이하)
+          if (touchDuration < 300) {
             const radio = label.querySelector('input[type="radio"]');
             if (radio && !radio.checked) {
               radio.checked = true;
               radio.dispatchEvent(new Event('change', { bubbles: true }));
             }
-          });
-          
-          // 터치 시작
-          label.addEventListener('touchstart', function(e) {
-            touchStartTime = Date.now();
-            e.stopPropagation();
-          }, { passive: true });
-          
-          // 터치 종료
-          label.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const touchDuration = Date.now() - touchStartTime;
-            
-            // 빠른 터치만 클릭으로 간주 (300ms 이하)
-            if (touchDuration < 300) {
-              const radio = label.querySelector('input[type="radio"]');
-              if (radio && !radio.checked) {
-                radio.checked = true;
-                radio.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            }
-          });
-          
-          // 라디오 버튼 자체에도 터치 이벤트 추가
-          const radio = label.querySelector('input[type="radio"]');
-          if (radio) {
-            let radioTouchStartTime = 0;
-            
-            radio.addEventListener('touchstart', function(e) {
-              radioTouchStartTime = Date.now();
-              e.stopPropagation();
-            }, { passive: true });
-            
-            radio.addEventListener('touchend', function(e) {
-              e.stopPropagation();
-              const touchDuration = Date.now() - radioTouchStartTime;
-              
-              // 빠른 터치만 처리
-              if (touchDuration < 300) {
-                // 약간의 지연을 두고 change 이벤트 발생 확인
-                setTimeout(() => {
-                  if (radio.checked) {
-                    radio.dispatchEvent(new Event('change', { bubbles: true }));
-                  }
-                }, 50);
-              }
-            });
           }
         });
+
+        // 라디오 버튼 자체에도 터치 이벤트 추가
+        const radio = label.querySelector('input[type="radio"]');
+        if (radio) {
+          let radioTouchStartTime = 0;
+
+          radio.addEventListener('touchstart', function (e) {
+            radioTouchStartTime = Date.now();
+            e.stopPropagation();
+          }, { passive: true });
+
+          radio.addEventListener('touchend', function (e) {
+            e.stopPropagation();
+            const touchDuration = Date.now() - radioTouchStartTime;
+
+            // 빠른 터치만 처리
+            if (touchDuration < 300) {
+              // 약간의 지연을 두고 change 이벤트 발생 확인
+              setTimeout(() => {
+                if (radio.checked) {
+                  radio.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }, 50);
+            }
+          });
+        }
+      });
+    }
+
+    initSidebarToggle();
+  });
+</script>
+
+<script>
+  // ===== 클릭 트래킹 시스템 =====
+  // 검색 세션 ID 저장 (search.html 또는 poster_search.html에서 설정)
+  let currentSearchSessionId = null;
+  let currentSearchQuery = null;
+
+  // 세션 ID 설정 함수 (검색 페이지에서 호출)
+  function setSearchSession(sessionId, searchQuery) {
+    currentSearchSessionId = sessionId;
+    currentSearchQuery = searchQuery;
+    console.log('검색 세션 설정:', sessionId, searchQuery);
+  }
+
+  // 클릭 이벤트 로깅 함수
+  async function logClickEvent(movieId, position, clickType) {
+    if (!currentSearchSessionId) {
+      console.log('검색 세션 ID가 없어 클릭 로깅을 건너뜁니다.');
+      return;
+    }
+
+    try {
+      const clickData = {
+        session_id: currentSearchSessionId,
+        movie_id: movieId,
+        position: position,
+        search_query: currentSearchQuery
+      };
+
+      console.log(`${clickType} 클릭 로깅:`, clickData);
+
+      const response = await fetch('/activity/click', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clickData)
+      });
+
+      if (response.ok) {
+        console.log('클릭 이벤트 로깅 성공');
+      } else {
+        console.warn('클릭 이벤트 로깅 실패:', response.status);
       }
-      
-      initSidebarToggle();
+    } catch (error) {
+      console.error('클릭 로깅 오류:', error);
+    }
+  }
+
+
+  // IMDb 링크 클릭 트래킹
+  document.addEventListener('DOMContentLoaded', function () {
+    // 모든 IMDb 링크에 클릭 이벤트 추가
+    const imdbLinks = document.querySelectorAll('a[href*="imdb.com"]');
+    console.log(`IMDb 링크 ${imdbLinks.length}개 발견`);
+
+    imdbLinks.forEach((link, index) => {
+      link.addEventListener('click', function (e) {
+        // 링크의 상위 영화 카드 찾기
+        const movieCard = this.closest('.movie-card');
+        if (!movieCard) {
+          console.warn('영화 카드를 찾을 수 없습니다');
+          return;
+        }
+
+        // 영화 카드에서 직접 movie_id 가져오기
+        const movieId = movieCard.getAttribute('data-movie-id');
+
+        console.log('IMDb 링크 클릭:', {
+          movieId: movieId,
+          position: index,
+          sessionId: currentSearchSessionId
+        });
+
+        if (movieId && currentSearchSessionId) {
+          // 클릭 로깅 (비동기로 실행하지만 링크는 바로 열림)
+          logClickEvent(movieId, index, 'IMDb 링크');
+        } else {
+          console.warn('클릭 로깅 불가:', {
+            movieId: movieId,
+            sessionId: currentSearchSessionId
+          });
+        }
+      });
     });
-  </script>
+  });
+</script>

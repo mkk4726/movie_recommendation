@@ -256,6 +256,27 @@ def home(
                 min_score=0.0
             )
             
+            # 활동 로깅 추가
+            try:
+                from app.api.user_activity_logger import get_activity_logger
+                activity_logger = get_activity_logger()
+                
+                # 결과 영화 ID 리스트 추출
+                result_movie_ids = [r.movie_id for r in search_response.results]
+                
+                # 검색 로깅 (세션 ID 생성 및 응답에 포함)
+                session_id = activity_logger.log_search(
+                    request=request,
+                    query=search_query,
+                    result_count=search_response.total_results,
+                    result_movie_ids=result_movie_ids,
+                    search_type="natural_language"
+                )
+                search_response.session_id = session_id
+                logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
+            except Exception as log_error:
+                logger.warning(f"검색 로깅 실패 (계속 진행): {log_error}")
+            
             # 검색 결과를 DataFrame으로 변환하고 영화 메타데이터와 조인
             if search_response.results:
                 # 검색 결과에서 movie_id와 score 추출
@@ -316,6 +337,7 @@ def home(
             
             # 포스터 검색 실행 (이미 모든 메타데이터 포함)
             poster_response = poster_search_by_text(
+                request=request,
                 query=poster_query,
                 limit=limit,
                 include_cast=True
@@ -351,7 +373,8 @@ def home(
                     "query": poster_query,
                     "query_type": "text",
                     "total_results": len(poster_movies),
-                    "results": poster_movies
+                    "results": poster_movies,
+                    "session_id": poster_response.session_id
                 }
                 logger.info(f"🖼️ 포스터 검색 완료: '{poster_query}' -> {len(poster_movies)}개 결과")
             else:

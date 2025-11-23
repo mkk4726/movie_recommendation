@@ -134,12 +134,14 @@ class QuerySearchResponse(BaseModel):
     query: str = Field(..., description="검색 쿼리")
     total_results: int = Field(..., description="전체 결과 개수")
     results: List[SearchResultMovie] = Field(..., description="검색 결과 리스트")
+    session_id: Optional[str] = Field(default=None, description="검색 세션 ID (클릭 추적용)")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "query": "toy story animation",
                 "total_results": 5,
+                "session_id": "abc123-def456",
                 "results": [
                     {
                         "movie_id": "1",
@@ -190,10 +192,11 @@ class PosterSearchResultMovie(BaseModel):
 
 class PosterSearchResponse(BaseModel):
     """포스터 검색 결과 응답"""
-    query_type: str = Field(..., description="검색 타입 (text 또는 image)")
-    query: Optional[str] = Field(default=None, description="검색 쿼리 (텍스트인 경우)")
+    query: str = Field(..., description="검색 쿼리")
+    query_type: str = Field(..., description="쿼리 유형 (text/image)")
     total_results: int = Field(..., description="전체 결과 개수")
     results: List[PosterSearchResultMovie] = Field(..., description="검색 결과 리스트")
+    session_id: Optional[str] = Field(default=None, description="검색 세션 ID (클릭 추적용)")
     
     class Config:
         json_schema_extra = {
@@ -215,3 +218,33 @@ class PosterSearchResponse(BaseModel):
             }
         }
 
+
+# Activity logging models
+class ClickEventRequest(BaseModel):
+    """클릭 이벤트 요청"""
+    session_id: str = Field(..., description="검색 세션 ID")
+    movie_id: str = Field(..., description="클릭한 영화 ID")
+    position: int = Field(..., ge=0, description="검색 결과 내 순위 (0-indexed)")
+    search_query: Optional[str] = Field(default=None, description="검색 쿼리 (참조용)")
+
+
+class CTRDataPoint(BaseModel):
+    """CTR 분석용 데이터 포인트"""
+    session_id: str = Field(..., description="검색 세션 ID")
+    ip: str = Field(..., description="사용자 IP")
+    search_query: Optional[str] = Field(default=None, description="검색 쿼리")
+    search_type: Optional[str] = Field(default=None, description="검색 유형")
+    search_timestamp: str = Field(..., description="검색 시각")
+    search_results: List[str] = Field(..., description="검색 결과 영화 ID 리스트")
+    clicked_movie_id: Optional[str] = Field(default=None, description="클릭한 영화 ID")
+    click_position: Optional[int] = Field(default=None, description="클릭 위치")
+    click_timestamp: Optional[str] = Field(default=None, description="클릭 시각")
+
+
+class ActivityStats(BaseModel):
+    """활동 통계"""
+    total_searches: int = Field(..., description="총 검색 수")
+    total_clicks: int = Field(..., description="총 클릭 수")
+    total_ratings: int = Field(..., description="총 평점 수")
+    total_views: int = Field(..., description="총 조회 수")
+    ctr: float = Field(..., description="클릭률 (CTR)")

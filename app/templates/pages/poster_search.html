@@ -1,131 +1,145 @@
-  {% from "partials/movie_card.html" import movie_metadata_card %}
-  <div class="page-content" id="page-poster-search" style="display: {% if current_page == 'poster_search' %}block{% else %}none{% endif %};">
-    <section class="card">
-      <h2>🖼️ 포스터 검색 (CLIP)</h2>
-      <p class="muted">텍스트 설명으로 비슷한 포스터를 가진 영화를 찾아보세요. CLIP 모델이 텍스트와 이미지의 유사도를 계산합니다.</p>
-      <p class="muted" style="margin-top: 0.5rem; font-size: 0.9rem;">
-        💡 <strong>영어 검색이 더 정확하지만, 한국어도 가능합니다.</strong> 한국어 쿼리는 자동으로 영어로 번역됩니다.
+{% from "partials/movie_card.html" import movie_metadata_card %}
+<div class="page-content" id="page-poster-search"
+  style="display: {% if current_page == 'poster_search' %}block{% else %}none{% endif %};">
+  <section class="card">
+    <h2>🖼️ 포스터 검색 (CLIP)</h2>
+    <p class="muted">텍스트 설명으로 비슷한 포스터를 가진 영화를 찾아보세요. CLIP 모델이 텍스트와 이미지의 유사도를 계산합니다.</p>
+    <p class="muted" style="margin-top: 0.5rem; font-size: 0.9rem;">
+      💡 <strong>영어 검색이 더 정확하지만, 한국어도 가능합니다.</strong> 한국어 쿼리는 자동으로 영어로 번역됩니다.
+    </p>
+
+    <!-- 텍스트 검색 폼 -->
+    <form method="get" action="/" id="poster-search-form" style="margin: 1.5rem 0;">
+      <input type="hidden" name="page" value="poster_search" />
+      <label for="poster_query"
+        style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block;">
+        포스터 설명을 입력하세요
+      </label>
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="text" id="poster_query" name="poster_query"
+          placeholder="예: space adventure with stars, 우주 모험 영화..." value="{{ poster_query }}"
+          style="flex: 1; background-color: var(--card-bg); color: var(--text-color);" autocomplete="off" />
+        <button type="submit"
+          style="padding: 0.5rem 0.75rem; font-size: 0.85rem; min-width: 60px; max-width: 70px; white-space: nowrap;">🔍</button>
+      </div>
+
+      <!-- 예시 검색어 드롭다운 -->
+      <div style="margin-top: 1rem; position: relative;">
+        <label for="example-queries"
+          style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block; font-size: 0.9rem;">
+          💡 예시 검색어 선택:
+        </label>
+        <select id="example-queries"
+          style="width: 100%; padding: 0.75rem; background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; cursor: pointer;">
+          <option value="">-- 예시를 선택하세요 --</option>
+          <optgroup label="🌍 영어 예시">
+            <option value="action movie with explosions and fire">💥 action movie with explosions and fire</option>
+            <option value="romantic sunset scene with couple">🌅 romantic sunset scene with couple</option>
+            <option value="dark thriller atmosphere with shadows">🌑 dark thriller atmosphere with shadows</option>
+            <option value="colorful animated movie poster">🎨 colorful animated movie poster</option>
+            <option value="space adventure with stars and planets">🚀 space adventure with stars and planets</option>
+            <option value="horror movie with scary atmosphere">👻 horror movie with scary atmosphere</option>
+            <option value="comedy movie with bright colors">😄 comedy movie with bright colors</option>
+            <option value="sci-fi futuristic city with neon lights">🌃 sci-fi futuristic city with neon lights</option>
+            <option value="war movie with soldiers and battlefield">⚔️ war movie with soldiers and battlefield</option>
+            <option value="fantasy movie with magical elements">✨ fantasy movie with magical elements</option>
+            <option value="western movie with desert and cowboys">🤠 western movie with desert and cowboys</option>
+            <option value="noir detective movie with rain and city">🕵️ noir detective movie with rain and city</option>
+            <option value="superhero movie with city skyline">🦸 superhero movie with city skyline</option>
+            <option value="zombie apocalypse with destroyed city">🧟 zombie apocalypse with destroyed city</option>
+            <option value="ocean adventure with underwater scenes">🌊 ocean adventure with underwater scenes</option>
+            <option value="christmas movie with snow and lights">🎄 christmas movie with snow and lights</option>
+            <option value="martial arts movie with fighting scenes">🥋 martial arts movie with fighting scenes</option>
+            <option value="heist movie with money and vault">💰 heist movie with money and vault</option>
+            <option value="dystopian future with dark atmosphere">🏙️ dystopian future with dark atmosphere</option>
+            <option value="musical movie with dancing and stage">🎭 musical movie with dancing and stage</option>
+          </optgroup>
+          <optgroup label="🇰🇷 한국어 예시">
+            <option value="폭발이 있는 액션 영화">💥 폭발이 있는 액션 영화</option>
+            <option value="로맨틱한 석양 장면">🌅 로맨틱한 석양 장면</option>
+            <option value="어두운 스릴러 분위기">🌑 어두운 스릴러 분위기</option>
+            <option value="화려한 애니메이션">🎨 화려한 애니메이션</option>
+            <option value="우주 모험 영화">🚀 우주 모험 영화</option>
+            <option value="좀비 아포칼립스 영화">🧟 좀비 아포칼립스 영화</option>
+            <option value="슈퍼히어로 영화">🦸 슈퍼히어로 영화</option>
+            <option value="크리스마스 분위기 영화">🎄 크리스마스 분위기 영화</option>
+            <option value="무술 액션 영화">🥋 무술 액션 영화</option>
+            <option value="강도 범죄 영화">💰 강도 범죄 영화</option>
+          </optgroup>
+        </select>
+      </div>
+    </form>
+
+    <script>
+      // 드롭다운에서 예시 선택 시 검색창에 자동 입력
+      document.getElementById('example-queries').addEventListener('change', function () {
+        const selectedQuery = this.value;
+        if (selectedQuery) {
+          document.getElementById('poster_query').value = selectedQuery;
+          // 선택 후 드롭다운 초기화
+          this.value = '';
+        }
+      });
+    </script>
+
+    {% if poster_search_results %}
+    <!-- 검색 결과 표시 -->
+    <div style="margin-top: 2rem;">
+      <div class="divider" style="margin: 1.5rem 0;"></div>
+      <h3 style="margin-bottom: 1rem;">🎬 검색 결과</h3>
+      <p class="muted" style="margin-bottom: 1.5rem;">
+        "{{ poster_search_results.query }}"와 유사한 포스터 {{ poster_search_results.total_results }}개
       </p>
 
-      <!-- 텍스트 검색 폼 -->
-      <form method="get" action="/" id="poster-search-form" style="margin: 1.5rem 0;">
-        <input type="hidden" name="page" value="poster_search" />
-        <label for="poster_query" style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block;">
-          포스터 설명을 입력하세요
-        </label>
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-          <input
-            type="text"
-            id="poster_query"
-            name="poster_query"
-            placeholder="예: space adventure with stars, 우주 모험 영화..."
-            value="{{ poster_query }}"
-            style="flex: 1; background-color: var(--card-bg); color: var(--text-color);"
-            autocomplete="off"
-          />
-          <button type="submit" style="padding: 0.5rem 0.75rem; font-size: 0.85rem; min-width: 60px; max-width: 70px; white-space: nowrap;">🔍</button>
-        </div>
-        
-        <!-- 예시 검색어 드롭다운 -->
-        <div style="margin-top: 1rem; position: relative;">
-          <label for="example-queries" style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block; font-size: 0.9rem;">
-            💡 예시 검색어 선택:
-          </label>
-          <select 
-            id="example-queries" 
-            style="width: 100%; padding: 0.75rem; background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; cursor: pointer;"
-          >
-            <option value="">-- 예시를 선택하세요 --</option>
-            <optgroup label="🌍 영어 예시">
-              <option value="action movie with explosions and fire">💥 action movie with explosions and fire</option>
-              <option value="romantic sunset scene with couple">🌅 romantic sunset scene with couple</option>
-              <option value="dark thriller atmosphere with shadows">🌑 dark thriller atmosphere with shadows</option>
-              <option value="colorful animated movie poster">🎨 colorful animated movie poster</option>
-              <option value="space adventure with stars and planets">🚀 space adventure with stars and planets</option>
-              <option value="horror movie with scary atmosphere">👻 horror movie with scary atmosphere</option>
-              <option value="comedy movie with bright colors">😄 comedy movie with bright colors</option>
-              <option value="sci-fi futuristic city with neon lights">🌃 sci-fi futuristic city with neon lights</option>
-              <option value="war movie with soldiers and battlefield">⚔️ war movie with soldiers and battlefield</option>
-              <option value="fantasy movie with magical elements">✨ fantasy movie with magical elements</option>
-              <option value="western movie with desert and cowboys">🤠 western movie with desert and cowboys</option>
-              <option value="noir detective movie with rain and city">🕵️ noir detective movie with rain and city</option>
-              <option value="superhero movie with city skyline">🦸 superhero movie with city skyline</option>
-              <option value="zombie apocalypse with destroyed city">🧟 zombie apocalypse with destroyed city</option>
-              <option value="ocean adventure with underwater scenes">🌊 ocean adventure with underwater scenes</option>
-              <option value="christmas movie with snow and lights">🎄 christmas movie with snow and lights</option>
-              <option value="martial arts movie with fighting scenes">🥋 martial arts movie with fighting scenes</option>
-              <option value="heist movie with money and vault">💰 heist movie with money and vault</option>
-              <option value="dystopian future with dark atmosphere">🏙️ dystopian future with dark atmosphere</option>
-              <option value="musical movie with dancing and stage">🎭 musical movie with dancing and stage</option>
-            </optgroup>
-            <optgroup label="🇰🇷 한국어 예시">
-              <option value="폭발이 있는 액션 영화">💥 폭발이 있는 액션 영화</option>
-              <option value="로맨틱한 석양 장면">🌅 로맨틱한 석양 장면</option>
-              <option value="어두운 스릴러 분위기">🌑 어두운 스릴러 분위기</option>
-              <option value="화려한 애니메이션">🎨 화려한 애니메이션</option>
-              <option value="우주 모험 영화">🚀 우주 모험 영화</option>
-              <option value="좀비 아포칼립스 영화">🧟 좀비 아포칼립스 영화</option>
-              <option value="슈퍼히어로 영화">🦸 슈퍼히어로 영화</option>
-              <option value="크리스마스 분위기 영화">🎄 크리스마스 분위기 영화</option>
-              <option value="무술 액션 영화">🥋 무술 액션 영화</option>
-              <option value="강도 범죄 영화">💰 강도 범죄 영화</option>
-            </optgroup>
-          </select>
-        </div>
-      </form>
-      
-      <script>
-        // 드롭다운에서 예시 선택 시 검색창에 자동 입력
-        document.getElementById('example-queries').addEventListener('change', function() {
-          const selectedQuery = this.value;
-          if (selectedQuery) {
-            document.getElementById('poster_query').value = selectedQuery;
-            // 선택 후 드롭다운 초기화
-            this.value = '';
-          }
-        });
-      </script>
-
-      {% if poster_search_results %}
-        <!-- 검색 결과 표시 -->
-        <div style="margin-top: 2rem;">
-          <div class="divider" style="margin: 1.5rem 0;"></div>
-          <h3 style="margin-bottom: 1rem;">🎬 검색 결과</h3>
-          <p class="muted" style="margin-bottom: 1.5rem;">
-            "{{ poster_search_results.query }}"와 유사한 포스터 {{ poster_search_results.total_results }}개
-          </p>
-          
-          {% if poster_search_results.results %}
-            {% for movie in poster_search_results.results %}
-            {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=True, show_score=False, overview_id_prefix='poster-overview') }}
-            {% endfor %}
-          {% else %}
-            <div class="card error-card">
-              <p>⚠️ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
-            </div>
-          {% endif %}
-        </div>
-      {% elif poster_query %}
-        <!-- 검색 중이거나 오류 발생 -->
-        <div style="margin-top: 2rem;">
-          <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
-          <div style="padding: 2rem; text-align: center; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
-            <p style="margin: 0; color: var(--text-color);">
-              🔍 검색 중입니다...
-            </p>
-          </div>
-        </div>
+      {% if poster_search_results.results %}
+      {% for movie in poster_search_results.results %}
+      {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=True, show_score=False,
+      overview_id_prefix='poster-overview') }}
+      {% endfor %}
       {% else %}
-        <!-- 검색 전 안내 메시지 -->
-        <div style="margin-top: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border-radius: 12px; text-align: center; border: 2px dashed rgba(59, 130, 246, 0.3);">
-          <p style="font-size: 1.15rem; color: var(--text-color); margin: 0 0 0.5rem 0; font-weight: 600;">
-            텍스트로 포스터를 검색해보세요! 🎬
-          </p>
-          <p style="font-size: 0.95rem; color: var(--muted-text); margin: 0;">
-            CLIP 모델을 사용하여 비슷한 분위기의 영화를 찾아드립니다.
-          </p>
-        </div>
+      <div class="card error-card">
+        <p>⚠️ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
+      </div>
       {% endif %}
-    </section>
-  </div>
+    </div>
+    {% elif poster_query %}
+    <!-- 검색 중이거나 오류 발생 -->
+    <div style="margin-top: 2rem;">
+      <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
+      <div
+        style="padding: 2rem; text-align: center; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+        <p style="margin: 0; color: var(--text-color);">
+          🔍 검색 중입니다...
+        </p>
+      </div>
+    </div>
+    {% else %}
+    <!-- 검색 전 안내 메시지 -->
+    <div
+      style="margin-top: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border-radius: 12px; text-align: center; border: 2px dashed rgba(59, 130, 246, 0.3);">
+      <p style="font-size: 1.15rem; color: var(--text-color); margin: 0 0 0.5rem 0; font-weight: 600;">
+        텍스트로 포스터를 검색해보세요! 🎬
+      </p>
+      <p style="font-size: 0.95rem; color: var(--muted-text); margin: 0;">
+        CLIP 모델을 사용하여 비슷한 분위기의 영화를 찾아드립니다.
+      </p>
+    </div>
+    {% endif %}
+  </section>
+</div>
 
+
+{% if poster_search_results and poster_search_results.session_id %}
+<script>
+  // 포스터 검색 세션 ID 설정 (클릭 트래킹용)
+  // setSearchSession 함수가 로드될 때까지 대기
+  setTimeout(function () {
+    if (typeof setSearchSession === 'function') {
+      setSearchSession('{{ poster_search_results.session_id }}', '{{ poster_query }}');
+      console.log('포스터 검색 세션 설정 완료:', '{{ poster_search_results.session_id }}');
+    } else {
+      console.error('setSearchSession 함수를 찾을 수 없습니다');
+    }
+  }, 100);
+</script>
+{% endif %}

@@ -218,3 +218,9 @@ app.include_router(search.router)
 app.include_router(poster_search.router)
 app.include_router(home.router)
 
+# Activity logging router
+try:
+    from app.api.routes import activity
+    app.include_router(activity.router)
+except ImportError:
+    logger.warning("Activity logging router not available")
