@@ -226,7 +226,9 @@ class BM25:
                 title=metadata.get('title', 'Unknown'),
                 genres=metadata.get('genres', 'Unknown'),
                 matched_fields={'combined': score},
-                overview=metadata.get('overview', '')
+                overview=metadata.get('overview', ''),
+                vote_average=metadata.get('vote_average', 0.0),
+                vote_count=metadata.get('vote_count', 0)
             )
             results.append(result)
         

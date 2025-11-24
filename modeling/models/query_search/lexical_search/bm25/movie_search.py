@@ -64,7 +64,9 @@ class MovieBM25:
             meta = {
                 'title': title_value,
                 'genres': row.get('genres', ''),
-                'overview': row.get('overview', '')
+                'overview': row.get('overview', ''),
+                'vote_average': row.get('vote_average', 0.0),
+                'vote_count': row.get('vote_count', 0)
             }
             metadata.append(meta)
         
@@ -92,7 +94,9 @@ class MovieBM25:
         self, 
         query: str, 
         top_k: Optional[int] = None,
-        min_score: Optional[float] = None
+        min_score: Optional[float] = None,
+        min_rating: float = 0.0,
+        min_vote_count: int = 0
     ) -> List[BM25SearchResult]:
         """
         여러 필드를 통합하여 영화 검색
@@ -101,6 +105,8 @@ class MovieBM25:
             query: 검색 쿼리
             top_k: 반환할 상위 결과 개수
             min_score: 최소 스코어 임계값
+            min_rating: 최소 평점 임계값
+            min_vote_count: 최소 평가 수 임계값
             
         Returns:
             BM25SearchResult 리스트 (통합 스코어 내림차순 정렬)
@@ -126,7 +132,9 @@ class MovieBM25:
                 combined_scores[movie_id]['metadata'] = {
                     'title': result.title,
                     'genres': result.genres,
-                    'overview': result.overview
+                    'overview': result.overview,
+                    'vote_average': result.vote_average if hasattr(result, 'vote_average') else 0.0,
+                    'vote_count': result.vote_count if hasattr(result, 'vote_count') else 0
                 }
         
         # 통합 스코어로 정렬
@@ -138,7 +146,17 @@ class MovieBM25:
         
         # BM25SearchResult 객체로 변환
         final_results = []
-        for movie_id, data in sorted_results[:top_k]:
+        for movie_id, data in sorted_results:
+            # 평점 필터링
+            vote_average = data['metadata'].get('vote_average', 0.0)
+            if vote_average < min_rating:
+                continue
+            
+            # 평가 수 필터링
+            vote_count = data['metadata'].get('vote_count', 0)
+            if vote_count < min_vote_count:
+                continue
+                
             if data['score'] >= min_score:
                 result = BM25SearchResult(
                     movie_id=movie_id,
@@ -146,9 +164,14 @@ class MovieBM25:
                     title=data['metadata']['title'],
                     genres=data['metadata']['genres'],
                     matched_fields=data['fields'],
-                    overview=data['metadata'].get('overview', '')
+                    overview=data['metadata'].get('overview', ''),
+                    vote_average=data['metadata'].get('vote_average', 0.0),
+                    vote_count=data['metadata'].get('vote_count', 0)
                 )
                 final_results.append(result)
+            
+            if len(final_results) >= top_k:
+                break
         
         logger.info(f"✅ 검색 완료: {len(final_results)}개 결과 반환")
         return final_results

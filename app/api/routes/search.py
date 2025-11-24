@@ -150,6 +150,8 @@ def natural_language_search(
     query: str = Query(..., min_length=1, description="자연어 검색 쿼리"),
     limit: int = Query(20, ge=1, le=100, description="반환할 최대 결과 수"),
     min_score: float = Query(0.0, ge=0.0, description="최소 검색 스코어 임계값"),
+    min_rating: float = Query(0.0, ge=0.0, le=10.0, description="최소 평균 평점 (vote_average)"),
+    min_vote_count: int = Query(0, ge=0, description="최소 평가 수 (vote_count)"),
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
 ):
     """
@@ -169,11 +171,13 @@ def natural_language_search(
         pipeline = get_search_pipeline()
         
         # 2. 검색 실행 (Pydantic 모델 반환)
-        logger.info(f"🔍 자연어 검색: '{query}' (limit={limit}, min_score={min_score})")
+        logger.info(f"🔍 자연어 검색: '{query}' (limit={limit}, min_score={min_score}, min_rating={min_rating}, min_vote_count={min_vote_count})")
         response = pipeline.search_to_response(
             query=query,
             top_k=limit,
-            min_score=min_score
+            min_score=min_score,
+            min_rating=min_rating,
+            min_vote_count=min_vote_count
         )
         
         # 3. Cast 정보 추가 (옵션)
