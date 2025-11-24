@@ -69,6 +69,7 @@ class ClipSearchService:
         self,
         text: str,
         k: int = 10,
+        filter_movie_ids: List[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         텍스트 쿼리로 포스터 검색
@@ -76,16 +77,17 @@ class ClipSearchService:
         Args:
             text: 검색 텍스트
             k: 반환할 결과 수
+            filter_movie_ids: 검색 대상 영화 ID 리스트 (None이면 전체 검색)
         
         Returns:
             검색 결과 리스트 [{"movie_id": str, "score": float, "index": int}, ...]
         """
         self._ensure_loaded()
         
-        logger.info(f"🔍 텍스트-포스터 검색: '{text}' (k={k})")
+        logger.info(f"🔍 텍스트-포스터 검색: '{text}' (k={k}, filter_ids={len(filter_movie_ids) if filter_movie_ids else 'None'})")
         
         # 파이프라인으로 검색
-        results = self.pipeline.search(query=text, top_k=k)
+        results = self.pipeline.search(query=text, top_k=k, filter_movie_ids=filter_movie_ids)
         
         logger.info(f"✅ 텍스트-포스터 검색 완료: {len(results)}개 결과")
         return results

@@ -99,6 +99,9 @@ class TextToPosterSearchPipeline:
             with open(movie_ids_path, "r") as f:
                 self.movie_ids = json.load(f)
             
+            # movie_id -> index 매핑 생성 (필터링용)
+            self.movie_id_to_index = {str(mid): idx for idx, mid in enumerate(self.movie_ids)}
+            
             logger.info(f"✅ movie_ids 매핑 로드 완료: {len(self.movie_ids):,}개")
     
     def _load_language_modules(self):
@@ -174,6 +177,7 @@ class TextToPosterSearchPipeline:
         self,
         query: str,
         top_k: int = 10,
+        filter_movie_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         텍스트 쿼리로 포스터 검색 (한국어 자동 번역 지원)
@@ -181,6 +185,7 @@ class TextToPosterSearchPipeline:
         Args:
             query: 검색 텍스트 쿼리 (한국어 또는 영어)
             top_k: 반환할 결과 수
+            filter_movie_ids: 검색 대상 영화 ID 리스트 (None이면 전체 검색)
         
         Returns:
             검색 결과 리스트 [{"movie_id": str, "score": float, "index": int}, ...]
@@ -188,7 +193,7 @@ class TextToPosterSearchPipeline:
         # 리소스 로드 확인
         self._ensure_loaded()
         
-        logger.info(f"🔍 텍스트-포스터 검색: '{query}' (top_k={top_k})")
+        logger.info(f"🔍 텍스트-포스터 검색: '{query}' (top_k={top_k}, filter_ids={len(filter_movie_ids) if filter_movie_ids else 'None'})")
         
         # 1. 한국어 쿼리 번역 (필요시)
         processed_query, was_translated = self._translate_if_korean(query)
@@ -197,8 +202,23 @@ class TextToPosterSearchPipeline:
         embedding = self.encoder.encode_text(processed_query)
         query_vector = embedding.cpu().numpy().flatten()
         
-        # 3. FAISS 검색
-        results = self.faiss_manager.search(query_vector, k=top_k)
+        # 3. 필터링을 위한 인덱스 변환
+        allowed_indices = None
+        if filter_movie_ids is not None:
+            allowed_indices = set()
+            for mid in filter_movie_ids:
+                mid_str = str(mid)
+                if mid_str in self.movie_id_to_index:
+                    allowed_indices.add(self.movie_id_to_index[mid_str])
+            
+            if not allowed_indices:
+                logger.warning("⚠️ 필터링된 영화 ID에 해당하는 인덱스가 없습니다. 빈 결과를 반환합니다.")
+                return []
+                
+            logger.info(f"🔍 필터링 적용: {len(filter_movie_ids)}개 영화 -> {len(allowed_indices)}개 인덱스")
+        
+        # 4. FAISS 검색
+        results = self.faiss_manager.search(query_vector, k=top_k, allowed_indices=allowed_indices)
         
         # 4. FAISS 인덱스 -> movie_id 변환
         enriched_results = []

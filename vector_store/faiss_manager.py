@@ -62,6 +62,7 @@ class FAISSManager:
         self,
         query_vector: np.ndarray,
         k: int = 10,
+        allowed_indices: Optional[set] = None,
     ) -> List[Dict[str, Any]]:
         """
         유사도 검색 수행
@@ -69,6 +70,7 @@ class FAISSManager:
         Args:
             query_vector: 쿼리 벡터 (shape: (512,) or (1, 512))
             k: 반환할 결과 수
+            allowed_indices: 검색 허용할 인덱스 집합 (None이면 전체 검색)
         
         Returns:
             검색 결과 리스트 (score 내림차순)
@@ -79,9 +81,16 @@ class FAISSManager:
         # 벡터 전처리
         query_vector = self._preprocess_query(query_vector)
         
-        # 필터링이 있으면 더 많이 검색
+        # 검색 개수 설정
         search_multiplier = self.config['search']['search_multiplier']
         search_k = k * search_multiplier
+        
+        # 필터링이 있는 경우 검색 범위를 전체로 확장하여 100% 보장
+        if allowed_indices is not None:
+            # 필터링된 결과 중에서 상위 k개를 확실히 찾기 위해 전체 검색 수행
+            # 데이터 규모(수만 건)가 크지 않아 전체 검색도 매우 빠름
+            search_k = self.index.ntotal
+        
         search_k = min(search_k, self.index.ntotal)  # 전체 벡터 수 초과 방지
         
         # FAISS 검색
@@ -95,6 +104,10 @@ class FAISSManager:
             
             idx = int(idx)
             
+            # 필터링 적용
+            if allowed_indices is not None and idx not in allowed_indices:
+                continue
+            
             result = {
                 "score": float(score),
                 "index": idx,
@@ -105,7 +118,7 @@ class FAISSManager:
             if len(results) >= k:
                 break
         
-        logger.info(f"Search completed: {len(results)} results returned")
+        logger.info(f"Search completed: {len(results)} results returned (requested k={k}, search_k={search_k})")
         return results
     
     def _preprocess_query(self, query_vector: np.ndarray) -> np.ndarray:
