@@ -65,7 +65,9 @@ class QuerySearchPipeline:
         top_k: int = 20,
         min_score: float = 0.0,
         min_rating: float = 0.0,
-        min_vote_count: int = 0
+        min_vote_count: int = 0,
+        genre_filter: Optional[List[str]] = None,
+        language_filter: Optional[List[str]] = None
     ) -> List[BM25SearchResult]:
         """
         자연어 쿼리로 영화 검색
@@ -76,6 +78,8 @@ class QuerySearchPipeline:
             min_score: 최소 스코어 임계값
             min_rating: 최소 평점 임계값 (vote_average)
             min_vote_count: 최소 평가 수 임계값 (vote_count)
+            genre_filter: 장르 필터 리스트
+            language_filter: 언어 필터 리스트
             
         Returns:
             BM25SearchResult 리스트 (스코어 내림차순 정렬)
@@ -94,7 +98,9 @@ class QuerySearchPipeline:
             top_k=top_k,
             min_score=min_score,
             min_rating=min_rating,
-            min_vote_count=min_vote_count
+            min_vote_count=min_vote_count,
+            genre_filter=genre_filter,
+            language_filter=language_filter
         )
         
         logger.info(f"✅ 검색 완료: {len(results)}개 결과 반환")
@@ -106,7 +112,9 @@ class QuerySearchPipeline:
         top_k: int = 20,
         min_score: float = 0.0,
         min_rating: float = 0.0,
-        min_vote_count: int = 0
+        min_vote_count: int = 0,
+        genre_filter: Optional[List[str]] = None,
+        language_filter: Optional[List[str]] = None
     ) -> 'QuerySearchResponse':
         """
         자연어 쿼리로 영화 검색 (Pydantic 모델로 반환)
@@ -117,6 +125,8 @@ class QuerySearchPipeline:
             min_score: 최소 스코어 임계값
             min_rating: 최소 평점 임계값 (vote_average)
             min_vote_count: 최소 평가 수 임계값 (vote_count)
+            genre_filter: 장르 필터 리스트
+            language_filter: 언어 필터 리스트
             
         Returns:
             QuerySearchResponse (Pydantic 모델)
@@ -124,7 +134,7 @@ class QuerySearchPipeline:
         # Lazy import to avoid circular dependency
         from app.api.models import QuerySearchResponse, SearchResultMovie
         
-        results = self.search(query, top_k, min_score, min_rating, min_vote_count)
+        results = self.search(query, top_k, min_score, min_rating, min_vote_count, genre_filter, language_filter)
         
         # BM25SearchResult를 SearchResultMovie로 변환
         search_result_movies = [
@@ -152,7 +162,9 @@ class QuerySearchPipeline:
         top_k: int = 20,
         min_score: float = 0.0,
         min_rating: float = 0.0,
-        min_vote_count: int = 0
+        min_vote_count: int = 0,
+        genre_filter: Optional[List[str]] = None,
+        language_filter: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         자연어 쿼리로 영화 검색 (딕셔너리 형태로 반환)
@@ -163,11 +175,13 @@ class QuerySearchPipeline:
             min_score: 최소 스코어 임계값
             min_rating: 최소 평점 임계값 (vote_average)
             min_vote_count: 최소 평가 수 임계값 (vote_count)
+            genre_filter: 장르 필터 리스트
+            language_filter: 언어 필터 리스트
             
         Returns:
             검색 결과 딕셔너리
         """
-        response = self.search_to_response(query, top_k, min_score, min_rating, min_vote_count)
+        response = self.search_to_response(query, top_k, min_score, min_rating, min_vote_count, genre_filter, language_filter)
         return response.model_dump()
     
     def save(self, dirpath: str):

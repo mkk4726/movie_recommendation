@@ -21,6 +21,7 @@ class BM25SearchResult(BaseModel):
     year: Optional[int] = Field(default=None, description="개봉 연도")
     vote_average: Optional[float] = Field(default=None, description="평균 평점")
     vote_count: Optional[int] = Field(default=None, description="평가 수")
+    language: Optional[str] = Field(default="", description="영화 언어")
     
     def __str__(self) -> str:
         """사람이 읽기 쉬운 형식으로 출력"""
