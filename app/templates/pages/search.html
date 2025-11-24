@@ -1,4 +1,5 @@
 {% from "partials/movie_card.html" import movie_metadata_card %}
+{% from "partials/search_filters.html" import search_filters %}
 <div class="page-content" id="page-search"
   style="display: {% if current_page == 'search' %}block{% else %}none{% endif %};">
   <section class="card">
@@ -15,6 +16,17 @@
           value="{{ search_query }}" style="flex: 1; background-color: var(--card-bg); color: var(--text-color);" />
         <button type="submit" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔍 검색</button>
       </div>
+
+      <!-- 필터링 옵션 (접을 수 있는 섹션) -->
+      {{ search_filters(
+        genre_name='search_genre',
+        language_name='search_language',
+        selected_genres=search_genre,
+        selected_languages=search_language,
+        min_rating_value=min_rating,
+        min_vote_count_value=min_vote_count,
+        config_options=config_options
+      ) }}
     </form>
 
     {% if search_results %}
