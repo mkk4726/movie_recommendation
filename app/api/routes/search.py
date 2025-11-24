@@ -209,12 +209,21 @@ def natural_language_search(
             result_movie_ids = [r.movie_id for r in response.results]
             
             # 검색 로깅 (IP 자동 추출, 세션 ID 반환)
+            # 검색 로깅 (IP 자동 추출, 세션 ID 반환)
+            filters = {
+                "min_rating": min_rating,
+                "min_vote_count": min_vote_count,
+                "genre": genre,
+                "language": language
+            }
+            
             session_id = activity_logger.log_search(
                 request=request,
                 query=query,
                 result_count=response.total_results,
                 result_movie_ids=result_movie_ids,
-                search_type="natural_language"
+                search_type="natural_language",
+                filters=filters
             )
             logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
         except Exception as log_error:

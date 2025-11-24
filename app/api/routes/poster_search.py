@@ -288,12 +288,21 @@ def poster_search_by_text(
             result_movie_ids = [r.movie_id for r in enriched_results]
             
             # 검색 로깅 (세션 ID 생성)
+            # 검색 로깅 (세션 ID 생성)
+            filters = {
+                "min_rating": min_rating,
+                "min_vote_count": min_vote_count,
+                "genre": genre,
+                "language": language
+            }
+            
             session_id = activity_logger.log_search(
                 request=request,
                 query=query,
                 result_count=len(enriched_results),
                 result_movie_ids=result_movie_ids,
-                search_type="poster"
+                search_type="poster",
+                filters=filters
             )
             logger.info(f"✅ 포스터 검색 로깅 완료: session_id={session_id}")
         except Exception as log_error:

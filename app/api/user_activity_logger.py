@@ -123,7 +123,8 @@ class UserActivityLogger:
         query: str,
         result_count: int,
         result_movie_ids: List[str],
-        search_type: str = "natural_language"
+        search_type: str = "natural_language",
+        filters: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Log a search event and return a session ID for click tracking.
@@ -134,6 +135,7 @@ class UserActivityLogger:
             result_count: Number of results returned
             result_movie_ids: List of movie IDs in the results
             search_type: Type of search ("natural_language" or "poster")
+            filters: Dictionary of active filters (genre, language, rating, etc.)
             
         Returns:
             Session ID for linking clicks to this search
@@ -154,6 +156,9 @@ class UserActivityLogger:
             "result_count": result_count,
             "result_movie_ids": result_movie_ids,
         }
+        
+        if filters:
+            log_data["filters"] = filters
         
         self._append_log(activity_type, log_data)
         return session_id
@@ -365,6 +370,7 @@ class UserActivityLogger:
                                     "clicked_movie_id": click_log.get("movie_id"),
                                     "click_position": click_log.get("position"),
                                     "click_timestamp": click_log["timestamp"],
+                                    "filters": search_log.get("filters"),
                                 })
                         except (json.JSONDecodeError, KeyError) as e:
                             logger.warning(f"Invalid click log line: {e}")
