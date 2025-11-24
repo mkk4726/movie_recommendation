@@ -3,6 +3,7 @@ Poster Search API endpoints using CLIP and FAISS.
 텍스트로 포스터 검색 - CLIP 임베딩 및 FAISS 벡터 검색을 사용합니다.
 """
 import logging
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 import pandas as pd
@@ -189,6 +190,10 @@ def poster_search_by_text(
     query: str = Query(..., min_length=1, description="텍스트 검색 쿼리 (영어 또는 한국어)"),
     limit: int = Query(10, ge=1, le=50, description="반환할 최대 결과 수"),
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
+    min_rating: float = Query(0.0, ge=0.0, le=10.0, description="최소 평균 평점"),
+    min_vote_count: int = Query(0, ge=0, description="최소 평가 수"),
+    genre: Optional[List[str]] = Query(None, description="장르 필터 (중복 선택 가능)"),
+    language: Optional[List[str]] = Query(None, description="언어 필터 (중복 선택 가능)"),
 ):
     """
     텍스트로 포스터 검색 API (CLIP 기반)
@@ -210,24 +215,70 @@ def poster_search_by_text(
     - "화려한 애니메이션"
     """
     try:
-        # 1. CLIP 검색 서비스 가져오기
-        clip_service = get_clip_search_service()
-        
-        # 2. 텍스트 검색 실행
-        logger.info(f"🔍 포스터 텍스트 검색: '{query}' (limit={limit})")
-        search_results = clip_service.search_by_text(text=query, k=limit)
-        
-        # 3. 영화 데이터 로드
+        # 1. 영화 데이터 로드 (필터링을 위해 먼저 로드)
         df_movies, _, _ = load_all_data()
         
-        # 4. 검색 결과에 메타데이터 추가
+        # 2. 메타데이터 필터링 (먼저 수행)
+        filter_movie_ids = None
+        if min_rating > 0 or min_vote_count > 0 or genre or language:
+            filtered_df = df_movies.copy()
+            
+            # 평점 필터
+            if min_rating > 0:
+                filtered_df = filtered_df[filtered_df['vote_average'] >= min_rating]
+            
+            # 평가 수 필터
+            if min_vote_count > 0:
+                filtered_df = filtered_df[filtered_df['vote_count'] >= min_vote_count]
+            
+            # 장르 필터
+            if genre:
+                # genres_tmdb 컬럼 우선 사용
+                genre_col = 'genres_tmdb' if 'genres_tmdb' in filtered_df.columns else 'genres'
+                filtered_df = filtered_df[
+                    filtered_df[genre_col].apply(
+                        lambda x: any(g in str(x) for g in genre) if pd.notna(x) else False
+                    )
+                ]
+            
+            # 언어 필터
+            if language:
+                if 'language' in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df['language'].isin(language)]
+            
+            # 필터링된 영화 ID 목록 추출
+            filter_movie_ids = filtered_df['movie_id'].astype(str).tolist()
+            logger.info(f"🔍 메타데이터 필터링: {len(df_movies)} -> {len(filter_movie_ids)}개 영화")
+            
+            if not filter_movie_ids:
+                logger.info("⚠️ 필터링 결과가 없습니다.")
+                return PosterSearchResponse(
+                    query_type="text",
+                    query=query,
+                    total_results=0,
+                    results=[],
+                    session_id=None
+                )
+
+        # 3. CLIP 검색 서비스 가져오기
+        clip_service = get_clip_search_service()
+        
+        # 4. 텍스트 검색 실행 (필터링된 ID 내에서 검색)
+        logger.info(f"🔍 포스터 텍스트 검색: '{query}' (limit={limit}, filter_ids={len(filter_movie_ids) if filter_movie_ids else 'All'})")
+        search_results = clip_service.search_by_text(
+            text=query, 
+            k=limit,
+            filter_movie_ids=filter_movie_ids
+        )
+        
+        # 5. 검색 결과에 메타데이터 추가
         enriched_results = enrich_search_results(
             search_results=search_results,
             df_movies=df_movies,
             include_cast=include_cast
         )
         
-        # 5. 활동 로깅 추가
+        # 6. 활동 로깅 추가
         session_id = None
         try:
             from app.api.user_activity_logger import get_activity_logger
@@ -248,7 +299,7 @@ def poster_search_by_text(
         except Exception as log_error:
             logger.warning(f"포스터 검색 로깅 실패 (계속 진행): {log_error}")
         
-        # 6. 응답 생성
+        # 7. 응답 생성
         response = PosterSearchResponse(
             query_type="text",
             query=query,

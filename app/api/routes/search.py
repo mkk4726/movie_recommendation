@@ -5,6 +5,7 @@ Natural Language Search API endpoints using QuerySearchPipeline.
 import logging
 import sys
 from pathlib import Path
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 import pandas as pd
 
@@ -152,6 +153,8 @@ def natural_language_search(
     min_score: float = Query(0.0, ge=0.0, description="최소 검색 스코어 임계값"),
     min_rating: float = Query(0.0, ge=0.0, le=10.0, description="최소 평균 평점 (vote_average)"),
     min_vote_count: int = Query(0, ge=0, description="최소 평가 수 (vote_count)"),
+    genre: Optional[List[str]] = Query(None, description="장르 필터 (중복 선택 가능)"),
+    language: Optional[List[str]] = Query(None, description="언어 필터 (중복 선택 가능)"),
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
 ):
     """
@@ -170,14 +173,16 @@ def natural_language_search(
         # 1. QuerySearchPipeline 로드
         pipeline = get_search_pipeline()
         
-        # 2. 검색 실행 (Pydantic 모델 반환)
-        logger.info(f"🔍 자연어 검색: '{query}' (limit={limit}, min_score={min_score}, min_rating={min_rating}, min_vote_count={min_vote_count})")
+        # 2. 검색 실행 (Pydantic 모델 반환) - 필터를 파이프라인에 전달
+        logger.info(f"🔍 자연어 검색: '{query}' (limit={limit}, min_score={min_score}, min_rating={min_rating}, min_vote_count={min_vote_count}, genre={genre}, language={language})")
         response = pipeline.search_to_response(
             query=query,
             top_k=limit,
             min_score=min_score,
             min_rating=min_rating,
-            min_vote_count=min_vote_count
+            min_vote_count=min_vote_count,
+            genre_filter=genre,
+            language_filter=language
         )
         
         # 3. Cast 정보 추가 (옵션)
@@ -194,7 +199,7 @@ def natural_language_search(
                     if imdb_id:
                         result.cast_info = get_movie_cast_info(imdb_id, cast_df)
         
-        # 4. 활동 로깅 및 세션 ID 생성
+        # 5. 활동 로깅 및 세션 ID 생성
         session_id = None
         try:
             from app.api.user_activity_logger import get_activity_logger
@@ -216,7 +221,7 @@ def natural_language_search(
             # 로깅 실패는 치명적이지 않으므로 경고만 출력
             logger.warning(f"검색 로깅 실패 (계속 진행): {log_error}")
         
-        # 5. 응답에 세션 ID 추가
+        # 6. 응답에 세션 ID 추가
         response.session_id = session_id
         
         logger.info(f"✅ 검색 완료: {response.total_results}개 결과")

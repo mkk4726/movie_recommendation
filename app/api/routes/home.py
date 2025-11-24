@@ -47,10 +47,17 @@ def home(
     movie_search_query: Optional[str] = Query(None, description="영화 검색 쿼리"),
     selected_movie_id: Optional[str] = Query(None, description="선택된 영화 ID"),
     similar_top_n: int = Query(10, ge=5, le=15),
-    movie_genre: Optional[List[str]] = Query(None, description="장르 필터"),
-    movie_language: Optional[List[str]] = Query(None, description="언어 필터"),
+    movie_genre: Optional[List[str]] = Query(None, description="장르 필터 (영화 기반 추천)"),
+    movie_language: Optional[List[str]] = Query(None, description="언어 필터 (영화 기반 추천)"),
     search_query: Optional[str] = Query(None, description="자연어 검색 쿼리"),
     poster_query: Optional[str] = Query(None, description="포스터 검색 쿼리"),
+    # 검색 필터 파라미터 추가
+    min_rating: float = Query(0.0, ge=0.0, le=10.0, description="최소 평균 평점"),
+    min_vote_count: int = Query(0, ge=0, description="최소 평가 수"),
+    search_genre: Optional[List[str]] = Query(None, description="장르 필터 (자연어 검색)"),
+    search_language: Optional[List[str]] = Query(None, description="언어 필터 (자연어 검색)"),
+    poster_genre: Optional[List[str]] = Query(None, description="장르 필터 (포스터 검색)"),
+    poster_language: Optional[List[str]] = Query(None, description="언어 필터 (포스터 검색)"),
     rating_method: Optional[str] = Query("search", description="평점 입력 방식"),                                                                               
     rating_movie_id: Optional[str] = Query(None, description="평점 입력할 영화 ID"),                                                                            
     rating_value: Optional[float] = Query(None, ge=0.5, le=5.0, description="평점 값"),                                                                        
@@ -249,11 +256,15 @@ def home(
             from app.api.routes.search import get_search_pipeline
             search_pipeline = get_search_pipeline()
             
-            # 검색 실행
+            # 검색 실행 (필터를 파이프라인에 전달)
             search_response = search_pipeline.search_to_response(
                 query=search_query,
                 top_k=limit,
-                min_score=0.0
+                min_score=0.0,
+                min_rating=min_rating,
+                min_vote_count=min_vote_count,
+                genre_filter=search_genre,
+                language_filter=search_language
             )
             
             # 활동 로깅 추가
@@ -299,6 +310,8 @@ def home(
                     df_search_movies["movie_id_str"] = df_search_movies["movie_id"].astype(str)
                     search_movie_ids_str = [str(mid) for mid in search_movie_ids]
                     df_search_movies = df_search_movies.set_index("movie_id_str").reindex(search_movie_ids_str).reset_index(drop=True)
+                    # NaN 행 제거
+                    df_search_movies = df_search_movies.dropna(subset=['movie_id'])
                     
                     # from_dataframe으로 표준 형식 변환
                     search_movies = from_dataframe(df_search_movies, cast_df=cast_df)
@@ -312,7 +325,7 @@ def home(
                         "total_results": len(search_movies),
                         "results": search_movies
                     }
-                    logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(search_movies)}개 결과 (메타데이터 포함)")
+                    logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(search_movies)}개 결과 (필터 적용됨)")
                 else:
                     search_results = {
                         "query": search_query,
@@ -340,7 +353,11 @@ def home(
                 request=request,
                 query=poster_query,
                 limit=limit,
-                include_cast=True
+                include_cast=True,
+                min_rating=min_rating,
+                min_vote_count=min_vote_count,
+                genre=poster_genre,
+                language=poster_language
             )
             
             # 검색 결과를 표준 형식으로 변환
@@ -495,6 +512,13 @@ def home(
         "poster_search_results": poster_search_results,
         "query": query or "",
         "search_limit": limit,
+        # 검색 필터
+        "min_rating": min_rating,
+        "min_vote_count": min_vote_count,
+        "search_genre": search_genre or [],
+        "search_language": search_language or [],
+        "poster_genre": poster_genre or [],
+        "poster_language": poster_language or [],
         "movie_search_query": movie_search_query or "",
         "movie_search_results": movie_search_results,
         "selected_movie_id": selected_movie_id or "",
