@@ -1,5 +1,7 @@
-import pandas as pd
 from abc import ABC, abstractmethod
+
+import pandas as pd
+
 
 class AbstractRecommenderModel(ABC):
     @abstractmethod
@@ -8,6 +10,7 @@ class AbstractRecommenderModel(ABC):
         user_id와 movie_id를 받아 예측 결과 객체(혹은 점수)를 반환
         """
         pass
+
 
 def recommend_movies(
     user_id: str,
@@ -26,37 +29,39 @@ def recommend_movies(
     """
 
     # 아직 안 본 영화 id 뽑기
-    unseen_movie_ids = set(df_ratings['movie_id']) - set(df_ratings.loc[df_ratings['user_id'] == user_id, 'movie_id'])
+    unseen_movie_ids = set(df_ratings["movie_id"]) - set(df_ratings.loc[df_ratings["user_id"] == user_id, "movie_id"])
 
     # 아직 안 본 영화에 대해 예측 평점 산출
     predictions = []
     for movie_id in unseen_movie_ids:
         pred = recommender_model.predict(user_id, movie_id)
         # pred.est가 있다면(예: surprise SVD), 아니면 pred 그 자체가 평점일 수도 있음
-        rating = getattr(pred, 'est', pred)
+        rating = getattr(pred, "est", pred)
         predictions.append((movie_id, rating))
 
     # movie_id로 타이틀 붙이기
-    reco = pd.DataFrame(predictions, columns=['movie_id', 'predicted_rating'])
-    reco = pd.merge(reco, df_movies, on='movie_id')
+    reco = pd.DataFrame(predictions, columns=["movie_id", "predicted_rating"])
+    reco = pd.merge(reco, df_movies, on="movie_id")
 
     # 본 영화 중 평점 높은 n개 (참고용)
     top_watched = (
-        pd.merge(df_ratings.loc[df_ratings['user_id'] == user_id], df_movies, on='movie_id')
-        .sort_values(by='rating', ascending=False)
+        pd.merge(df_ratings.loc[df_ratings["user_id"] == user_id], df_movies, on="movie_id")
+        .sort_values(by="rating", ascending=False)
         .head(n)
     )
-    
+
     # 추천 n개
-    recommendations = reco.sort_values(by='predicted_rating', ascending=False).head(n)
-    
+    recommendations = reco.sort_values(by="predicted_rating", ascending=False).head(n)
+
     return top_watched, recommendations
 
 
 import surprise
 
+
 class SVDRecommender(AbstractRecommenderModel):
     def __init__(self, svd: surprise.prediction_algorithms.matrix_factorization.SVD):
         self.svd = svd
+
     def predict(self, user_id, movie_id):
         return self.svd.predict(user_id, movie_id)

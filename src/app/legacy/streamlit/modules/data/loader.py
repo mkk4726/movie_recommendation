@@ -1,19 +1,26 @@
 """
 Streamlit용 데이터 로더 wrapper
 """
+
 import pandas as pd
-import streamlit as st
 
 # 경로 자동 추가 (core/paths.py가 처리)
 from modules.core import add_project_paths  # noqa: E402
+
+import streamlit as st
+
 add_project_paths()
 
 from data_scraping.common.data_loader import (  # noqa: E402
     load_movie_data as _load_movie_data,
+)
+from data_scraping.common.data_loader import (
     load_ratings_data as _load_ratings_data,
 )
 from modeling.utils.data import (  # noqa: E402
     filter_by_min_counts as _filter_by_min_counts,
+)
+from modeling.utils.data import (
     search_movies as _search_movies,
 )
 

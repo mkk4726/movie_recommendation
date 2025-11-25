@@ -15,4 +15,3 @@ __all__ = [
     "load_ratings_data",
     "search_movies",
 ]
-

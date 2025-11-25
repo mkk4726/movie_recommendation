@@ -1,5 +1,7 @@
-from .base import BaseClipEncoder
 from typing import Literal
+
+from .base import BaseClipEncoder
+
 
 class OpenCLIPEncoder(BaseClipEncoder):
     def __init__(self, model_key: Literal["openclip-b32", "openclip-h14"] = "openclip-b32"):

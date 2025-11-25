@@ -5,4 +5,3 @@
 from .paths import APP_DIR, PROJECT_ROOT, add_project_paths, get_project_paths
 
 __all__ = ["APP_DIR", "PROJECT_ROOT", "add_project_paths", "get_project_paths"]
-

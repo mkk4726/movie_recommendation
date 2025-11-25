@@ -1,8 +1,10 @@
 """
 CLI entry-point for running the FastAPI backend with uvicorn.
 """
+
 import sys
 from pathlib import Path
+
 import uvicorn
 
 # 프로젝트 루트를 sys.path에 추가
@@ -23,4 +25,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

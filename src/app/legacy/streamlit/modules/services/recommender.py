@@ -1,10 +1,12 @@
 """
 Streamlit용 추천 시스템 wrapper
 """
-import streamlit as st
 
 # 경로 자동 추가
 from modules.core import add_project_paths  # noqa: E402
+
+import streamlit as st
+
 add_project_paths()
 
 from modeling.models.recommender import MovieRecommender as _MovieRecommender  # noqa: E402

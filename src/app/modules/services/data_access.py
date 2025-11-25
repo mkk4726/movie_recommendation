@@ -1,9 +1,10 @@
 """
 Utility helpers for loading movie data without relying on Streamlit.
 """
+
 from functools import lru_cache
-from typing import Optional, Tuple
 from pathlib import Path
+from typing import Optional, Tuple
 
 import pandas as pd
 import yaml
@@ -13,13 +14,19 @@ from modules.core import add_project_paths
 
 add_project_paths()
 
+from data_scraping.common.data_loader import (
+    load_movie_cast as _load_movie_cast,
+)
 from data_scraping.common.data_loader import (  # noqa: E402
     load_movie_data as _load_movie_data,
+)
+from data_scraping.common.data_loader import (
     load_ratings_data as _load_ratings_data,
-    load_movie_cast as _load_movie_cast,
 )
 from modeling.utils.data import (  # noqa: E402
     filter_by_min_counts as _filter_by_min_counts,
+)
+from modeling.utils.data import (
     search_movies as _search_movies,
 )
 
@@ -27,7 +34,7 @@ from modeling.utils.data import (  # noqa: E402
 def _load_data_config() -> dict:
     """
     data_config.yaml 파일을 읽어서 설정을 반환합니다.
-    
+
     Returns:
         data 설정 딕셔너리 (min_user_ratings, min_movie_ratings 포함)
     """
@@ -36,29 +43,30 @@ def _load_data_config() -> dict:
     # data_config.yaml: modeling/utils/data_config.yaml
     current_file = Path(__file__).resolve()
     project_root = current_file.parent.parent.parent.parent  # services -> modules -> app -> project_root
-    data_config_path = project_root / 'modeling' / 'utils' / 'data_config.yaml'
-    
+    data_config_path = project_root / "modeling" / "utils" / "data_config.yaml"
+
     try:
-        with open(data_config_path, 'r', encoding='utf-8') as f:
+        with open(data_config_path, "r", encoding="utf-8") as f:
             data_config_dict = yaml.safe_load(f)
-        
+
         # data 섹션 추출
-        data_config = data_config_dict.get('data', {})
+        data_config = data_config_dict.get("data", {})
         return data_config
     except FileNotFoundError:
         # 파일이 없으면 기본값 반환
         return {
-            'min_user_ratings': 10,
-            'min_movie_ratings': 30,
+            "min_user_ratings": 10,
+            "min_movie_ratings": 30,
         }
     except Exception as e:
         # 기타 오류 시 기본값 반환
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning(f"data_config.yaml 로드 실패, 기본값 사용: {e}")
         return {
-            'min_user_ratings': 10,
-            'min_movie_ratings': 30,
+            "min_user_ratings": 10,
+            "min_movie_ratings": 30,
         }
 
 
@@ -69,7 +77,7 @@ _data_config_cache = None
 def get_data_config() -> dict:
     """
     데이터 설정을 반환합니다 (캐시 사용).
-    
+
     Returns:
         data 설정 딕셔너리
     """
@@ -97,9 +105,9 @@ def load_all_data(
     # config에서 기본값 가져오기
     data_config = get_data_config()
     if min_user_ratings is None:
-        min_user_ratings = data_config.get('min_user_ratings', 10)
+        min_user_ratings = data_config.get("min_user_ratings", 10)
     if min_movie_ratings is None:
-        min_movie_ratings = data_config.get('min_movie_ratings', 30)
+        min_movie_ratings = data_config.get("min_movie_ratings", 30)
 
     df_movies = _load_movie_data()
     df_ratings = _load_ratings_data()
@@ -122,10 +130,10 @@ def load_all_data(
 def load_cast_data() -> pd.DataFrame:
     """
     Load movie cast and crew data from disk (cached).
-    
+
     Returns:
-        Cast DataFrame with columns: adult, gender, id, known_for_department, 
-        name, original_name, popularity, profile_path, cast_id, character, 
+        Cast DataFrame with columns: adult, gender, id, known_for_department,
+        name, original_name, popularity, profile_path, cast_id, character,
         credit_id, order, tmdb_id, imdb_id
     """
     return _load_movie_cast()
@@ -156,12 +164,12 @@ def search_movies_cached(query: str, limit: int = 10) -> pd.DataFrame:
 def get_data_stats() -> dict:
     """
     데이터 통계를 계산하고 캐시합니다.
-    
+
     Returns:
         통계 정보 딕셔너리
     """
     df_movies, df_ratings, _ = load_all_data()
-    
+
     if df_movies is None or df_ratings is None:
         return {
             "total_movies": "0",
@@ -169,11 +177,10 @@ def get_data_stats() -> dict:
             "total_users": "0",
             "avg_rating": None,
         }
-    
+
     return {
         "total_movies": f"{len(df_movies):,}",
         "total_ratings": f"{len(df_ratings):,}",
         "total_users": f"{df_ratings['user_id'].nunique():,}" if "user_id" in df_ratings.columns else "0",
         "avg_rating": float(df_ratings["rating"].mean()) if "rating" in df_ratings.columns else None,
     }
-

@@ -3,8 +3,8 @@
 Streamlit 버전은 app/legacy/streamlit/modules/services/에 있습니다.
 """
 
-from .data_access import load_all_data, search_movies_cached, invalidate_data_cache
-from .recommender_service import get_recommender_service, RecommenderService
+from .data_access import invalidate_data_cache, load_all_data, search_movies_cached
+from .recommender_service import RecommenderService, get_recommender_service
 
 __all__ = [
     "load_all_data",

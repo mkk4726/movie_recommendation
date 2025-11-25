@@ -9,11 +9,11 @@ Usage:
     nohup python generate_queries.py > generate_queries.log 2>&1 &
 """
 
-import sys
-import os
-import json
 import logging
+import os
+import sys
 from datetime import datetime
+
 from tqdm import tqdm
 
 # 로거 설정
@@ -32,14 +32,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from data_scraping.common import load_movie_cast, load_movie_data
 from dataset_generation.llm import LLM
 from dataset_generation.query_generator import QueryGenerator
-from data_scraping.common import load_movie_data, load_movie_cast
 from dataset_generation.utils import (
-    parse_row_to_dict,
     append_query_to_jsonl,
-    load_queries_from_jsonl,
     get_queries_file_path,
+    load_queries_from_jsonl,
+    parse_row_to_dict,
 )
 
 
@@ -79,12 +79,10 @@ def main():
         if os.path.exists(output_file_path):
             df_queries_existing = load_queries_from_jsonl(output_file_path)
             existing_movie_ids = set(df_queries_existing["movie_id"])
-            logger.info(
-                f"✅ 기존 쿼리 발견: {len(existing_movie_ids)}개 영화에 대한 쿼리 존재"
-            )
+            logger.info(f"✅ 기존 쿼리 발견: {len(existing_movie_ids)}개 영화에 대한 쿼리 존재")
         else:
             existing_movie_ids = set()
-            logger.info(f"✅ 기존 쿼리 없음. 새로 생성합니다.")
+            logger.info("✅ 기존 쿼리 없음. 새로 생성합니다.")
             logger.info(f"   출력 경로: {output_file_path}")
 
         # 처리할 영화 ID 목록 생성 (아직 쿼리가 생성되지 않은 영화들)

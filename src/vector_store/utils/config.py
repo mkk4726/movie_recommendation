@@ -4,9 +4,10 @@ Vector Store Configuration Loader
 YAML 파일에서 설정을 로드하는 유틸리티 함수
 """
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
+import yaml
 
 
 def load_config(config_path: str = None) -> Dict[str, Any]:

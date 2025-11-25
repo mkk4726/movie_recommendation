@@ -1,8 +1,8 @@
 """
 Health check endpoint.
 """
-from fastapi import APIRouter, HTTPException
 
+from fastapi import APIRouter, HTTPException
 from modules.services.recommender_service import get_recommender_service
 
 router = APIRouter()
@@ -17,4 +17,3 @@ def healthcheck() -> dict:
         return {"status": "ok"}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-

@@ -2,6 +2,7 @@
 애플리케이션 상태 관리 모듈
 로딩 상태를 전역으로 관리합니다.
 """
+
 import threading
 from typing import Optional
 
@@ -14,7 +15,7 @@ _loading_state = {
         "data": False,
         "search": False,
         "poster_search": False,
-    }
+    },
 }
 _lock = threading.Lock()
 
@@ -22,7 +23,7 @@ _lock = threading.Lock()
 def set_loading(is_loading: bool, message: Optional[str] = None):
     """
     로딩 상태를 설정합니다.
-    
+
     Args:
         is_loading: 로딩 중 여부
         message: 로딩 메시지 (선택사항)
@@ -36,7 +37,7 @@ def set_loading(is_loading: bool, message: Optional[str] = None):
 def set_progress(step: str, completed: bool):
     """
     특정 단계의 진행 상태를 설정합니다.
-    
+
     Args:
         step: 단계 이름 ('model', 'data')
         completed: 완료 여부
@@ -49,7 +50,7 @@ def set_progress(step: str, completed: bool):
 def get_loading_state() -> dict:
     """
     현재 로딩 상태를 반환합니다.
-    
+
     Returns:
         로딩 상태 딕셔너리
     """
@@ -60,10 +61,9 @@ def get_loading_state() -> dict:
 def is_loading() -> bool:
     """
     현재 로딩 중인지 확인합니다.
-    
+
     Returns:
         로딩 중이면 True
     """
     with _lock:
         return _loading_state["is_loading"]
-

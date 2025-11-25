@@ -1,10 +1,11 @@
 """
 User recommendation API endpoints.
 """
-from fastapi import APIRouter, HTTPException, Query
 
+from fastapi import APIRouter, HTTPException, Query
 from modules.services.data_access import load_all_data, load_cast_data
 from modules.services.recommender_service import recommend_for_user as recommend_for_user_func
+
 from app.api.models import UserRecommendationResponse
 from app.api.utils import from_dataframe
 
@@ -47,4 +48,3 @@ def recommend_for_user(
         top_watched=top_watched,
         recommendations=recommendations,
     )
-

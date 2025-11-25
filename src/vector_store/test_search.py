@@ -6,9 +6,9 @@ FAISS 인덱스를 로드하고 다양한 검색 테스트를 수행합니다.
 
 import sys
 import time
-from pathlib import Path
-from typing import Optional, List
 from io import BytesIO
+from pathlib import Path
+from typing import List, Optional
 
 import numpy as np
 import requests
@@ -27,8 +27,8 @@ try:
 
     # 서버 환경에서는 Agg 백엔드 사용 (GUI 없이 이미지 생성)
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
+    import matplotlib.pyplot as plt
 
     MATPLOTLIB_AVAILABLE = True
 
@@ -76,14 +76,13 @@ except ImportError:
 
 try:
     import pandas as pd
+
     from data_scraping.common.data_loader import load_movie_data
 
     MOVIE_DATA_AVAILABLE = True
 except ImportError:
     MOVIE_DATA_AVAILABLE = False
-    print(
-        "⚠️  영화 데이터 로드 모듈을 찾을 수 없습니다. 포스터 시각화가 비활성화됩니다."
-    )
+    print("⚠️  영화 데이터 로드 모듈을 찾을 수 없습니다. 포스터 시각화가 비활성화됩니다.")
 
 
 class VectorSearchTester:
@@ -122,9 +121,7 @@ class VectorSearchTester:
         """영화 데이터 로드 (포스터 URL 매핑용)"""
         if not MOVIE_DATA_AVAILABLE:
             print("\n⚠️  영화 데이터 로드 모듈을 사용할 수 없습니다.")
-            print(
-                "   pandas 또는 data_scraping.common.data_loader를 import할 수 없습니다."
-            )
+            print("   pandas 또는 data_scraping.common.data_loader를 import할 수 없습니다.")
             return
 
         print("\n영화 데이터 로드 중...")
@@ -157,7 +154,7 @@ class VectorSearchTester:
 
         movie_ids_path = base_dir / "movie_ids.json"
 
-        print(f"\nmovie_ids 매핑 로드 중...")
+        print("\nmovie_ids 매핑 로드 중...")
         print(f"  경로: {movie_ids_path}")
         print(f"  존재: {movie_ids_path.exists()}")
 
@@ -194,9 +191,9 @@ class VectorSearchTester:
                 # movie_df의 movie_id 컬럼 타입에 맞춰 변환
                 if len(self.movie_df) > 0:
                     df_movie_id_type = type(self.movie_df.iloc[0]["movie_id"])
-                    if df_movie_id_type == str and not isinstance(movie_id, str):
+                    if df_movie_id_type is str and not isinstance(movie_id, str):
                         movie_id = str(movie_id)
-                    elif df_movie_id_type == int and not isinstance(movie_id, int):
+                    elif df_movie_id_type is int and not isinstance(movie_id, int):
                         movie_id = int(movie_id)
 
                 # movie_id로 영화 데이터 찾기
@@ -271,9 +268,7 @@ class VectorSearchTester:
 
         # 이미지 다운로드
         print(f"\n포스터 이미지 다운로드 중... (최대 {len(results)}개)")
-        print(
-            f"포스터 URL 개수: {len([u for u in poster_urls if u is not None])}/{len(poster_urls)}"
-        )
+        print(f"포스터 URL 개수: {len([u for u in poster_urls if u is not None])}/{len(poster_urls)}")
 
         images = []
         titles = []
@@ -281,7 +276,7 @@ class VectorSearchTester:
 
         for i, (result, url) in enumerate(zip(results, poster_urls)):
             if url:
-                print(f"  [{i+1}/{len(results)}] 다운로드 중: {url[:50]}...")
+                print(f"  [{i + 1}/{len(results)}] 다운로드 중: {url[:50]}...")
                 img = self.download_image(url)
                 if img:
                     images.append(img)
@@ -295,22 +290,16 @@ class VectorSearchTester:
                         # movie_id 타입 변환
                         if len(self.movie_df) > 0:
                             df_movie_id_type = type(self.movie_df.iloc[0]["movie_id"])
-                            if df_movie_id_type == str and not isinstance(
-                                movie_id, str
-                            ):
+                            if df_movie_id_type is str and not isinstance(movie_id, str):
                                 movie_id = str(movie_id)
-                            elif df_movie_id_type == int and not isinstance(
-                                movie_id, int
-                            ):
+                            elif df_movie_id_type is int and not isinstance(movie_id, int):
                                 movie_id = int(movie_id)
 
                         movie_row = self.movie_df[self.movie_df["movie_id"] == movie_id]
 
                         if not movie_row.empty:
                             row = movie_row.iloc[0]
-                            title = row.get("total_title") or row.get(
-                                "title", f"ID: {movie_id}"
-                            )
+                            title = row.get("total_title") or row.get("title", f"ID: {movie_id}")
                             title = title[:30] + "..." if len(title) > 30 else title
                         else:
                             title = f"Movie ID: {movie_id}"
@@ -386,9 +375,7 @@ class VectorSearchTester:
                     query_img = Image.open(query_image_path)
                     query_col = cols // 2
                     axes[0, query_col].imshow(query_img)
-                    axes[0, query_col].set_title(
-                        "Query Image", fontsize=12, fontweight="bold"
-                    )
+                    axes[0, query_col].set_title("Query Image", fontsize=12, fontweight="bold")
                     axes[0, query_col].axis("off")
 
                     # 나머지 칸 비우기
@@ -402,7 +389,7 @@ class VectorSearchTester:
                     print(f"쿼리 이미지 로드 실패: {e}")
 
             # 검색 결과 표시
-            print(f"검색 결과 이미지 표시 시작...")
+            print("검색 결과 이미지 표시 시작...")
             for i, (img, title, score) in enumerate(zip(images, titles, scores)):
                 row = start_row + i // cols
                 col = i % cols
@@ -412,7 +399,7 @@ class VectorSearchTester:
                     axes[row, col].set_title(f"{title}\nScore: {score:.4f}", fontsize=9)
                     axes[row, col].axis("off")
                 except Exception as e:
-                    print(f"  이미지 {i+1} 표시 실패 (행 {row}, 열 {col}): {e}")
+                    print(f"  이미지 {i + 1} 표시 실패 (행 {row}, 열 {col}): {e}")
 
             # 빈 칸 숨기기
             total_cells = rows * cols
@@ -423,7 +410,7 @@ class VectorSearchTester:
                 if row < rows and col < cols:
                     try:
                         axes[row, col].axis("off")
-                    except:
+                    except Exception:
                         pass
 
             plt.tight_layout()
@@ -435,9 +422,7 @@ class VectorSearchTester:
             if query_text:
                 # 파일명에 사용할 수 없는 문자 제거 및 길이 제한
                 safe_text = re.sub(r"[^\w\s-]", "", query_text)
-                safe_text = safe_text.replace(" ", "_")[
-                    :30
-                ]  # 공백을 언더스코어로, 30자 제한
+                safe_text = safe_text.replace(" ", "_")[:30]  # 공백을 언더스코어로, 30자 제한
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"search_results_{safe_text}_{timestamp}.png"
             elif query_image_path:
@@ -459,13 +444,13 @@ class VectorSearchTester:
             # 파일이 실제로 생성되었는지 확인
             if output_path.exists():
                 file_size = output_path.stat().st_size / (1024 * 1024)  # MB
-                print(f"✅ 시각화 완료!")
+                print("✅ 시각화 완료!")
                 print(f"   파일 경로: {output_path}")
                 print(f"   파일 크기: {file_size:.2f} MB")
                 if query_text:
                     print(f"   쿼리: {query_text}")
-                print(f"\n💡 서버 환경에서는 이미지 파일을 다운로드하거나")
-                print(f"   로컬에서 확인할 수 있습니다:")
+                print("\n💡 서버 환경에서는 이미지 파일을 다운로드하거나")
+                print("   로컬에서 확인할 수 있습니다:")
                 print(f"   - 절대 경로: {output_path}")
                 print(f"   - 파일명: {filename}")
             else:
@@ -514,8 +499,8 @@ class VectorSearchTester:
             elapsed = time.time() - start_time
             total_time += elapsed
 
-            print(f"\n쿼리 {i+1}:")
-            print(f"  검색 시간: {elapsed*1000:.2f}ms")
+            print(f"\n쿼리 {i + 1}:")
+            print(f"  검색 시간: {elapsed * 1000:.2f}ms")
             print(f"  결과 수: {len(results)}개")
 
             # 상위 3개 결과 출력
@@ -525,8 +510,8 @@ class VectorSearchTester:
                 print(f"    {j}. index={idx:6d}, score={score:.4f}")
 
         avg_time = total_time / num_queries
-        print(f"\n평균 검색 시간: {avg_time*1000:.2f}ms")
-        print(f"초당 쿼리 수: {1/avg_time:.1f} QPS")
+        print(f"\n평균 검색 시간: {avg_time * 1000:.2f}ms")
+        print(f"초당 쿼리 수: {1 / avg_time:.1f} QPS")
 
     def test_image_search(self, image_path: str, k: int = 10, visualize: bool = True):
         """
@@ -551,7 +536,7 @@ class VectorSearchTester:
         start_time = time.time()
         embedding = self.encoder.encode_image_from_path(image_path)
         encoding_time = time.time() - start_time
-        print(f"✅ 인코딩 완료: {encoding_time*1000:.2f}ms")
+        print(f"✅ 인코딩 완료: {encoding_time * 1000:.2f}ms")
 
         # 검색 수행
         query_vector = embedding.cpu().numpy().flatten()
@@ -559,7 +544,7 @@ class VectorSearchTester:
         results = self.manager.search(query_vector, k=k)
         search_time = time.time() - start_time
 
-        print(f"✅ 검색 완료: {search_time*1000:.2f}ms")
+        print(f"✅ 검색 완료: {search_time * 1000:.2f}ms")
         print(f"\n상위 {len(results)}개 결과:")
 
         for i, result in enumerate(results, 1):
@@ -573,9 +558,7 @@ class VectorSearchTester:
         # 시각화
         if visualize:
             query_text = Path(image_path).stem if image_path else None
-            self.visualize_results(
-                results, query_image_path=image_path, query_text=query_text
-            )
+            self.visualize_results(results, query_image_path=image_path, query_text=query_text)
 
         return results
 
@@ -602,7 +585,7 @@ class VectorSearchTester:
         start_time = time.time()
         embedding = self.encoder.encode_text(text)
         encoding_time = time.time() - start_time
-        print(f"✅ 인코딩 완료: {encoding_time*1000:.2f}ms")
+        print(f"✅ 인코딩 완료: {encoding_time * 1000:.2f}ms")
 
         # 검색 수행
         query_vector = embedding.cpu().numpy().flatten()
@@ -610,7 +593,7 @@ class VectorSearchTester:
         results = self.manager.search(query_vector, k=k)
         search_time = time.time() - start_time
 
-        print(f"✅ 검색 완료: {search_time*1000:.2f}ms")
+        print(f"✅ 검색 완료: {search_time * 1000:.2f}ms")
         print(f"\n상위 {len(results)}개 결과:")
 
         for i, result in enumerate(results, 1):
@@ -658,15 +641,15 @@ class VectorSearchTester:
             # 진행률 표시 (10%마다)
             if (i + 1) % (batch_size // 10) == 0:
                 progress = (i + 1) / batch_size * 100
-                print(f"  진행률: {progress:.0f}% ({i+1}/{batch_size})")
+                print(f"  진행률: {progress:.0f}% ({i + 1}/{batch_size})")
 
         total_time = time.time() - start_time
         avg_time = total_time / batch_size
 
         print("\n✅ 배치 검색 완료")
         print(f"   총 시간: {total_time:.2f}초")
-        print(f"   평균 검색 시간: {avg_time*1000:.2f}ms")
-        print(f"   처리량: {batch_size/total_time:.1f} QPS")
+        print(f"   평균 검색 시간: {avg_time * 1000:.2f}ms")
+        print(f"   처리량: {batch_size / total_time:.1f} QPS")
 
     def test_statistics(self):
         """인덱스 통계 정보 출력"""

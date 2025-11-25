@@ -9,17 +9,17 @@ Usage:
 설정은 vector_store/config.yaml에서 수정하세요.
 """
 
-import sys
 import logging
-from pathlib import Path
-from typing import Optional, List, Tuple
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 import requests
-from tqdm import tqdm
 import torch
 from PIL import Image
+from tqdm import tqdm
 
 # 프로젝트 루트를 sys.path에 추가
 current_dir = Path(__file__).resolve().parent
@@ -28,8 +28,8 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # 프로젝트 모듈 import (sys.path 설정 후)
-from modeling.models.clip.models.jina import JinaClipEncoder  # noqa: E402
 from data_scraping.common.data_loader import load_movie_data  # noqa: E402
+from modeling.models.clip.models.jina import JinaClipEncoder  # noqa: E402
 from vector_store.build_index import IndexBuilder  # noqa: E402
 from vector_store.utils.config import load_config  # noqa: E402
 
@@ -100,12 +100,8 @@ class VectorStoreCreator:
         # 2. 포스터가 있는 영화만 필터링
         logger.info("\n[2/3] 포스터 데이터 필터링 중...")
         movie_data = movie_df[["movie_id", "poster_path"]].copy()
-        movie_data = movie_data[movie_data["poster_path"].notna()].reset_index(
-            drop=True
-        )
-        movie_data["poster_url"] = movie_data["poster_path"].apply(
-            lambda x: f"https://image.tmdb.org/t/p/w300/{x}"
-        )
+        movie_data = movie_data[movie_data["poster_path"].notna()].reset_index(drop=True)
+        movie_data["poster_url"] = movie_data["poster_path"].apply(lambda x: f"https://image.tmdb.org/t/p/w300/{x}")
         logger.info(f"포스터가 있는 영화: {len(movie_data):,}개")
 
         # 3. 임베딩 생성 및 인덱스 빌드
@@ -125,9 +121,7 @@ class VectorStoreCreator:
         logger.info("✅ Vector Store 생성 완료!")
         logger.info("=" * 80)
 
-    def _download_image(
-        self, movie_id: int, poster_url: str
-    ) -> Optional[Tuple[int, Image.Image]]:
+    def _download_image(self, movie_id: int, poster_url: str) -> Optional[Tuple[int, Image.Image]]:
         """
         단일 이미지 다운로드 (재시도 로직 포함)
 
@@ -152,9 +146,7 @@ class VectorStoreCreator:
                     return None
         return None
 
-    def _download_batch(
-        self, batch_data: List[Tuple[int, str]]
-    ) -> List[Tuple[int, Image.Image]]:
+    def _download_batch(self, batch_data: List[Tuple[int, str]]) -> List[Tuple[int, Image.Image]]:
         """
         배치 이미지 다운로드 (멀티스레딩)
 
@@ -169,8 +161,7 @@ class VectorStoreCreator:
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # 모든 다운로드 작업 제출
             future_to_movie = {
-                executor.submit(self._download_image, movie_id, url): movie_id
-                for movie_id, url in batch_data
+                executor.submit(self._download_image, movie_id, url): movie_id for movie_id, url in batch_data
             }
 
             # 완료된 작업 수집
@@ -197,9 +188,7 @@ class VectorStoreCreator:
         processed_images = [make_square(img) for img in images]
 
         # 배치 처리
-        inputs = self.encoder.processor(
-            images=processed_images, return_tensors="pt"
-        ).to(self.encoder.device)
+        inputs = self.encoder.processor(images=processed_images, return_tensors="pt").to(self.encoder.device)
 
         with torch.no_grad():
             embeddings = self.encoder.model.get_image_features(**inputs)
@@ -225,10 +214,7 @@ class VectorStoreCreator:
         for _, row in movie_data.iterrows():
             movie_list.append((row["movie_id"], row["poster_url"]))
 
-        logger.info(
-            f"배치 크기: 다운로드={self.download_batch_size}, "
-            f"인코딩={self.encoding_batch_size}"
-        )
+        logger.info(f"배치 크기: 다운로드={self.download_batch_size}, 인코딩={self.encoding_batch_size}")
         logger.info(f"다운로드 스레드: {self.max_workers}개")
 
         # 전체 진행률 표시
@@ -262,9 +248,7 @@ class VectorStoreCreator:
                         embeddings_np = embeddings_np.astype("float32")
 
                         for movie_id, embedding in zip(movie_ids, embeddings_np):
-                            self.builder.add_item(
-                                embedding=embedding, movie_id=int(movie_id)
-                            )
+                            self.builder.add_item(embedding=embedding, movie_id=int(movie_id))
                             success_count += 1
 
                     except Exception as e:
@@ -274,7 +258,7 @@ class VectorStoreCreator:
                     # 진행률 업데이트
                     pbar.update(len(enc_batch))
                     total = success_count + error_count
-                    rate = f"{success_count/total*100:.1f}%"
+                    rate = f"{success_count / total * 100:.1f}%"
                     pbar.set_postfix(
                         {
                             "success": success_count,
@@ -284,12 +268,10 @@ class VectorStoreCreator:
                     )
 
         logger.info(f"\n처리 완료: 성공 {success_count:,}개, 실패 {error_count:,}개")
-        logger.info(f"성공률: {success_count/total_movies*100:.2f}%")
+        logger.info(f"성공률: {success_count / total_movies * 100:.2f}%")
 
         if success_count == 0:
-            raise RuntimeError(
-                "임베딩 생성에 실패했습니다. 네트워크 연결을 확인하세요."
-            )
+            raise RuntimeError("임베딩 생성에 실패했습니다. 네트워크 연결을 확인하세요.")
 
 
 def main():

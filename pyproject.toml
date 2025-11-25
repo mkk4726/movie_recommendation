@@ -70,3 +70,49 @@ packages = [
     "src/data_scraping"
 ]
 
+[tool.ruff]
+# 줄 길이 제한
+line-length = 120
+# 타겟 Python 버전
+target-version = "py310"
+# 노트북 파일 제외
+exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+# 활성화할 규칙 코드
+# E: pycodestyle errors
+# W: pycodestyle warnings
+# F: pyflakes
+# I: isort (import 정렬)
+# B: flake8-bugbear
+select = ["E", "W", "F", "I", "B"]
+# 무시할 규칙
+# E501: 줄 길이 제한 (URL 등 긴 라인 허용)
+# E402: 모듈 레벨 import가 파일 최상단에 없음 (sys.path 조작 허용)
+# B905: zip() 사용 시 strict 파라미터 강제 (기존 코드 호환성)
+# B904: raise ... from err 강제 (예외 체이닝)
+# W293: 빈 줄에 공백 포함 (멀티라인 문자열 내 공백 허용)
+# B008: 함수 인자 기본값으로 함수 호출 (FastAPI Query, Depends 등에서 필수)
+ignore = ["E501", "E402", "B905", "B904", "W293", "B008"]
+
+[tool.ruff.format]
+# 따옴표 스타일 (더블 쿼트 권장)
+quote-style = "double"
+# 들여쓰기 스타일
+indent-style = "space"
+# 매직 콤마 사용 (리스트 등이 길어지면 자동으로 여러 줄로 나눔)
+skip-magic-trailing-comma = false
+# 줄바꿈 문자
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "ruff>=0.14.6",
+]
+

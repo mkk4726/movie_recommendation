@@ -10,4 +10,3 @@ __all__ = [
     "load_recommender_models",
     "MovieRecommender",
 ]
-

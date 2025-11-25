@@ -1,11 +1,12 @@
 """
 평점 관리 UI
 """
-import streamlit as st
 
-from cold_start.show_random_movies import get_random_popular_movies
 from modules.data import search_movies
 from modules.ui.components import display_movie_card
+
+import streamlit as st
+from cold_start.show_random_movies import get_random_popular_movies
 from user_system.firebase_auth import require_firebase_auth
 from user_system.firebase_firestore import FirestoreManager
 
@@ -105,7 +106,7 @@ def _render_search_based_rating_input(df_movies, user, firestore_manager):
                             st.error(f"평점 저장 중 오류가 발생했습니다: {e}")
             else:
                 st.info("검색 결과가 없습니다. 다른 키워드로 검색해보세요.")
-        except Exception as e:
+        except Exception:
             st.error("검색 중 오류가 발생했습니다. 다시 시도해주세요.")
 
 

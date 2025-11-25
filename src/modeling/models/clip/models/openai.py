@@ -1,11 +1,12 @@
-from typing import Union, List, Literal
 from io import BytesIO
+from typing import List, Literal, Union
+
 import torch
 from PIL import Image
-from transformers import CLIPProcessor, CLIPModel
-from . import MODEL_REGISTRY
-from ..utils import make_square
+from transformers import CLIPModel, CLIPProcessor
 
+from ..utils import make_square
+from . import MODEL_REGISTRY
 
 # OpenAI CLIP 모델 스펙 요약
 #
@@ -50,8 +51,7 @@ class OpenAICLIPEncoder:
 
     def __init__(
         self,
-        model_key: Literal["openai-b32", "openai-b16", "openai-l14"]
-        | str = "openai-b32",
+        model_key: Literal["openai-b32", "openai-b16", "openai-l14"] | str = "openai-b32",
         device: str | None = None,
     ):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")

@@ -1,11 +1,13 @@
 """
 데이터 및 모델 로딩 서비스 모듈
 """
-import streamlit as st
 
 # 경로 자동 추가 및 가져오기
 from modules.core import PROJECT_ROOT  # noqa: E402
 from modules.data import filter_data, load_movie_data, load_ratings_data  # noqa: E402
+
+import streamlit as st
+
 from .recommender import MovieRecommender  # noqa: E402
 
 
@@ -26,9 +28,7 @@ def load_recommender_models():
     item_based_path = PROJECT_ROOT / "modeling" / "models" / "pkls" / "trained_item_based.pkl"
 
     if not svd_pipeline_path.exists():
-        raise FileNotFoundError(
-            "❌ SVD 파이프라인이 없습니다. 먼저 modeling/run_svd_pipeline.py를 실행해주세요."
-        )
+        raise FileNotFoundError("❌ SVD 파이프라인이 없습니다. 먼저 modeling/run_svd_pipeline.py를 실행해주세요.")
 
     if not item_based_path.exists():
         raise FileNotFoundError(

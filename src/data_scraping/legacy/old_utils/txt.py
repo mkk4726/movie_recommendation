@@ -6,13 +6,14 @@ def append_to_txt(file_name, data):
     with open(file_name, "a", encoding="utf-8") as file:
         file.write(line)
     # print(f"'{line.strip()}'이 {file_name}에 추가되었습니다.")
-    
+
+
 def read_txt(file_name) -> list:
     row = []
-    
+
     # 특정 줄 확인
-    with open(file_name, 'r', encoding='utf-8') as file:
-        for line_number, line in enumerate(file, start=1):
-            row.append(line.split('/'))
-            
+    with open(file_name, "r", encoding="utf-8") as file:
+        for _line_number, line in enumerate(file, start=1):
+            row.append(line.split("/"))
+
     return row

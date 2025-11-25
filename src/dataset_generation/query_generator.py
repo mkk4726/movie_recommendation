@@ -5,10 +5,11 @@ Query Generator 모듈
 
 import json
 import logging
-import yaml
-from pathlib import Path
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from dataset_generation.llm import LLM
 
@@ -111,9 +112,7 @@ class QueryGenerator:
 
         if user_prompt_template is not None:
             self.config.user_prompt_template = user_prompt_template
-            logger.info(
-                "📝 User prompt template가 제공되어 config 값을 오버라이드합니다."
-            )
+            logger.info("📝 User prompt template가 제공되어 config 값을 오버라이드합니다.")
 
         logger.info("✅ QueryGenerator 초기화 완료")
 
@@ -149,15 +148,9 @@ class QueryGenerator:
             [{"query": "...", "query_type": "...", "language": "ko"}, ...]
         """
         # 파라미터 설정
-        num_queries = (
-            num_queries if num_queries is not None else self.config.queries_per_movie
-        )
-        max_new_tokens = (
-            max_new_tokens if max_new_tokens is not None else self.config.max_new_tokens
-        )
-        temperature = (
-            temperature if temperature is not None else self.config.temperature
-        )
+        num_queries = num_queries if num_queries is not None else self.config.queries_per_movie
+        max_new_tokens = max_new_tokens if max_new_tokens is not None else self.config.max_new_tokens
+        temperature = temperature if temperature is not None else self.config.temperature
         top_p = top_p if top_p is not None else self.config.top_p
         do_sample = do_sample if do_sample is not None else self.config.do_sample
 
@@ -238,9 +231,7 @@ class QueryGenerator:
 
         return self.config.user_prompt_template.format(**prompt_data)
 
-    def _create_batch_user_prompt(
-        self, movies_data: List[Dict[str, Any]], num_queries: int
-    ) -> str:
+    def _create_batch_user_prompt(self, movies_data: List[Dict[str, Any]], num_queries: int) -> str:
         """
         여러 영화 데이터를 기반으로 배치 User Prompt 생성
 
@@ -257,12 +248,12 @@ class QueryGenerator:
             dist = self.config.query_type_distribution
             ratio_info = f"""
     Target Query Type Distribution (aim for these ratios):
-    - plot (줄거리 기반): {int(dist.get('plot', 0) * 100)}%
-    - actor (배우 기반): {int(dist.get('actor', 0) * 100)}%
-    - director (감독 기반): {int(dist.get('director', 0) * 100)}%
-    - genre (장르 기반): {int(dist.get('genre', 0) * 100)}%
-    - mood (분위기/테마 기반): {int(dist.get('mood', 0) * 100)}%
-    - hybrid (복합 쿼리): {int(dist.get('hybrid', 0) * 100)}%
+    - plot (줄거리 기반): {int(dist.get("plot", 0) * 100)}%
+    - actor (배우 기반): {int(dist.get("actor", 0) * 100)}%
+    - director (감독 기반): {int(dist.get("director", 0) * 100)}%
+    - genre (장르 기반): {int(dist.get("genre", 0) * 100)}%
+    - mood (분위기/테마 기반): {int(dist.get("mood", 0) * 100)}%
+    - hybrid (복합 쿼리): {int(dist.get("hybrid", 0) * 100)}%
 """
         else:
             ratio_info = """
@@ -280,13 +271,13 @@ class QueryGenerator:
         for i, movie_data in enumerate(movies_data, 1):
             movie_info = f"""
 Movie {i}:
-- Title: {movie_data.get('title', 'Unknown')}
-- Original Title: {movie_data.get('original_title', 'Unknown')}
-- Genres: {movie_data.get('genres', 'Unknown')}
-- Overview: {movie_data.get('overview', 'No overview available')}
-- Director: {movie_data.get('director', 'Unknown')}
-- Actors: {movie_data.get('actors', 'Unknown')}
-- Release Year: {movie_data.get('release_year', 'Unknown')}
+- Title: {movie_data.get("title", "Unknown")}
+- Original Title: {movie_data.get("original_title", "Unknown")}
+- Genres: {movie_data.get("genres", "Unknown")}
+- Overview: {movie_data.get("overview", "No overview available")}
+- Director: {movie_data.get("director", "Unknown")}
+- Actors: {movie_data.get("actors", "Unknown")}
+- Release Year: {movie_data.get("release_year", "Unknown")}
 """
             movies_info.append(movie_info)
 
@@ -371,9 +362,7 @@ Return ONLY the JSON object, no explanation or markdown."""
             logger.error(f"응답 내용:\n{response}")
             return []
 
-    def _parse_batch_response(
-        self, response: str, num_movies: int
-    ) -> Dict[int, List[Dict[str, str]]]:
+    def _parse_batch_response(self, response: str, num_movies: int) -> Dict[int, List[Dict[str, str]]]:
         """
         배치 LLM 응답을 파싱하여 영화별 쿼리 딕셔너리 추출
 
@@ -439,9 +428,7 @@ Return ONLY the JSON object, no explanation or markdown."""
             logger.error(f"응답 내용:\n{response}")
             return {}
 
-    def generate_queries_batch(
-        self, movies_data: List[Dict[str, Any]], **kwargs
-    ) -> List[Dict[str, Any]]:
+    def generate_queries_batch(self, movies_data: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
         """
         여러 영화에 대해 배치로 쿼리 생성
         batch_size > 1이면 여러 영화를 한 번의 LLM 호출로 처리하여 속도 향상
@@ -474,18 +461,14 @@ Return ONLY the JSON object, no explanation or markdown."""
         # 영화 데이터를 배치 크기로 분할
         total_movies = len(movies_data)
         logger.info(f"📦 배치 크기: {batch_size}, 총 영화 수: {total_movies}")
-        logger.info(
-            f"🚀 배치 모드: {'단일 LLM 호출' if batch_size > 1 else '개별 처리'}"
-        )
+        logger.info(f"🚀 배치 모드: {'단일 LLM 호출' if batch_size > 1 else '개별 처리'}")
 
         for batch_start in range(0, total_movies, batch_size):
             batch_end = min(batch_start + batch_size, total_movies)
             batch = movies_data[batch_start:batch_end]
             batch_len = len(batch)
 
-            logger.info(
-                f"📊 배치 진행: {batch_start + 1}-{batch_end}/" f"{total_movies}"
-            )
+            logger.info(f"📊 배치 진행: {batch_start + 1}-{batch_end}/{total_movies}")
 
             # batch_size가 1이면 개별 처리 (기존 방식)
             if batch_size == 1:
@@ -543,15 +526,10 @@ Return ONLY the JSON object, no explanation or markdown."""
                                 }
                             )
                             movie_title = movie_data.get("title", "Unknown")
-                            logger.info(
-                                f"✅ 영화 '{movie_title}': "
-                                f"{len(queries)}개 쿼리 생성"
-                            )
+                            logger.info(f"✅ 영화 '{movie_title}': {len(queries)}개 쿼리 생성")
                         else:
                             movie_title = movie_data.get("title", "Unknown")
-                            logger.warning(
-                                f"⚠️ 영화 '{movie_title}': 응답에서 쿼리를 찾을 수 없음"
-                            )
+                            logger.warning(f"⚠️ 영화 '{movie_title}': 응답에서 쿼리를 찾을 수 없음")
                             results.append(
                                 {
                                     "movie": movie_data,

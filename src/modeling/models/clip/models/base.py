@@ -1,8 +1,9 @@
-from transformers import AutoProcessor, AutoModel
+from io import BytesIO
+from pathlib import Path
+
 import torch
 from PIL import Image
-from pathlib import Path
-from io import BytesIO
+from transformers import AutoModel, AutoProcessor
 
 from ..utils import make_square
 from . import MODEL_REGISTRY as CLIP_MODEL_REGISTRY
@@ -25,15 +26,9 @@ class BaseClipEncoder:
         # 일부 모델은 remote code 필요
         trust = True if "jina" in model_name or "siglip" in model_name else False
 
-        self.model = AutoModel.from_pretrained(
-            model_name,
-            trust_remote_code=trust
-        ).to(self.device)
+        self.model = AutoModel.from_pretrained(model_name, trust_remote_code=trust).to(self.device)
 
-        self.processor = AutoProcessor.from_pretrained(
-            model_name,
-            trust_remote_code=trust
-        )
+        self.processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=trust)
 
     def encode_text(self, text: str):
         inputs = self.processor(text=[text], return_tensors="pt").to(self.device)

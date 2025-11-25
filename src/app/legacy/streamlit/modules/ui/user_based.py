@@ -1,10 +1,11 @@
 """
 사용자 기반 추천 UI
 """
-import pandas as pd
-import streamlit as st
 
+import pandas as pd
 from modules.ui.components import display_movie_card
+
+import streamlit as st
 from user_system.firebase_auth import require_firebase_auth
 
 
@@ -59,7 +60,9 @@ def render_user_based_recommendation(recommender, df_movies, df_ratings_filtered
                     )
                 except Exception as e:
                     error_msg = str(e)
-                    if "나 (현재 로그인된 사용자)" in user_option and ("찾을 수 없습니다" in error_msg or "KeyError" in error_msg):
+                    if "나 (현재 로그인된 사용자)" in user_option and (
+                        "찾을 수 없습니다" in error_msg or "KeyError" in error_msg
+                    ):
                         st.warning("⚠️ 아직 학습되기 전입니다.")
                         st.info(
                             """
@@ -88,9 +91,7 @@ def render_user_based_recommendation(recommender, df_movies, df_ratings_filtered
                         for idx, row in enumerate(top_watched.iterrows(), 1):
                             _, movie = row
                             movie_title = (
-                                movie.get("title")
-                                if pd.notna(movie.get("title"))
-                                else movie.get("movie_title", "N/A")
+                                movie.get("title") if pd.notna(movie.get("title")) else movie.get("movie_title", "N/A")
                             )
                             st.markdown(f"#### {idx}. {movie_title}")
                             display_movie_card(movie, movie["rating"], "내 평점", show_plot=True)
@@ -102,9 +103,7 @@ def render_user_based_recommendation(recommender, df_movies, df_ratings_filtered
                     for idx, row in enumerate(recommendations.iterrows(), 1):
                         _, movie = row
                         movie_title = (
-                            movie.get("title")
-                            if pd.notna(movie.get("title"))
-                            else movie.get("movie_title", "N/A")
+                            movie.get("title") if pd.notna(movie.get("title")) else movie.get("movie_title", "N/A")
                         )
                         st.markdown(f"#### {idx}. {movie_title}")
                         display_movie_card(movie, movie["predicted_rating"], "예측 평점", show_plot=True)

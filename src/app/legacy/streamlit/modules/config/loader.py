@@ -1,9 +1,12 @@
 """
 YAML 설정 파일 로더
 """
-import streamlit as st
+
 from pathlib import Path
+
 import yaml
+
+import streamlit as st
 
 
 def _load_config_file():
@@ -12,10 +15,10 @@ def _load_config_file():
     내부 구현용 함수입니다.
     """
     config_path = Path(__file__).parent / "config.yaml"
-    
+
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    
+
     return config
 
 
@@ -23,7 +26,7 @@ def _load_config_file():
 def load_config():
     """
     config.yaml 파일을 로드합니다.
-    
+
     Returns:
         dict: 설정값 딕셔너리
     """

@@ -1,6 +1,7 @@
 import json
 import os
-from typing import List, Dict, Union
+from typing import Dict, List, Union
+
 import pandas as pd
 
 
@@ -12,11 +13,7 @@ def parse_row_to_dict(cast_data: pd.DataFrame, row: pd.Series) -> dict:
     original_title = row["original_title"]
     genres = row.get("genres_tmdb", "Unknown")
     overview = row.get("overview", "No overview available")
-    release_year = (
-        str(row.get("release_date", "Unknown"))[:4]
-        if row.get("release_date")
-        else "Unknown"
-    )
+    release_year = str(row.get("release_date", "Unknown"))[:4] if row.get("release_date") else "Unknown"
 
     cast = cast_data[cast_data["tmdb_id"] == float(tmdb_id)]
     actor_data = cast[cast["known_for_department"] == "Acting"]["name"]
@@ -35,9 +32,7 @@ def parse_row_to_dict(cast_data: pd.DataFrame, row: pd.Series) -> dict:
     }
 
 
-def save_queries_to_jsonl(
-    queries: List[Dict], file_path: Union[str, None] = None, mode: str = "w"
-) -> None:
+def save_queries_to_jsonl(queries: List[Dict], file_path: Union[str, None] = None, mode: str = "w") -> None:
     """
     쿼리 리스트를 JSONL 형식으로 저장
 
@@ -114,9 +109,7 @@ def load_queries_from_jsonl(file_path: Union[str, None] = None) -> pd.DataFrame:
     return df
 
 
-def get_queries_file_path(
-    project_root: str, filename: str = "generated_queries.jsonl"
-) -> str:
+def get_queries_file_path(project_root: str, filename: str = "generated_queries.jsonl") -> str:
     """
     쿼리 파일 경로 생성
 

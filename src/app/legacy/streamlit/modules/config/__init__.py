@@ -5,9 +5,9 @@
 from .loader import (
     COUNTRY_OPTIONS,
     GENRE_OPTIONS,
-    get_config,
     MAX_YEAR,
     MIN_YEAR,
+    get_config,
 )
 
 __all__ = [
@@ -17,4 +17,3 @@ __all__ = [
     "MAX_YEAR",
     "MIN_YEAR",
 ]
-

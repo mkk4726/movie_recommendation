@@ -1,4 +1,3 @@
 """
 API routes package.
 """
-

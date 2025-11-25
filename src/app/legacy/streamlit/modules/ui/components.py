@@ -1,7 +1,9 @@
 """
 공통 UI 유틸리티
 """
+
 import pandas as pd
+
 import streamlit as st
 
 
@@ -78,7 +80,7 @@ def display_movie_card(movie, score=None, score_label="예측 평점", show_plot
     runtime = f"{movie['runtime']}분" if pd.notna(movie.get("runtime")) else "N/A"
     age_rating = movie.get("age_rating", "N/A") if pd.notna(movie.get("age_rating")) else "N/A"
     avg_score = f"{movie['avg_score']:.1f}/5.0" if pd.notna(movie.get("avg_score")) else "N/A"
-    popularity = f"{movie['popularity']:.0f}" if pd.notna(movie.get("popularity")) else "N/A"
+    # popularity = f"{movie['popularity']:.0f}" if pd.notna(movie.get("popularity")) else "N/A"
     review_count = f"{movie['review_count']}개" if pd.notna(movie.get("review_count")) else "N/A"
 
     movie_id = movie.get("movie_id", "")

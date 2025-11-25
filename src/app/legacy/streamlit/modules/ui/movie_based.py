@@ -1,12 +1,13 @@
 """
 영화 기반 추천 UI
 """
-import pandas as pd
-import streamlit as st
 
+import pandas as pd
 from modules.config import COUNTRY_OPTIONS, GENRE_OPTIONS, MAX_YEAR, MIN_YEAR
 from modules.data import search_movies
 from modules.ui.components import display_movie_card
+
+import streamlit as st
 
 
 def render_movie_based_recommendation(recommender, df_movies):

@@ -2,17 +2,19 @@
 Firebase 기반 통합 영화 추천 시스템
 기존 추천 시스템과 Firebase를 통합한 완전한 앱
 """
-import streamlit as st
+
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import streamlit as st
 
 # 프로젝트 루트를 path에 추가
 project_root = Path(__file__).parent.parent.resolve()
 sys.path.append(str(project_root))
 
-from firebase_config import init_firebase, setup_firebase_config
-from firebase_auth import show_firebase_auth_ui, require_firebase_auth
+from firebase_auth import require_firebase_auth, show_firebase_auth_ui
+from firebase_config import setup_firebase_config
 from firebase_firestore import show_firebase_rating_main_page
 from firebase_recommender import show_firebase_recommendation_ui, show_similar_movies_ui
 
@@ -22,14 +24,12 @@ logger = logging.getLogger(__name__)
 
 # 페이지 설정
 st.set_page_config(
-    page_title="Firebase 영화 추천 시스템",
-    page_icon="🔥",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Firebase 영화 추천 시스템", page_icon="🔥", layout="wide", initial_sidebar_state="expanded"
 )
 
 # 커스텀 CSS
-st.markdown("""
+st.markdown(
+    """
 <style>
     .main-header {
         font-size: 3rem;
@@ -83,87 +83,113 @@ st.markdown("""
         text-align: center;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 def show_welcome_page():
     """환영 페이지"""
     st.markdown('<h1 class="main-header">🔥 Firebase 영화 추천 시스템</h1>', unsafe_allow_html=True)
-    
-    st.markdown("""
+
+    st.markdown(
+        """
     <div class="firebase-card">
         <h3>🎬 개인화된 영화 추천을 받아보세요!</h3>
         <p>Firebase의 강력한 실시간 데이터베이스와 AI 추천 알고리즘을 결합한 최신 영화 추천 시스템입니다.</p>
     </div>
-    """, unsafe_allow_html=True)
-    
+    """,
+        unsafe_allow_html=True,
+    )
+
     # 주요 기능 소개
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="feature-card">
             <h4>🔐 안전한 인증</h4>
             <p>Firebase Authentication으로 안전한 로그인</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col2:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="feature-card">
             <h4>⭐ 개인화 평점</h4>
             <p>내가 본 영화에 평점을 매기고 관리</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col3:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="feature-card">
             <h4>🎯 AI 추천</h4>
             <p>SVD와 Item-Based 알고리즘으로 정확한 추천</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     # 시스템 통계
     st.markdown("### 📊 시스템 현황")
-    
+
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="stats-card">
             <h3>🔥</h3>
             <h4>Firebase</h4>
             <p>실시간 동기화</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col2:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="stats-card">
             <h3>🤖</h3>
             <h4>AI 추천</h4>
             <p>SVD + Item-Based</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col3:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="stats-card">
             <h3>⚡</h3>
             <h4>실시간</h4>
             <p>즉시 반영</p>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col4:
-        st.markdown("""
+        st.markdown(
+            """
         <div class="stats-card">
             <h3>🔒</h3>
             <h4>보안</h4>
             <p>Firebase 보안 규칙</p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
 
 def show_user_dashboard():
@@ -171,19 +197,20 @@ def show_user_dashboard():
     user = require_firebase_auth()
     if not user:
         return
-    
+
     st.markdown(f"<h2>👋 {user.get('display_name', 'User')}님, 환영합니다!</h2>", unsafe_allow_html=True)
-    
+
     # 사용자 통계
     from firebase_firestore import FirestoreManager
+
     firestore_manager = FirestoreManager()
-    
+
     try:
-        user_id = user['uid']
+        user_id = user["uid"]
         stats = firestore_manager.get_user_rating_stats(user_id)
-        
+
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             st.metric("총 평점 수", f"{stats.get('total_ratings', 0)}개")
         with col2:
@@ -192,7 +219,7 @@ def show_user_dashboard():
             st.metric("높은 평점", f"{stats.get('high_ratings', 0)}개")
         with col4:
             st.metric("낮은 평점", f"{stats.get('low_ratings', 0)}개")
-    
+
     except Exception as e:
         st.warning("사용자 통계를 불러올 수 없습니다.")
         logger.error(f"사용자 통계 조회 실패: {e}")
@@ -202,107 +229,104 @@ def main():
     # 사이드바
     st.sidebar.title("⚙️ Firebase 설정")
     st.sidebar.markdown("---")
-    
+
     # Firebase 설정
     if setup_firebase_config():
         st.sidebar.success("✅ Firebase 연결 성공!")
-        
+
         # 인증 UI
         st.sidebar.markdown("---")
         show_firebase_auth_ui()
-        
+
         # 메인 컨텐츠
         st.markdown("---")
-        
+
         # 사용자 인증 확인
         try:
             user = require_firebase_auth()
             if user:
                 # 사용자 대시보드
                 show_user_dashboard()
-                
+
                 # 메인 기능 탭
-                tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                    "🎬 영화 평점", 
-                    "🎯 개인화 추천", 
-                    "🔍 유사 영화 찾기",
-                    "📊 추천 통계",
-                    "ℹ️ 시스템 정보"
-                ])
-                
+                tab1, tab2, tab3, tab4, tab5 = st.tabs(
+                    ["🎬 영화 평점", "🎯 개인화 추천", "🔍 유사 영화 찾기", "📊 추천 통계", "ℹ️ 시스템 정보"]
+                )
+
                 with tab1:
                     show_firebase_rating_main_page()
-                
+
                 with tab2:
                     show_firebase_recommendation_ui()
-                
+
                 with tab3:
                     show_similar_movies_ui()
-                
+
                 with tab4:
                     st.subheader("📊 추천 시스템 통계")
-                    
+
                     # 추천 시스템 상태
                     try:
                         from firebase_recommender import FirebaseRecommender
+
                         recommender = FirebaseRecommender()
-                        
+
                         col1, col2 = st.columns(2)
-                        
+
                         with col1:
                             st.markdown("### 🤖 모델 상태")
                             if recommender.svd_model:
                                 st.success("✅ SVD 모델 로드됨")
                             else:
                                 st.warning("⚠️ SVD 모델 없음")
-                            
+
                             if recommender.item_based_model:
                                 st.success("✅ Item-Based 모델 로드됨")
                             else:
                                 st.warning("⚠️ Item-Based 모델 없음")
-                        
+
                         with col2:
                             st.markdown("### 🔥 Firebase 상태")
                             st.success("✅ Firebase 연결 정상")
                             st.success("✅ Firestore 데이터베이스 정상")
                             st.success("✅ 사용자 인증 정상")
-                        
+
                         # 사용자 추천 통계
-                        user_stats = recommender.get_user_recommendation_stats(user['uid'])
-                        
+                        user_stats = recommender.get_user_recommendation_stats(user["uid"])
+
                         if user_stats:
                             st.markdown("### 📈 내 추천 통계")
-                            
+
                             col1, col2, col3 = st.columns(3)
-                            
+
                             with col1:
                                 st.metric("총 평점 수", f"{user_stats.get('total_ratings', 0)}개")
                                 st.metric("평균 평점", f"{user_stats.get('avg_rating', 0):.1f}/5.0")
-                            
+
                             with col2:
-                                preferred_genres = user_stats.get('preferred_genres', [])
+                                preferred_genres = user_stats.get("preferred_genres", [])
                                 if preferred_genres:
                                     st.write("**선호 장르:**")
                                     for genre in preferred_genres[:3]:
                                         st.write(f"• {genre}")
                                 else:
                                     st.write("**선호 장르:** 분석 중...")
-                            
+
                             with col3:
-                                rating_trend = user_stats.get('rating_trend', {})
+                                rating_trend = user_stats.get("rating_trend", {})
                                 if rating_trend:
                                     st.write(f"**최근 평균:** {rating_trend.get('recent_avg', 0):.1f}/5.0")
                                     st.write(f"**트렌드:** {rating_trend.get('trend', 'stable')}")
-                    
+
                     except Exception as e:
                         st.error(f"통계 조회 중 오류가 발생했습니다: {e}")
                         logger.error(f"통계 조회 실패: {e}")
-                
+
                 with tab5:
                     st.subheader("🔥 Firebase 시스템 정보")
-                    
+
                     col1, col2 = st.columns(2)
-                    
+
                     with col1:
                         st.markdown("""
                         **Firebase 서비스:**
@@ -312,7 +336,7 @@ def main():
                         - 📊 Analytics (분석)
                         - ⚡ Real-time (실시간)
                         """)
-                    
+
                     with col2:
                         st.markdown("""
                         **데이터 구조:**
@@ -321,10 +345,10 @@ def main():
                         - `movie_metadata/` - 영화 정보
                         - `user_sessions/` - 세션 관리
                         """)
-                    
+
                     # 시스템 아키텍처
                     st.markdown("### 🏗️ 시스템 아키텍처")
-                    
+
                     st.markdown("""
                     ```
                     ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -339,23 +363,23 @@ def main():
                     │   Management    │    │   Sync          │    │   Engine        │
                     └─────────────────┘    └─────────────────┘    └─────────────────┘
                     """)
-                    
+
                     # 성능 지표
                     st.markdown("### 📊 성능 지표")
-                    
+
                     col1, col2, col3 = st.columns(3)
-                    
+
                     with col1:
                         st.metric("응답 시간", "< 100ms", "실시간")
                     with col2:
                         st.metric("확장성", "수백만 사용자", "Firebase")
                     with col3:
                         st.metric("가용성", "99.9%", "Google Cloud")
-        
+
         except Exception as e:
             st.error(f"시스템 오류: {e}")
             logger.error(f"시스템 오류: {e}")
-    
+
     else:
         st.error("❌ Firebase 설정이 필요합니다.")
         st.info("""
@@ -368,7 +392,7 @@ def main():
         5. **서비스 계정 키** 다운로드
         6. 위의 사이드바에서 키 파일 업로드
         """)
-        
+
         # Firebase 설정 가이드
         with st.expander("📖 상세 설정 가이드"):
             st.markdown("""

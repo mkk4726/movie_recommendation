@@ -1,9 +1,10 @@
 """
 사이드바 UI 렌더링 모듈
 """
-import streamlit as st
 
 from modules.services import load_recommender_models
+
+import streamlit as st
 
 
 def render_app_sidebar(
@@ -56,8 +57,8 @@ def render_app_sidebar(
         f"""
     - 전체 영화 수: **{len(df_movies):,}개**
     - 전체 평점 수: **{len(df_ratings):,}개**
-    - 사용자 수: **{df_ratings['user_id'].nunique():,}명**
-    - 평균 평점: **{df_ratings['rating'].mean():.2f}/5.0**
+    - 사용자 수: **{df_ratings["user_id"].nunique():,}명**
+    - 평균 평점: **{df_ratings["rating"].mean():.2f}/5.0**
     """
     )
 

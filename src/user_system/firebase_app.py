@@ -1,17 +1,19 @@
 """
 Firebase 기반 영화 추천 시스템 메인 앱
 """
-import streamlit as st
+
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import streamlit as st
 
 # 프로젝트 루트를 path에 추가
 project_root = Path(__file__).parent.parent.resolve()
 sys.path.append(str(project_root))
 
-from firebase_config import init_firebase, setup_firebase_config
-from firebase_auth import show_firebase_auth_ui, require_firebase_auth
+from firebase_auth import require_firebase_auth, show_firebase_auth_ui
+from firebase_config import setup_firebase_config
 from firebase_firestore import show_firebase_rating_main_page
 
 # Logger 설정
@@ -20,14 +22,12 @@ logger = logging.getLogger(__name__)
 
 # 페이지 설정
 st.set_page_config(
-    page_title="Firebase 영화 추천 시스템",
-    page_icon="🔥",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Firebase 영화 추천 시스템", page_icon="🔥", layout="wide", initial_sidebar_state="expanded"
 )
 
 # 커스텀 CSS
-st.markdown("""
+st.markdown(
+    """
 <style>
     .main-header {
         font-size: 3rem;
@@ -61,40 +61,42 @@ st.markdown("""
         background-color: #E55A2B;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 def main():
     # 헤더
     st.markdown('<h1 class="main-header">🔥 Firebase 영화 추천 시스템</h1>', unsafe_allow_html=True)
-    
+
     # 사이드바
     st.sidebar.title("⚙️ Firebase 설정")
     st.sidebar.markdown("---")
-    
+
     # Firebase 설정
     if setup_firebase_config():
         st.sidebar.success("✅ Firebase 연결 성공!")
-        
+
         # 인증 UI
         st.sidebar.markdown("---")
         show_firebase_auth_ui()
-        
+
         # 메인 컨텐츠
         st.markdown("---")
-        
+
         # 사용자 인증 확인
         try:
             user = require_firebase_auth()
             if user:
                 st.success(f"환영합니다, {user.get('display_name', 'User')}님!")
-                
+
                 # 메인 기능 탭
                 tab1, tab2, tab3 = st.tabs(["🎬 영화 평점", "📊 추천 시스템", "ℹ️ 시스템 정보"])
-                
+
                 with tab1:
                     show_firebase_rating_main_page()
-                
+
                 with tab2:
                     st.subheader("🎯 개인화 추천 시스템")
                     st.info("""
@@ -107,12 +109,12 @@ def main():
                     
                     추천 알고리즘은 기존 SVD 모델과 통합될 예정입니다.
                     """)
-                
+
                 with tab3:
                     st.subheader("🔥 Firebase 시스템 정보")
-                    
+
                     col1, col2 = st.columns(2)
-                    
+
                     with col1:
                         st.markdown("""
                         **Firebase 서비스:**
@@ -121,7 +123,7 @@ def main():
                         - 🔒 Security Rules (보안)
                         - 📊 Analytics (분석)
                         """)
-                    
+
                     with col2:
                         st.markdown("""
                         **데이터 구조:**
@@ -129,17 +131,17 @@ def main():
                         - `user_ratings/` - 사용자 평점
                         - `movie_metadata/` - 영화 정보
                         """)
-                    
+
                     # Firebase 상태 표시
                     st.markdown("### 📊 시스템 상태")
                     st.success("✅ Firebase 연결 정상")
                     st.success("✅ Firestore 데이터베이스 정상")
                     st.success("✅ 사용자 인증 정상")
-        
+
         except Exception as e:
             st.error(f"시스템 오류: {e}")
             logger.error(f"시스템 오류: {e}")
-    
+
     else:
         st.error("❌ Firebase 설정이 필요합니다.")
         st.info("""
@@ -152,7 +154,7 @@ def main():
         5. **서비스 계정 키** 다운로드
         6. 위의 사이드바에서 키 파일 업로드
         """)
-        
+
         # Firebase 설정 가이드
         with st.expander("📖 상세 설정 가이드"):
             st.markdown("""
