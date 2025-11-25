@@ -1,27 +1,27 @@
 """
-추천 평가를 위한 데이터 모델
+Data models for recommendation evaluation
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class MovieRecommendation(BaseModel):
-    """영화 추천 아이템"""
+    """Movie recommendation item"""
 
-    movie_id: str = Field(..., description="영화 ID")
-    title: str = Field(..., description="영화 제목")
-    year: Optional[int] = Field(default=None, description="개봉 연도")
-    genres: Optional[List[str]] = Field(default=None, description="장르")
-    description: Optional[str] = Field(default=None, description="영화 설명")
-    score: Optional[float] = Field(default=None, description="추천 점수")
-    rank: Optional[int] = Field(default=None, description="추천 순위")
+    movie_id: str = Field(..., description="Movie ID")
+    title: str = Field(..., description="Movie title")
+    year: Optional[int] = Field(default=None, description="Release year")
+    genres: Optional[List[str]] = Field(default=None, description="Genres")
+    description: Optional[str] = Field(default=None, description="Movie description")
+    score: Optional[float] = Field(default=None, description="Recommendation score")
+    rank: Optional[int] = Field(default=None, description="Recommendation rank")
 
     def to_display_text(self, include_description: bool = True) -> str:
-        """디스플레이용 텍스트 생성"""
-        text = f"{self.title}"
+        """Create display text"""
+        text = f"{self.title} [id={self.movie_id}]"
 
         if self.year:
             text += f" ({self.year})"
@@ -37,15 +37,15 @@ class MovieRecommendation(BaseModel):
 
 
 class RecommendationList(BaseModel):
-    """추천 리스트"""
+    """Recommendation list"""
 
-    list_id: str = Field(..., description="리스트 ID (A 또는 B)")
-    system_name: str = Field(..., description="추천 시스템 이름")
-    recommendations: List[MovieRecommendation] = Field(..., description="추천 영화 리스트")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="추가 메타데이터")
+    list_id: str = Field(..., description="List ID (A or B)")
+    system_name: str = Field(..., description="Recommendation system name")
+    recommendations: List[MovieRecommendation] = Field(..., description="Recommended movies")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
 
     def to_display_text(self, include_descriptions: bool = True) -> str:
-        """디스플레이용 텍스트 생성"""
+        """Create display text"""
         text = f"List {self.list_id} ({self.system_name}):\n"
 
         for i, rec in enumerate(self.recommendations, 1):
@@ -55,33 +55,25 @@ class RecommendationList(BaseModel):
 
 
 class EvaluationResult(BaseModel):
-    """LLM 평가 결과"""
+    """LLM evaluation result"""
 
-    preferred_list: Literal["A", "B", "none"] = Field(..., description="선호하는 리스트")
-    reasoning: str = Field(..., description="선호 이유")
-    click_probability_A: float = Field(..., ge=0.0, le=1.0, description="List A 클릭 확률")
-    click_probability_B: float = Field(..., ge=0.0, le=1.0, description="List B 클릭 확률")
-    relevance_score_A: Optional[float] = Field(default=None, ge=0, le=10, description="List A 관련성 점수")
-    relevance_score_B: Optional[float] = Field(default=None, ge=0, le=10, description="List B 관련성 점수")
-    timestamp: datetime = Field(default_factory=datetime.now, description="평가 시각")
-
-    @field_validator("click_probability_A", "click_probability_B")
-    @classmethod
-    def validate_probability(cls, v: float) -> float:
-        """확률 값 검증"""
-        if not 0.0 <= v <= 1.0:
-            raise ValueError("Probability must be between 0 and 1")
-        return v
+    preferred_list: Literal["A", "B", "none"] = Field(..., description="Preferred list")
+    reasoning: str = Field(..., description="Reason for preference")
+    liked_items_A: List[str] = Field(default_factory=list, description="Liked movie titles from List A")
+    liked_items_B: List[str] = Field(default_factory=list, description="Liked movie titles from List B")
+    clicked_item_ids_A: List[str] = Field(default_factory=list, description="Selected movie IDs from List A")
+    clicked_item_ids_B: List[str] = Field(default_factory=list, description="Selected movie IDs from List B")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Evaluation timestamp")
 
 
 class UserContext(BaseModel):
-    """사용자 컨텍스트 (평가 시 참고할 정보)"""
+    """User context (information to consider during evaluation)"""
 
-    user_description: str = Field(..., description="사용자 설명 (선호 장르, 분위기 등)")
-    additional_context: Optional[Dict[str, Any]] = Field(default=None, description="추가 컨텍스트")
+    user_description: str = Field(..., description="User description (preferred genres, moods, etc.)")
+    additional_context: Optional[Dict[str, Any]] = Field(default=None, description="Additional context")
 
     def to_prompt_text(self) -> str:
-        """프롬프트에 사용할 텍스트 생성"""
+        """Create text for prompt"""
         text = f"User: {self.user_description}"
         if self.additional_context:
             text += f"\nAdditional Context: {self.additional_context}"

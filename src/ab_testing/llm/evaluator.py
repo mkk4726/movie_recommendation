@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import yaml
 
@@ -104,10 +104,12 @@ class LLMEvaluator:
             evaluation = self._parse_response(response)
 
             logger.info(
-                f"✅ 평가 완료: "
-                f"선호={evaluation.preferred_list}, "
-                f"CTR_A={evaluation.click_probability_A:.3f}, "
-                f"CTR_B={evaluation.click_probability_B:.3f}"
+                "✅ 평가 완료: 선호=%s, liked_A=%d, liked_B=%d, clicked_ids_A=%d, clicked_ids_B=%d",
+                evaluation.preferred_list,
+                len(evaluation.liked_items_A),
+                len(evaluation.liked_items_B),
+                len(evaluation.clicked_item_ids_A),
+                len(evaluation.clicked_item_ids_B),
             )
 
             return evaluation
@@ -134,32 +136,14 @@ class LLMEvaluator:
 
             reasoning = data.get("reasoning", "No reasoning provided")
 
-            # 확률 값 검증 (0~1 범위)
-            click_prob_a = float(data.get("click_probability_A", 0.5))
-            click_prob_a = max(0.0, min(1.0, click_prob_a))
-
-            click_prob_b = float(data.get("click_probability_B", 0.5))
-            click_prob_b = max(0.0, min(1.0, click_prob_b))
-
-            # 관련성 점수 (0~10 범위)
-            relevance_a = data.get("relevance_score_A")
-            if relevance_a is not None:
-                relevance_a = float(relevance_a)
-                relevance_a = max(0.0, min(10.0, relevance_a))
-
-            relevance_b = data.get("relevance_score_B")
-            if relevance_b is not None:
-                relevance_b = float(relevance_b)
-                relevance_b = max(0.0, min(10.0, relevance_b))
-
             # EvaluationResult 생성
             evaluation = EvaluationResult(
                 preferred_list=preferred_list,
                 reasoning=reasoning,
-                click_probability_A=click_prob_a,
-                click_probability_B=click_prob_b,
-                relevance_score_A=relevance_a,
-                relevance_score_B=relevance_b,
+                liked_items_A=self._normalize_str_list(data.get("liked_items_A")),
+                liked_items_B=self._normalize_str_list(data.get("liked_items_B")),
+                clicked_item_ids_A=self._normalize_str_list(data.get("clicked_item_ids_A")),
+                clicked_item_ids_B=self._normalize_str_list(data.get("clicked_item_ids_B")),
             )
 
             return evaluation
@@ -174,8 +158,19 @@ class LLMEvaluator:
         return EvaluationResult(
             preferred_list="none",
             reasoning="Evaluation failed - using fallback neutral response",
-            click_probability_A=0.5,
-            click_probability_B=0.5,
-            relevance_score_A=5.0,
-            relevance_score_B=5.0,
+            liked_items_A=[],
+            liked_items_B=[],
+            clicked_item_ids_A=[],
+            clicked_item_ids_B=[],
         )
+
+    @staticmethod
+    def _normalize_str_list(value) -> List[str]:
+        """입력 값을 문자열 리스트로 정규화"""
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(v) for v in value if v is not None]
+        return [str(value)]

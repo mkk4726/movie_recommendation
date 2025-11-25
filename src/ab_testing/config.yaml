@@ -2,8 +2,8 @@
 
 # LLM 설정
 llm:
-  model_name: "Qwen/Qwen2.5-3B-Instruct"
-  max_new_tokens: 1024
+  model_name: "Qwen/Qwen3-8B"
+  max_new_tokens: 2048
   temperature: 0.7
   top_p: 0.9
   do_sample: true

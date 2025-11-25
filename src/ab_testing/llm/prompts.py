@@ -1,7 +1,7 @@
 """
-LLM 평가 프롬프트 템플릿 (Pydantic 기반)
+LLM evaluation prompt templates (Pydantic based)
 
-Ragas 프레임워크와 유사한 구조화된 프롬프트 시스템
+Structured prompt system similar to the Ragas framework
 """
 
 from typing import Dict, List, Optional
@@ -10,14 +10,16 @@ from pydantic import BaseModel, Field
 
 
 class PromptTemplate(BaseModel):
-    """기본 프롬프트 템플릿"""
+    """Base prompt template"""
 
-    instruction: str = Field(..., description="프롬프트 지시사항")
-    input_keys: List[str] = Field(default_factory=list, description="필요한 입력 키들")
-    output_format: Optional[str] = Field(None, description="출력 형식 설명")
+    instruction: str = Field(..., description="Prompt instructions")
+    input_keys: List[str] = Field(
+        default_factory=list, description="Required input keys"
+    )
+    output_format: Optional[str] = Field(None, description="Output format description")
 
     def format(self, **kwargs) -> str:
-        """프롬프트를 포맷팅"""
+        """Format the prompt"""
         missing_keys = [key for key in self.input_keys if key not in kwargs]
         if missing_keys:
             raise ValueError(f"Missing required keys: {missing_keys}")
@@ -26,14 +28,16 @@ class PromptTemplate(BaseModel):
 
 
 class SystemPrompt(BaseModel):
-    """시스템 프롬프트"""
+    """System prompt"""
 
-    role: str = Field(..., description="LLM의 역할")
-    expertise: List[str] = Field(default_factory=list, description="전문 분야")
-    guidelines: List[str] = Field(default_factory=list, description="따라야 할 가이드라인")
+    role: str = Field(..., description="Role of the LLM")
+    expertise: List[str] = Field(default_factory=list, description="Areas of expertise")
+    guidelines: List[str] = Field(
+        default_factory=list, description="Guidelines to follow"
+    )
 
     def to_string(self) -> str:
-        """시스템 프롬프트를 문자열로 변환"""
+        """Convert system prompt to string"""
         prompt = f"You are {self.role}."
 
         if self.expertise:
@@ -50,37 +54,43 @@ class SystemPrompt(BaseModel):
 
 
 class UserProfilePrompt(BaseModel):
-    """사용자 프로필 프롬프트 컴포넌트"""
+    """User profile prompt component"""
 
     template: str = Field(
         default="You are evaluating movie recommendations for a user with the following profile:\n\n{profile_text}",
-        description="프로필 템플릿",
+        description="Profile template",
     )
 
     def format(self, profile_text: str) -> str:
-        """프로필 텍스트 포맷팅"""
+        """Format profile text"""
         return self.template.format(profile_text=profile_text)
 
 
 class RecommendationListPrompt(BaseModel):
-    """추천 리스트 프롬프트 컴포넌트"""
+    """Recommendation list prompt component"""
 
     template: str = Field(
-        default="Below are two recommendation lists from different systems:\n\n{list_a_text}\n\n{list_b_text}",
-        description="리스트 템플릿",
+        default=(
+            "Below are two recommendation lists from different systems. "
+            "Each movie line includes its ID in the form '[id=<movie_id>]':\n\n{list_a_text}\n\n{list_b_text}"
+        ),
+        description="List template",
     )
 
     def format(self, list_a_text: str, list_b_text: str) -> str:
-        """추천 리스트 텍스트 포맷팅"""
+        """Format recommendation list text"""
         return self.template.format(list_a_text=list_a_text, list_b_text=list_b_text)
 
 
 class TaskInstructionPrompt(BaseModel):
-    """작업 지시 프롬프트 컴포넌트"""
+    """Task instruction prompt component"""
 
     task_description: str = Field(
-        default="**Task**: Evaluate these two lists from the perspective of the user profile.",
-        description="작업 설명",
+        default=(
+            "**Task**: Evaluate these two lists from the perspective of the user profile. "
+            "State which list you prefer and why. For each list, pick the movies you would actually want to watch and provide their IDs exactly as shown."
+        ),
+        description="Task description",
     )
     considerations: List[str] = Field(
         default_factory=lambda: [
@@ -88,12 +98,15 @@ class TaskInstructionPrompt(BaseModel):
             "How well each list matches the user's mood preferences",
             "The diversity and quality of recommendations",
             "The overall appeal of the movies",
+            "Select movies only from the provided lists; avoid inventing titles",
+            "Select movie IDs only from the provided lists; do not invent IDs",
+            "If no movies are appealing in a list, return an empty selection (and empty IDs) for that list",
         ],
-        description="고려사항",
+        description="Considerations",
     )
 
     def to_string(self) -> str:
-        """작업 지시를 문자열로 변환"""
+        """Convert task instructions to string"""
         prompt = self.task_description
 
         if self.considerations:
@@ -105,30 +118,48 @@ class TaskInstructionPrompt(BaseModel):
 
 
 class OutputFormatPrompt(BaseModel):
-    """출력 형식 프롬프트 컴포넌트"""
+    """Output format prompt component"""
 
-    format_type: str = Field(default="json", description="출력 형식 타입")
+    format_type: str = Field(default="json", description="Output format type")
     schema: Dict[str, str] = Field(
         default_factory=lambda: {
             "preferred_list": '"A" or "B" or "none"',
             "reasoning": '"Detailed explanation of why you prefer this list or why they are similar"',
-            "click_probability_A": "0.0 to 1.0 (how likely you would click on any movie in List A)",
-            "click_probability_B": "0.0 to 1.0 (how likely you would click on any movie in List B)",
-            "relevance_score_A": "0 to 10 (how relevant is List A to the user profile)",
-            "relevance_score_B": "0 to 10 (how relevant is List B to the user profile)",
+            "liked_items_A": '["Exact movie title from List A", ...] (empty list if none)',
+            "liked_items_B": '["Exact movie title from List B", ...] (empty list if none)',
+            "clicked_item_ids_A": '["movie_id_from_List_A", ...] (exact IDs from the list, empty if none)',
+            "clicked_item_ids_B": '["movie_id_from_List_B", ...] (exact IDs from the list, empty if none)',
         },
-        description="출력 스키마",
+        description="Output schema",
     )
-    strict_mode: bool = Field(default=True, description="엄격 모드 (JSON만 출력)")
+    strict_mode: bool = Field(
+        default=True, description="Strict mode (JSON output only)"
+    )
 
     def to_string(self) -> str:
-        """출력 형식을 문자열로 변환"""
-        prompt = f"Please respond in the following {self.format_type.upper()} format:\n{{"
+        """Convert output format to string"""
+        prompt = "Return one single-line JSON object with exactly these fields (no newlines inside the JSON):\n{"
 
         for key, description in self.schema.items():
             prompt += f'\n    "{key}": {description},'
 
         prompt = prompt.rstrip(",") + "\n}"
+
+        prompt += (
+            "\n\nUse exact movie titles from each list for liked_items_A and liked_items_B. "
+            "For clicked_item_ids_A and clicked_item_ids_B, copy the movie IDs exactly as shown in the list lines (the value inside [id=<...>]). "
+            "If no movies are appealing in a list, return empty arrays for that list."
+        )
+
+        prompt += (
+            "\n\nFormatting rules:"
+            "\n- Respond as ONE LINE. The first character must be '{' and the last must be '}'."
+            "\n- Do NOT include any text before or after the JSON (no explanations, apologies, or code fences)."
+            "\n- Use double quotes for all keys and string values; no trailing commas."
+            '\n- If unsure about a field, choose the safest valid value (e.g., preferred_list="none", liked_items=[], clicked_item_ids=[]).'
+            "\n- Final answer (replace with your values, keep it one line): "
+            '{"preferred_list": "A|B|none", "reasoning": "text", "liked_items_A": [], "liked_items_B": [], "clicked_item_ids_A": [], "clicked_item_ids_B": []}'
+        )
 
         if self.strict_mode:
             prompt += f"\n\nRespond with ONLY the {self.format_type.upper()} object, no additional text."
@@ -137,7 +168,7 @@ class OutputFormatPrompt(BaseModel):
 
 
 class EvaluationPrompt(BaseModel):
-    """영화 추천 평가 프롬프트 (전체 구성)"""
+    """Movie recommendation evaluation prompt (full structure)"""
 
     system_prompt: SystemPrompt = Field(
         default_factory=lambda: SystemPrompt(
@@ -151,29 +182,35 @@ class EvaluationPrompt(BaseModel):
                 "Be realistic and consider factors like relevance, diversity, and appeal",
                 "Think from the user's perspective",
                 "Provide honest and objective evaluations",
+                "Only select movies that appear in the provided lists; do not invent titles",
+                "Only use movie IDs that appear in the provided lists; do not invent IDs",
+                "Movie IDs are shown in the list lines as [id=<movie_id>]—copy them exactly",
+                "If a list has no appealing movies, explicitly return an empty selection (and empty IDs) for that list",
+                "Output strictly as JSON: single line, first character '{', last character '}', no code fences or extra text",
             ],
         ),
-        description="시스템 프롬프트",
+        description="System prompt",
     )
 
     user_profile: UserProfilePrompt = Field(
-        default_factory=UserProfilePrompt, description="사용자 프로필 컴포넌트"
+        default_factory=UserProfilePrompt, description="User profile component"
     )
 
     recommendation_list: RecommendationListPrompt = Field(
-        default_factory=RecommendationListPrompt, description="추천 리스트 컴포넌트"
+        default_factory=RecommendationListPrompt,
+        description="Recommendation list component",
     )
 
     task_instruction: TaskInstructionPrompt = Field(
-        default_factory=TaskInstructionPrompt, description="작업 지시 컴포넌트"
+        default_factory=TaskInstructionPrompt, description="Task instruction component"
     )
 
     output_format: OutputFormatPrompt = Field(
-        default_factory=OutputFormatPrompt, description="출력 형식 컴포넌트"
+        default_factory=OutputFormatPrompt, description="Output format component"
     )
 
     def get_system_prompt(self) -> str:
-        """시스템 프롬프트 반환"""
+        """Return system prompt"""
         return self.system_prompt.to_string()
 
     def create_user_prompt(
@@ -183,19 +220,21 @@ class EvaluationPrompt(BaseModel):
         list_b_text: str,
     ) -> str:
         """
-        사용자 프롬프트 생성
+        Create user prompt
 
         Args:
-            profile_text: 사용자 프로필 텍스트
-            list_a_text: 리스트 A 텍스트
-            list_b_text: 리스트 B 텍스트
+            profile_text: User profile text
+            list_a_text: List A text
+            list_b_text: List B text
 
         Returns:
-            생성된 전체 프롬프트
+            Generated full prompt
         """
         sections = [
             self.user_profile.format(profile_text=profile_text),
-            self.recommendation_list.format(list_a_text=list_a_text, list_b_text=list_b_text),
+            self.recommendation_list.format(
+                list_a_text=list_a_text, list_b_text=list_b_text
+            ),
             self.task_instruction.to_string(),
             self.output_format.to_string(),
         ]
@@ -204,7 +243,7 @@ class EvaluationPrompt(BaseModel):
 
     @classmethod
     def create_default(cls) -> "EvaluationPrompt":
-        """기본 평가 프롬프트 생성"""
+        """Create default evaluation prompt"""
         return cls()
 
     @classmethod
@@ -215,15 +254,15 @@ class EvaluationPrompt(BaseModel):
         output_schema: Optional[Dict[str, str]] = None,
     ) -> "EvaluationPrompt":
         """
-        커스텀 평가 프롬프트 생성
+        Create custom evaluation prompt
 
         Args:
-            role: LLM의 역할
-            considerations: 고려사항 리스트
-            output_schema: 출력 스키마
+            role: Role of the LLM
+            considerations: List of considerations
+            output_schema: Output schema
 
         Returns:
-            커스텀 평가 프롬프트
+            Custom evaluation prompt
         """
         kwargs = {}
 
@@ -238,7 +277,9 @@ class EvaluationPrompt(BaseModel):
             )
 
         if considerations:
-            kwargs["task_instruction"] = TaskInstructionPrompt(considerations=considerations)
+            kwargs["task_instruction"] = TaskInstructionPrompt(
+                considerations=considerations
+            )
 
         if output_schema:
             kwargs["output_format"] = OutputFormatPrompt(schema=output_schema)
@@ -246,7 +287,7 @@ class EvaluationPrompt(BaseModel):
         return cls(**kwargs)
 
 
-# 하위 호환성을 위한 정적 메서드
+# Static helper for backward compatibility
 def create_evaluation_prompt(
     profile_text: str,
     list_a_text: str,
@@ -254,16 +295,16 @@ def create_evaluation_prompt(
     include_descriptions: bool = True,
 ) -> str:
     """
-    평가 프롬프트 생성 (하위 호환성)
+    Create evaluation prompt (backward compatibility)
 
     Args:
-        profile_text: 사용자 프로필 텍스트
-        list_a_text: 리스트 A 텍스트
-        list_b_text: 리스트 B 텍스트
-        include_descriptions: 영화 설명 포함 여부 (현재 미사용)
+        profile_text: User profile text
+        list_a_text: List A text
+        list_b_text: List B text
+        include_descriptions: Whether to include movie descriptions (currently unused)
 
     Returns:
-        생성된 프롬프트
+        Generated prompt
     """
     prompt = EvaluationPrompt.create_default()
     return prompt.create_user_prompt(profile_text, list_a_text, list_b_text)
