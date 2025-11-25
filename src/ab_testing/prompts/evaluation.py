@@ -8,6 +8,8 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from .common import JSON_OUTPUT_GUIDELINE, SystemPrompt, UserProfilePrompt
+
 
 class PromptTemplate(BaseModel):
     """Base prompt template"""
@@ -25,45 +27,6 @@ class PromptTemplate(BaseModel):
             raise ValueError(f"Missing required keys: {missing_keys}")
 
         return self.instruction.format(**kwargs)
-
-
-class SystemPrompt(BaseModel):
-    """System prompt"""
-
-    role: str = Field(..., description="Role of the LLM")
-    expertise: List[str] = Field(default_factory=list, description="Areas of expertise")
-    guidelines: List[str] = Field(
-        default_factory=list, description="Guidelines to follow"
-    )
-
-    def to_string(self) -> str:
-        """Convert system prompt to string"""
-        prompt = f"You are {self.role}."
-
-        if self.expertise:
-            prompt += "\n\nYour expertise includes:"
-            for exp in self.expertise:
-                prompt += f"\n- {exp}"
-
-        if self.guidelines:
-            prompt += "\n\nGuidelines:"
-            for guideline in self.guidelines:
-                prompt += f"\n- {guideline}"
-
-        return prompt
-
-
-class UserProfilePrompt(BaseModel):
-    """User profile prompt component"""
-
-    template: str = Field(
-        default="You are evaluating movie recommendations for a user with the following profile:\n\n{profile_text}",
-        description="Profile template",
-    )
-
-    def format(self, profile_text: str) -> str:
-        """Format profile text"""
-        return self.template.format(profile_text=profile_text)
 
 
 class RecommendationListPrompt(BaseModel):
@@ -186,14 +149,17 @@ class EvaluationPrompt(BaseModel):
                 "Only use movie IDs that appear in the provided lists; do not invent IDs",
                 "Movie IDs are shown in the list lines as [id=<movie_id>]—copy them exactly",
                 "If a list has no appealing movies, explicitly return an empty selection (and empty IDs) for that list",
-                "Output strictly as JSON: single line, first character '{', last character '}', no code fences or extra text",
+                JSON_OUTPUT_GUIDELINE,
             ],
         ),
         description="System prompt",
     )
 
     user_profile: UserProfilePrompt = Field(
-        default_factory=UserProfilePrompt, description="User profile component"
+        default_factory=lambda: UserProfilePrompt(
+            template="You are evaluating movie recommendations for a user with the following profile:\n\n{profile_text}"
+        ),
+        description="User profile component",
     )
 
     recommendation_list: RecommendationListPrompt = Field(

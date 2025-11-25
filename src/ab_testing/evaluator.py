@@ -12,7 +12,7 @@ import yaml
 
 from llm import Qwen, LLMConfig
 
-from ..models import EvaluationResult, RecommendationList, UserContext
+from .models import EvaluationResult, RecommendationList, UserContext
 from .prompts import EvaluationPrompt
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class LLMEvaluator:
         """
         # 설정 로드
         if config_path is None:
-            config_path = Path(__file__).parent.parent / "config.yaml"
+            config_path = Path(__file__).parent / "config.yaml"
 
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
@@ -86,8 +86,12 @@ class LLMEvaluator:
 
         user_prompt = self.prompt_template.create_user_prompt(
             profile_text=user_context.to_prompt_text(),
-            list_a_text=list_a.to_display_text(include_descriptions=include_descriptions),
-            list_b_text=list_b.to_display_text(include_descriptions=include_descriptions),
+            list_a_text=list_a.to_display_text(
+                include_descriptions=include_descriptions
+            ),
+            list_b_text=list_b.to_display_text(
+                include_descriptions=include_descriptions
+            ),
         )
 
         # LLM 호출
@@ -142,8 +146,12 @@ class LLMEvaluator:
                 reasoning=reasoning,
                 liked_items_A=self._normalize_str_list(data.get("liked_items_A")),
                 liked_items_B=self._normalize_str_list(data.get("liked_items_B")),
-                clicked_item_ids_A=self._normalize_str_list(data.get("clicked_item_ids_A")),
-                clicked_item_ids_B=self._normalize_str_list(data.get("clicked_item_ids_B")),
+                clicked_item_ids_A=self._normalize_str_list(
+                    data.get("clicked_item_ids_A")
+                ),
+                clicked_item_ids_B=self._normalize_str_list(
+                    data.get("clicked_item_ids_B")
+                ),
             )
 
             return evaluation
@@ -174,3 +182,140 @@ class LLMEvaluator:
         if isinstance(value, list):
             return [str(v) for v in value if v is not None]
         return [str(value)]
+
+
+if __name__ == "__main__":
+    """
+    LLMEvaluator 사용 예시
+    """
+    import logging
+
+    # 로깅 설정
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    from .models import MovieRecommendation
+
+    # 사용자 컨텍스트 생성
+    user_context = UserContext(
+        user_description=(
+            "A sci-fi enthusiast who loves mind-bending plots, "
+            "visual effects, and thought-provoking narratives. Age 25-35."
+        )
+    )
+
+    # 추천 리스트 A 생성
+    list_a = RecommendationList(
+        list_id="A",
+        system_name="System A",
+        recommendations=[
+            MovieRecommendation(
+                movie_id="1",
+                title="Interstellar",
+                year=2014,
+                genres=["sci-fi", "drama"],
+                description=(
+                    "A team of explorers travel through a wormhole in space "
+                    "in an attempt to ensure humanity's survival."
+                ),
+            ),
+            MovieRecommendation(
+                movie_id="2",
+                title="Inception",
+                year=2010,
+                genres=["sci-fi", "action"],
+                description=(
+                    "A thief who steals corporate secrets through "
+                    "dream-sharing technology is given the task of planting an idea."
+                ),
+            ),
+            MovieRecommendation(
+                movie_id="3",
+                title="The Matrix",
+                year=1999,
+                genres=["sci-fi", "action"],
+                description=(
+                    "A computer hacker learns about the true nature of his reality "
+                    "and his role in the war against its controllers."
+                ),
+            ),
+        ],
+    )
+
+    # 추천 리스트 B 생성
+    list_b = RecommendationList(
+        list_id="B",
+        system_name="System B",
+        recommendations=[
+            MovieRecommendation(
+                movie_id="4",
+                title="Arrival",
+                year=2016,
+                genres=["sci-fi", "drama"],
+                description=(
+                    "A linguist works with the military to communicate with "
+                    "alien lifeforms after mysterious spacecraft appear around the world."
+                ),
+            ),
+            MovieRecommendation(
+                movie_id="5",
+                title="Ex Machina",
+                year=2014,
+                genres=["sci-fi", "thriller"],
+                description=(
+                    "A young programmer is selected to participate in a "
+                    "ground-breaking experiment in synthetic intelligence."
+                ),
+            ),
+            MovieRecommendation(
+                movie_id="6",
+                title="Blade Runner 2049",
+                year=2017,
+                genres=["sci-fi", "thriller"],
+                description=(
+                    "A young blade runner's discovery of a long-buried secret "
+                    "leads him to track down former blade runner Rick Deckard."
+                ),
+            ),
+        ],
+    )
+
+    # LLMEvaluator 초기화
+    print("=" * 60)
+    print("🚀 LLMEvaluator 사용 예시")
+    print("=" * 60)
+
+    evaluator = LLMEvaluator()
+
+    # 평가 실행
+    print("\n📊 추천 리스트 평가 중...")
+    evaluation = evaluator.evaluate_lists(
+        user_context=user_context,
+        list_a=list_a,
+        list_b=list_b,
+    )
+
+    # 결과 출력
+    print("\n" + "=" * 60)
+    print("📋 평가 결과")
+    print("=" * 60)
+    print(f"선호 리스트: {evaluation.preferred_list}")
+    print(f"\n이유:")
+    print(f"  {evaluation.reasoning}")
+    print(f"\nList A에서 좋아하는 영화:")
+    for item in evaluation.liked_items_A:
+        print(f"  - {item}")
+    print(f"\nList B에서 좋아하는 영화:")
+    for item in evaluation.liked_items_B:
+        print(f"  - {item}")
+    print(f"\nList A에서 선택한 영화 ID:")
+    for movie_id in evaluation.clicked_item_ids_A:
+        print(f"  - {movie_id}")
+    print(f"\nList B에서 선택한 영화 ID:")
+    for movie_id in evaluation.clicked_item_ids_B:
+        print(f"  - {movie_id}")
+    print(f"\n평가 시간: {evaluation.timestamp}")
+
+    print("\n✅ 예시 실행 완료!")
