@@ -12,22 +12,23 @@ import yaml
 # Ensure project modules are importable
 from modules.core import add_project_paths
 
+# 프로젝트의 루트 디렉토리와 필요한 서브 디렉토리들을 `sys.path`에 추가하여, 어디서든 모듈을 임포트할 수 있도록 합니다.
 add_project_paths()
 
-from modeling.utils.data import (  # noqa: E402
+from data_scraping.common.data_loader import (
+    load_movie_cast as _load_movie_cast,
+)
+from data_scraping.common.data_loader import (
+    load_movie_data as _load_movie_data,
+)
+from data_scraping.common.data_loader import (
+    load_ratings_data as _load_ratings_data,
+)
+from modeling.utils.data import (
     filter_by_min_counts as _filter_by_min_counts,
 )
 from modeling.utils.data import (
     search_movies as _search_movies,
-)
-from src.data_scraping.common.data_loader import (
-    load_movie_cast as _load_movie_cast,
-)
-from src.data_scraping.common.data_loader import (  # noqa: E402
-    load_movie_data as _load_movie_data,
-)
-from src.data_scraping.common.data_loader import (
-    load_ratings_data as _load_ratings_data,
 )
 
 

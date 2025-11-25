@@ -7,26 +7,13 @@ from typing import Optional
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-# Firebase 관련 import (선택적)
-try:
-    from user_system.firebase_config import get_firebase_manager
-    from user_system.firebase_firestore import FirestoreManager
-
-    FIREBASE_AVAILABLE = True
-except ImportError:
-    FIREBASE_AVAILABLE = False
+# 탐색 기능을 위한 import
+from modules.services.data_access import load_all_data
 
 from app.api.utils import get_current_user_from_cookies
-
-# 탐색 기능을 위한 import
-try:
-    from modules.services.data_access import load_all_data
-
-    from cold_start.show_random_movies import get_random_popular_movies
-
-    EXPLORE_AVAILABLE = True
-except ImportError:
-    EXPLORE_AVAILABLE = False
+from cold_start.show_random_movies import get_random_popular_movies
+from user_system.firebase_config import get_firebase_manager
+from user_system.firebase_firestore import FirestoreManager
 
 router = APIRouter()
 
@@ -44,9 +31,6 @@ async def add_rating(
     explored_movie_ids: Optional[str] = Form(None),
 ):
     """평점 추가/업데이트"""
-    if not FIREBASE_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Firebase가 사용 불가능합니다.")
-
     current_user = get_current_user_from_cookies(request)
     if not current_user:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
@@ -93,8 +77,6 @@ async def delete_rating(
     page: Optional[str] = Form("rating_management"),
 ):
     """평점 삭제"""
-    if not FIREBASE_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Firebase가 사용 불가능합니다.")
 
     current_user = get_current_user_from_cookies(request)
     if not current_user:
@@ -132,10 +114,6 @@ async def explore_movies(
     page: Optional[str] = Form("rating_management"),
     rating_method: Optional[str] = Form("explore"),
 ):
-    """랜덤 영화 탐색"""
-    if not EXPLORE_AVAILABLE:
-        raise HTTPException(status_code=503, detail="탐색 기능이 사용 불가능합니다.")
-
     try:
         # 데이터 로드
         df_movies, df_ratings, _ = load_all_data()

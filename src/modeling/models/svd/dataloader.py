@@ -7,9 +7,9 @@ import yaml
 from surprise import Dataset, Reader
 from surprise.trainset import Trainset
 
+from data_scraping.common.data_loader import load_ratings_data
 from modeling.utils.data import filter_by_min_counts
 from modeling.utils.train import optimize_dataframe_for_surprise, split_train_test
-from src.data_scraping.common.data_loader import load_ratings_data
 
 
 def load_train_test_df(

@@ -1,12 +1,10 @@
-import os
 import random
-import sys
 
-project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# 프로젝트의 루트 디렉토리와 필요한 서브 디렉토리들을 `sys.path`에 추가하여, 어디서든 모듈을 임포트할 수 있도록 합니다.
+from modules.core import add_project_paths
 
-from src.data_scraping.common.data_loader import load_ratings_data
+add_project_paths()
+from data_scraping.common.data_loader import load_ratings_data
 
 
 def get_random_popular_movies(df_ratings, df_movies, n_movies=10, exclude_movie_ids=None):
