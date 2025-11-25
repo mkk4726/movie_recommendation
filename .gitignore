@@ -73,8 +73,8 @@ auth_state.json
 firebase-service-account*.json
 service-account*.json
 
-# Poetry
-poetry.lock
+# uv
+.python-version
 
 # Playwright
 .playwright/
@@ -88,6 +88,3 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# modeling
-!modeling/notebooks/*.ipynb
