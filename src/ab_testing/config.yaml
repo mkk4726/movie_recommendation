@@ -1,0 +1,14 @@
+# LLM 기반 추천 평가 설정
+
+# LLM 설정
+llm:
+  model_name: "Qwen/Qwen2.5-3B-Instruct"
+  max_new_tokens: 1024
+  temperature: 0.7
+  top_p: 0.9
+  do_sample: true
+
+# 평가 설정
+evaluation:
+  include_movie_descriptions: true  # 영화 설명 포함 여부
+  output_format: "json"  # json 출력 형식
