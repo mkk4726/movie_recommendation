@@ -14,12 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
+import faiss
 import numpy as np
-
-try:
-    import faiss
-except ImportError:
-    raise ImportError("FAISS is not installed. Install with: pip install faiss-cpu or faiss-gpu")
 
 from .utils.config import load_config
 

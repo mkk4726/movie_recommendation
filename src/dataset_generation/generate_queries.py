@@ -32,7 +32,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from data_scraping.common import load_movie_cast, load_movie_data
 from dataset_generation.llm import LLM
 from dataset_generation.query_generator import QueryGenerator
 from dataset_generation.utils import (
@@ -41,6 +40,7 @@ from dataset_generation.utils import (
     load_queries_from_jsonl,
     parse_row_to_dict,
 )
+from src.data_scraping.common import load_movie_cast, load_movie_data
 
 
 def main():

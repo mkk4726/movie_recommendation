@@ -8,12 +8,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import faiss
 import numpy as np
-
-try:
-    import faiss
-except ImportError:
-    raise ImportError("FAISS is not installed. Please install it with: pip install faiss-cpu")
 
 from .utils.config import get_embeddings_path, get_index_path, load_config
 

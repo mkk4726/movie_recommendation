@@ -109,6 +109,9 @@ line-ending = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [dependency-groups]
 dev = [

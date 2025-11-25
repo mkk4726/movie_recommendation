@@ -7,13 +7,9 @@ import time
 
 import pandas as pd
 
-from data_scraping.common import (
-    get_logger,
-    load_links_data_ml,
-    load_movie_data_ml,
-    load_ratings_data_ml,
-    load_tmdb_data,
-)
+from .logger import get_logger
+from .ml_data_loader import load_links_data_ml, load_movie_data_ml, load_ratings_data_ml
+from .tmdb_loader import load_tmdb_data
 
 
 def load_movie_data() -> pd.DataFrame:

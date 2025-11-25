@@ -28,10 +28,10 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # 프로젝트 모듈 import (sys.path 설정 후)
-from data_scraping.common.data_loader import load_movie_data  # noqa: E402
-from modeling.models.clip.models.jina import JinaClipEncoder  # noqa: E402
-from vector_store.build_index import IndexBuilder  # noqa: E402
-from vector_store.utils.config import load_config  # noqa: E402
+from src.data_scraping.common.data_loader import load_movie_data
+from src.modeling.models.clip.models.jina import JinaClipEncoder
+from src.vector_store.build_index import IndexBuilder
+from src.vector_store.utils.config import load_config
 
 # 로깅 설정
 logging.basicConfig(

@@ -14,20 +14,20 @@ from modules.core import add_project_paths
 
 add_project_paths()
 
-from data_scraping.common.data_loader import (
-    load_movie_cast as _load_movie_cast,
-)
-from data_scraping.common.data_loader import (  # noqa: E402
-    load_movie_data as _load_movie_data,
-)
-from data_scraping.common.data_loader import (
-    load_ratings_data as _load_ratings_data,
-)
 from modeling.utils.data import (  # noqa: E402
     filter_by_min_counts as _filter_by_min_counts,
 )
 from modeling.utils.data import (
     search_movies as _search_movies,
+)
+from src.data_scraping.common.data_loader import (
+    load_movie_cast as _load_movie_cast,
+)
+from src.data_scraping.common.data_loader import (  # noqa: E402
+    load_movie_data as _load_movie_data,
+)
+from src.data_scraping.common.data_loader import (
+    load_ratings_data as _load_ratings_data,
 )
 
 

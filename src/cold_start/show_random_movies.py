@@ -6,7 +6,7 @@ project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from data_scraping.common.data_loader import load_ratings_data
+from src.data_scraping.common.data_loader import load_ratings_data
 
 
 def get_random_popular_movies(df_ratings, df_movies, n_movies=10, exclude_movie_ids=None):
