@@ -90,3 +90,5 @@ htmlcov/
 dmypy.json
 
 .ruff_cache
+
+*.txt

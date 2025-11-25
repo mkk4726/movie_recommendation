@@ -11,7 +11,7 @@ import pandas as pd
 import yaml
 
 from modeling.utils.data import filter_by_min_counts
-from src.data_scraping.common.data_loader import load_ratings_data
+from data_scraping.common.data_loader import load_ratings_data
 
 
 def load_data(refresh: bool = False, data_config_path: Optional[str] = None) -> pd.DataFrame:
