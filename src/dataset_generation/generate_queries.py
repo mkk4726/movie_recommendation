@@ -32,7 +32,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from dataset_generation.llm import LLM
+from llm import Qwen
 from dataset_generation.query_generator import QueryGenerator
 from dataset_generation.utils import (
     append_query_to_jsonl,
@@ -53,7 +53,7 @@ def main():
     # 1. LLM 모델 로드
     logger.info("[1/5] LLM 모델 로드 중...")
     try:
-        llm = LLM()
+        llm = Qwen()
         query_generator = QueryGenerator(llm=llm)
         logger.info("✅ LLM 모델 로드 완료")
     except Exception as e:

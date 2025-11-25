@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from dataset_generation.llm import LLM
+from llm import Qwen
 
 # Logger 설정
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class QueryGenerator:
 
     def __init__(
         self,
-        llm: LLM,
+        llm: Qwen,
         config: Optional[QueryGeneratorConfig] = None,
         yaml_path: Optional[str] = None,
         system_prompt: Optional[str] = None,
@@ -91,7 +91,7 @@ class QueryGenerator:
         QueryGenerator 초기화
 
         Args:
-            llm: 생성된 LLM 인스턴스 (외부에서 주입)
+            llm: 생성된 Qwen 인스턴스 (외부에서 주입)
             config: QueryGeneratorConfig 객체 (None이면 YAML에서 로드)
             yaml_path: YAML 파일 경로 (config가 None일 때 사용)
             system_prompt: 시스템 프롬프트 (None이면 config에서 사용)
@@ -577,7 +577,7 @@ if __name__ == "__main__":
     )
 
     # LLM 초기화 (외부에서 생성)
-    llm = LLM()
+    llm = Qwen()
 
     # QueryGenerator 초기화 (LLM 인스턴스 주입)
     query_generator = QueryGenerator(llm=llm)

@@ -10,7 +10,7 @@ from typing import Optional
 
 import yaml
 
-from dataset_generation.llm import LLM, LLMConfig
+from llm import Qwen, LLMConfig
 
 from ..models import EvaluationResult, RecommendationList, UserContext
 from .prompts import EvaluationPrompt
@@ -24,13 +24,13 @@ class LLMEvaluator:
     def __init__(
         self,
         config_path: Optional[str] = None,
-        llm: Optional[LLM] = None,
+        llm: Optional[Qwen] = None,
         prompt_template: Optional[EvaluationPrompt] = None,
     ):
         """
         Args:
             config_path: 설정 파일 경로
-            llm: 사용할 LLM 인스턴스 (None이면 새로 생성)
+            llm: 사용할 Qwen 인스턴스 (None이면 새로 생성)
             prompt_template: 프롬프트 템플릿 (None이면 기본값 사용)
         """
         # 설정 로드
@@ -58,7 +58,7 @@ class LLMEvaluator:
                 top_p=self.llm_config["top_p"],
                 do_sample=self.llm_config["do_sample"],
             )
-            self.llm = LLM(config=llm_cfg)
+            self.llm = Qwen(config=llm_cfg)
         else:
             self.llm = llm
 

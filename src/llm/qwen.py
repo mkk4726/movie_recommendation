@@ -67,7 +67,7 @@ class LLMConfig:
         return cls(**llm_config)
 
 
-class LLM:
+class Qwen:
     """Qwen 모델 기반 LLM 클래스"""
 
     def __init__(self, config: Optional[LLMConfig] = None, yaml_path: Optional[str] = None):
@@ -200,7 +200,7 @@ class LLM:
 # 사용 예시
 if __name__ == "__main__":
     # LLM 초기화
-    llm = LLM()
+    llm = Qwen()
 
     # 쿼리 생성
     prompt = "파이썬에서 리스트와 튜플의 차이점을 간단히 설명해줘."
