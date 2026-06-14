@@ -19,7 +19,7 @@ else:
     print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 from app.api.lifespan import lifespan
-from app.api.routes import auth, health, home, movies, poster_search, ratings, search, users
+from app.api.routes import activity, auth, health, home, movies, poster_search, ratings, search, users
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -46,10 +46,4 @@ app.include_router(ratings.router)
 app.include_router(search.router)
 app.include_router(poster_search.router)
 app.include_router(home.router)
-
-try:
-    from app.api.routes import activity
-
-    app.include_router(activity.router)
-except ImportError:
-    logger.warning("Activity logging router not available")
+app.include_router(activity.router)

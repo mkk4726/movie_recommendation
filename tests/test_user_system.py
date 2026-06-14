@@ -128,6 +128,36 @@ class TestActivityLogs:
         assert "search" in actions
         assert "view_movie" in actions
 
+    def test_anonymous_search_log(self, user_manager):
+        session_id = user_manager.log_search(
+            user_id=None,
+            query="batman",
+            search_type="natural_language",
+            result_count=3,
+            result_movie_ids=["1", "2", "3"],
+            ip="127.0.0.1",
+        )
+        assert session_id
+
+        conn = _connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT action, details FROM user_activity_logs WHERE details->>'session_id' = %s",
+                    (session_id,),
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row[0] == "search"
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM user_activity_logs WHERE details->>'session_id' = %s",
+                        (session_id,),
+                    )
+        finally:
+            conn.close()
+
     def test_log_failure_does_not_raise(self, user_manager):
         # 존재하지 않는 user_id — 외래 키 위반이지만 log_activity는 조용히 실패해야 함
         user_manager.log_activity("nonexistent-user-id", "test", {})

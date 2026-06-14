@@ -9,7 +9,7 @@
         <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
           <div>
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">추천 받을 사용자 선택</label>
-            {% if firebase_available and is_logged_in %}
+            {% if is_logged_in %}
             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
               <label style="display: flex; align-items: center; cursor: pointer;">
                 <input 

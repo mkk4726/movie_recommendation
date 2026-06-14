@@ -29,12 +29,13 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS user_activity_logs (
     id         BIGSERIAL PRIMARY KEY,
-    user_id    TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    user_id    TEXT REFERENCES users(user_id) ON DELETE CASCADE,
     action     TEXT NOT NULL,
     details    JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON user_activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON user_activity_logs(action);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON user_activity_logs(created_at DESC);
 """
 
@@ -76,6 +77,18 @@ class UserManager:
             with conn:
                 with conn.cursor() as cur:
                     cur.execute(DDL)
+                    # 비로그인 검색/클릭 로그를 위해 user_id nullable 마이그레이션
+                    cur.execute(
+                        """
+                        DO $$ BEGIN
+                            ALTER TABLE user_activity_logs ALTER COLUMN user_id DROP NOT NULL;
+                        EXCEPTION WHEN others THEN NULL;
+                        END $$;
+                        """
+                    )
+                    cur.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON user_activity_logs(action)"
+                    )
             conn.close()
         except Exception as e:
             logger.error(f"스키마 초기화 실패: {e}")
@@ -154,8 +167,8 @@ class UserManager:
         finally:
             conn.close()
 
-    def log_activity(self, user_id: str, action: str, details: Optional[Dict] = None):
-        """사용자 활동 로그 기록"""
+    def log_activity(self, user_id: Optional[str], action: str, details: Optional[Dict] = None):
+        """사용자 활동 로그 기록 (비로그인 시 user_id=None)"""
         try:
             conn = _connect()
             with conn:
@@ -167,6 +180,58 @@ class UserManager:
             conn.close()
         except Exception as e:
             logger.warning(f"활동 로그 기록 실패 (무시): {e}")
+
+    def log_search(
+        self,
+        *,
+        user_id: Optional[str],
+        query: str,
+        search_type: str,
+        result_count: int,
+        result_movie_ids: List[str],
+        filters: Optional[Dict] = None,
+        ip: Optional[str] = None,
+    ) -> str:
+        """검색 활동을 기록하고 클릭 추적용 session_id를 반환합니다."""
+        session_id = str(uuid.uuid4())
+        details: Dict[str, Any] = {
+            "session_id": session_id,
+            "query": query,
+            "search_type": search_type,
+            "result_count": result_count,
+            "result_movie_ids": result_movie_ids,
+        }
+        if filters:
+            details["filters"] = filters
+        if ip:
+            details["ip"] = ip
+        self.log_activity(user_id, "search", details)
+        return session_id
+
+    def log_click(
+        self,
+        *,
+        user_id: Optional[str],
+        session_id: str,
+        movie_id: str,
+        position: int,
+        search_query: Optional[str] = None,
+        link_type: Optional[str] = None,
+        ip: Optional[str] = None,
+    ) -> None:
+        """검색 결과 클릭 활동을 기록합니다."""
+        details: Dict[str, Any] = {
+            "session_id": session_id,
+            "movie_id": movie_id,
+            "position": position,
+        }
+        if search_query:
+            details["search_query"] = search_query
+        if link_type:
+            details["link_type"] = link_type
+        if ip:
+            details["ip"] = ip
+        self.log_activity(user_id, "click", details)
 
     def get_user_ratings(self, user_id: str) -> List[Dict[str, Any]]:
         """custom_ratings 테이블에서 사용자 평점 조회"""

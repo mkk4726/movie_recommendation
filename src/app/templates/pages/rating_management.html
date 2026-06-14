@@ -1,5 +1,5 @@
   {% from "partials/movie_card.html" import movie_metadata_card %}
-  {% if firebase_available and is_logged_in %}
+  {% if is_logged_in %}
   <div class="page-content" id="page-rating_management" style="display: {% if current_page == 'rating_management' %}block{% else %}none{% endif %};">
     <section class="card">
       <h2>⭐ 내 영화 평점 관리</h2>

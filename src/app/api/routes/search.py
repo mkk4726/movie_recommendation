@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from app.services.data_access import load_movie_data, load_cast_data
 
 from app.api.schemas import CastMember, MovieCastInfo, QuerySearchResponse
+from app.api.utils import log_search_activity
 
 logger = logging.getLogger(__name__)
 
@@ -201,31 +202,18 @@ def natural_language_search(
                         result.cast_info = get_movie_cast_info(imdb_id, cast_df)
 
         # 5. 활동 로깅 및 세션 ID 생성
-        session_id = None
-        try:
-            from app.api.user_activity_logger import get_activity_logger
-
-            activity_logger = get_activity_logger()
-
-            # 결과 영화 ID 리스트 추출
-            result_movie_ids = [r.movie_id for r in response.results]
-
-            # 검색 로깅 (IP 자동 추출, 세션 ID 반환)
-            # 검색 로깅 (IP 자동 추출, 세션 ID 반환)
-            filters = {"min_rating": min_rating, "min_vote_count": min_vote_count, "genre": genre, "language": language}
-
-            session_id = activity_logger.log_search(
-                request=request,
-                query=query,
-                result_count=response.total_results,
-                result_movie_ids=result_movie_ids,
-                search_type="natural_language",
-                filters=filters,
-            )
+        filters = {"min_rating": min_rating, "min_vote_count": min_vote_count, "genre": genre, "language": language}
+        result_movie_ids = [r.movie_id for r in response.results]
+        session_id = log_search_activity(
+            request,
+            query=query,
+            result_count=response.total_results,
+            result_movie_ids=result_movie_ids,
+            search_type="natural_language",
+            filters=filters,
+        )
+        if session_id:
             logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
-        except Exception as log_error:
-            # 로깅 실패는 치명적이지 않으므로 경고만 출력
-            logger.warning(f"검색 로깅 실패 (계속 진행): {log_error}")
 
         # 6. 응답에 세션 ID 추가
         response.session_id = session_id

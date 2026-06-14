@@ -19,7 +19,7 @@ from app.services.recommender_service import (
 )
 
 from app.api.app_state import get_loading_state
-from app.api.utils import _safe_year, from_dataframe, get_current_user_from_cookies
+from app.api.utils import _safe_year, from_dataframe, get_current_user_from_cookies, log_search_activity
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,6 @@ def home(
     current_user = get_current_user_from_cookies(request)
     logger.info(f"현재 사용자 상태: is_logged_in={current_user is not None}, current_user={current_user}")
 
-    firebase_available = True  # PostgreSQL 기반으로 항상 사용 가능
     is_logged_in = current_user is not None
 
     # 영화 기반 추천: 영화 검색 및 선택
@@ -258,26 +257,17 @@ def home(
             )
 
             # 활동 로깅 추가
-            try:
-                from app.api.user_activity_logger import get_activity_logger
-
-                activity_logger = get_activity_logger()
-
-                # 결과 영화 ID 리스트 추출
-                result_movie_ids = [r.movie_id for r in search_response.results]
-
-                # 검색 로깅 (세션 ID 생성 및 응답에 포함)
-                session_id = activity_logger.log_search(
-                    request=request,
-                    query=search_query,
-                    result_count=search_response.total_results,
-                    result_movie_ids=result_movie_ids,
-                    search_type="natural_language",
-                )
-                search_response.session_id = session_id
+            result_movie_ids = [r.movie_id for r in search_response.results]
+            session_id = log_search_activity(
+                request,
+                query=search_query,
+                result_count=search_response.total_results,
+                result_movie_ids=result_movie_ids,
+                search_type="natural_language",
+            )
+            search_response.session_id = session_id
+            if session_id:
                 logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
-            except Exception as log_error:
-                logger.warning(f"검색 로깅 실패 (계속 진행): {log_error}")
 
             # 검색 결과를 DataFrame으로 변환하고 영화 메타데이터와 조인
             if search_response.results:
@@ -317,6 +307,7 @@ def home(
                         "query": search_query,
                         "total_results": len(search_movies),
                         "results": search_movies,
+                        "session_id": search_response.session_id,
                     }
                     logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(search_movies)}개 결과 (필터 적용됨)")
                 else:
@@ -396,7 +387,7 @@ def home(
         "high": 0,
         "low": 0,
     }
-    if current_page == "rating_management" and is_logged_in and firebase_available:
+    if current_page == "rating_management" and is_logged_in:
         try:
             # 영화 검색 결과 (평점 입력용) - 평점 관리에서는 더 많은 결과 표시
             if query:
@@ -520,7 +511,6 @@ def home(
         "errors": errors,
         "stats": stats,
         "model_loaded": model_loaded,
-        "firebase_available": firebase_available,
         "is_logged_in": is_logged_in,
         "current_user": current_user,
         "rating_method": rating_method or "search",

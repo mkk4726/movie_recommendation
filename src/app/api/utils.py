@@ -15,6 +15,72 @@ from core.user_system.db_manager import get_user_manager
 logger = logging.getLogger(__name__)
 
 
+def get_client_ip(request: Request) -> str:
+    """프록시 헤더를 고려해 클라이언트 IP를 추출합니다."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+
+    return request.client.host if request.client else "unknown"
+
+
+def log_search_activity(
+    request: Request,
+    *,
+    query: str,
+    result_count: int,
+    result_movie_ids: List[str],
+    search_type: str = "natural_language",
+    filters: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """검색 활동을 user_activity_logs에 기록하고 session_id를 반환합니다."""
+    try:
+        current_user = get_current_user_from_cookies(request)
+        user_id = current_user.get("user_id") if current_user else None
+        return get_user_manager().log_search(
+            user_id=user_id,
+            query=query,
+            search_type=search_type,
+            result_count=result_count,
+            result_movie_ids=result_movie_ids,
+            filters=filters,
+            ip=get_client_ip(request),
+        )
+    except Exception as e:
+        logger.warning(f"검색 로깅 실패 (계속 진행): {e}")
+        return None
+
+
+def log_click_activity(
+    request: Request,
+    *,
+    session_id: str,
+    movie_id: str,
+    position: int,
+    search_query: Optional[str] = None,
+    link_type: Optional[str] = None,
+) -> None:
+    """클릭 활동을 user_activity_logs에 기록합니다."""
+    try:
+        current_user = get_current_user_from_cookies(request)
+        user_id = current_user.get("user_id") if current_user else None
+        get_user_manager().log_click(
+            user_id=user_id,
+            session_id=session_id,
+            movie_id=movie_id,
+            position=position,
+            search_query=search_query,
+            link_type=link_type,
+            ip=get_client_ip(request),
+        )
+    except Exception as e:
+        logger.warning(f"클릭 로깅 실패 (무시): {e}")
+
+
 def get_current_user_from_cookies(request: Request) -> Optional[Dict[str, Any]]:
     """쿠키에서 현재 사용자 정보 가져오기"""
 

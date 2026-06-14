@@ -41,7 +41,7 @@
       />
       <span>👤 사용자 기반 추천</span>
     </label>
-    {% if firebase_available and is_logged_in %}
+    {% if is_logged_in %}
     <label class="sidebar-radio-label">
       <input 
         type="radio" 
@@ -60,7 +60,6 @@
   <div class="divider"></div>
 </div>
 
-{% if firebase_available %}
 <div class="sidebar-section">
   <h3>🔐 로그인 / 회원가입</h3>
   {% if is_logged_in and current_user %}
@@ -111,7 +110,6 @@
 <div class="sidebar-section">
   <div class="divider"></div>
 </div>
-{% endif %}
 
 <div class="sidebar-section">
   <h3>📊 데이터 통계</h3>
@@ -159,17 +157,4 @@
   </p>
   {% endif %}
 </div>
-
-{% if firebase_available %}
-<div class="sidebar-section">
-  <div class="divider"></div>
-</div>
-
-<div class="sidebar-section">
-  <h3>🔥 Firebase 상태</h3>
-  <div class="sidebar-status success">
-    ✅ Firebase 연결됨
-  </div>
-</div>
-{% endif %}
 

@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from app.services.data_access import load_movie_data, load_cast_data
 
 from app.api.schemas import CastMember, MovieCastInfo, PosterSearchResponse, PosterSearchResultMovie
+from app.api.utils import log_search_activity
 from app.services.clip_service import ClipServiceError, get_clip_search_service
 
 logger = logging.getLogger(__name__)
@@ -266,30 +267,18 @@ def poster_search_by_text(
         )
 
         # 6. 활동 로깅 추가
-        session_id = None
-        try:
-            from app.api.user_activity_logger import get_activity_logger
-
-            activity_logger = get_activity_logger()
-
-            # 결과 영화 ID 리스트 추출
-            result_movie_ids = [r.movie_id for r in enriched_results]
-
-            # 검색 로깅 (세션 ID 생성)
-            # 검색 로깅 (세션 ID 생성)
-            filters = {"min_rating": min_rating, "min_vote_count": min_vote_count, "genre": genre, "language": language}
-
-            session_id = activity_logger.log_search(
-                request=request,
-                query=query,
-                result_count=len(enriched_results),
-                result_movie_ids=result_movie_ids,
-                search_type="poster",
-                filters=filters,
-            )
+        filters = {"min_rating": min_rating, "min_vote_count": min_vote_count, "genre": genre, "language": language}
+        result_movie_ids = [r.movie_id for r in enriched_results]
+        session_id = log_search_activity(
+            request,
+            query=query,
+            result_count=len(enriched_results),
+            result_movie_ids=result_movie_ids,
+            search_type="poster",
+            filters=filters,
+        )
+        if session_id:
             logger.info(f"✅ 포스터 검색 로깅 완료: session_id={session_id}")
-        except Exception as log_error:
-            logger.warning(f"포스터 검색 로깅 실패 (계속 진행): {log_error}")
 
         # 7. 응답 생성
         response = PosterSearchResponse(
