@@ -21,9 +21,9 @@ if str(project_root) not in sys.path:
 
 import matplotlib
 
-from src.data_scraping.common import load_movie_data
-from src.modeling.models.clip.models.base import BaseClipEncoder
-from src.vector_store import FAISSManager, load_config
+from core.data_scraping.common import load_movie_data
+from core.modeling.models.clip.models.base import BaseClipEncoder
+from core.vector_store import FAISSManager, load_config
 
 matplotlib.use("Agg")  # GUI 없이 이미지 생성
 
@@ -46,7 +46,7 @@ def faiss_manager(config):
 def clip_encoder():
     """CLIP 인코더 초기화"""
     try:
-        return BaseClipEncoder(model_key="jina-clip")
+        return BaseClipEncoder(model_key="siglip-multilingual")
     except Exception:
         pytest.skip("CLIP 인코더를 로드할 수 없습니다.")
 

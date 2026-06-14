@@ -7,13 +7,11 @@ from typing import Optional
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-# 탐색 기능을 위한 import
-from modules.services.data_access import load_all_data
+from app.services.data_access import load_movie_data, get_popular_movie_ids
 
 from app.api.utils import get_current_user_from_cookies
-from cold_start.show_random_movies import get_random_popular_movies
-from user_system.firebase_config import get_firebase_manager
-from user_system.firebase_firestore import FirestoreManager
+from core.cold_start.show_random_movies import get_random_popular_movies
+from core.user_system.db_manager import get_user_manager
 
 router = APIRouter()
 
@@ -35,21 +33,15 @@ async def add_rating(
     if not current_user:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
 
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")
+
     try:
-        firebase_manager = get_firebase_manager()
-        if not firebase_manager.initialized:
-            raise HTTPException(status_code=503, detail="Firebase가 초기화되지 않았습니다.")
-
-        firestore_manager = FirestoreManager()
-        user_uid = current_user.get("uid")
-
-        if not user_uid:
-            raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")
-
-        success = firestore_manager.add_user_rating(user_uid, movie_id, rating)
+        title = current_user.get("_movie_title")  # 전달받은 경우에만
+        success = get_user_manager().add_user_rating(user_id, movie_id, title, rating)
 
         if success:
-            # 리다이렉트 URL 구성
             redirect_params = [f"page={page}", f"rating_method={rating_method}"]
             if query:
                 redirect_params.append(f"query={query}")
@@ -59,8 +51,7 @@ async def add_rating(
                 redirect_params.append(f"explore_count={explore_count}")
             if explored_movie_ids:
                 redirect_params.append(f"explored_movie_ids={explored_movie_ids}")
-            redirect_url = f"/?{'&'.join(redirect_params)}"
-            return RedirectResponse(url=redirect_url, status_code=303)
+            return RedirectResponse(url=f"/?{'&'.join(redirect_params)}", status_code=303)
         else:
             raise HTTPException(status_code=500, detail="평점 저장에 실패했습니다.")
 
@@ -77,29 +68,29 @@ async def delete_rating(
     page: Optional[str] = Form("rating_management"),
 ):
     """평점 삭제"""
-
     current_user = get_current_user_from_cookies(request)
     if not current_user:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
 
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")
+
     try:
-        firebase_manager = get_firebase_manager()
-        if not firebase_manager.initialized:
-            raise HTTPException(status_code=503, detail="Firebase가 초기화되지 않았습니다.")
-
-        firestore_manager = FirestoreManager()
-        user_uid = current_user.get("uid")
-
-        if not user_uid:
-            raise HTTPException(status_code=401, detail="사용자 정보가 올바르지 않습니다.")
-
-        success = firestore_manager.delete_user_rating(user_uid, movie_id)
-
-        if success:
-            redirect_url = f"/?page={page}"
-            return RedirectResponse(url=redirect_url, status_code=303)
-        else:
-            raise HTTPException(status_code=500, detail="평점 삭제에 실패했습니다.")
+        conn_obj = get_user_manager()
+        # DELETE from custom_ratings
+        import psycopg2
+        from core.user_system.db_manager import _connect
+        conn = _connect()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM custom_ratings WHERE user_id = %s AND movie_id = %s",
+                    (user_id, movie_id),
+                )
+        conn.close()
+        conn_obj.log_activity(user_id, "delete_rating", {"movie_id": movie_id})
+        return RedirectResponse(url=f"/?page={page}", status_code=303)
 
     except HTTPException:
         raise
@@ -115,15 +106,12 @@ async def explore_movies(
     rating_method: Optional[str] = Form("explore"),
 ):
     try:
-        # 데이터 로드
-        df_movies, df_ratings, _ = load_all_data()
-
-        # 랜덤 영화 선택 (이미 본 영화는 제외하지 않음 - 간단한 구현)
+        df_movies = load_movie_data()
+        popular_ids = get_popular_movie_ids(200)
         random_movies, _ = get_random_popular_movies(
-            df_ratings=df_ratings, df_movies=df_movies, n_movies=explore_count, exclude_movie_ids=None
+            popular_movie_ids=popular_ids, df_movies=df_movies, n_movies=explore_count, exclude_movie_ids=None
         )
 
-        # 선택된 영화 ID들을 쿼리 파라미터로 전달
         if not random_movies.empty:
             explored_movie_ids = ",".join(random_movies["movie_id"].astype(str).tolist())
             redirect_url = f"/?page={page}&rating_method={rating_method}&explore_count={explore_count}&explored_movie_ids={explored_movie_ids}"

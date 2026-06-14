@@ -3,10 +3,10 @@ User recommendation API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from modules.services.data_access import load_all_data, load_cast_data
-from modules.services.recommender_service import recommend_for_user as recommend_for_user_func
+from app.services.data_access import load_movie_data, load_cast_data, user_exists
+from app.services.recommender_service import recommend_for_user as recommend_for_user_func
 
-from app.api.models import UserRecommendationResponse
+from app.api.schemas import UserRecommendationResponse
 from app.api.utils import from_dataframe
 
 router = APIRouter()
@@ -20,12 +20,12 @@ def recommend_for_user(
 ):
     """Get movie recommendations for a specific user."""
     try:
-        df_movies, df_ratings, _ = load_all_data()
+        df_movies = load_movie_data()
         cast_df = load_cast_data() if include_cast else None
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    if user_id not in df_ratings["user_id"].values:
+    if not user_exists(user_id):
         raise HTTPException(
             status_code=404,
             detail=f"User '{user_id}' not found in ratings dataset.",

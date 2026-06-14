@@ -3,7 +3,7 @@ Health check endpoint.
 """
 
 from fastapi import APIRouter, HTTPException
-from modules.services.recommender_service import get_recommender_service
+from app.services.recommender_service import get_recommender_service
 
 router = APIRouter()
 

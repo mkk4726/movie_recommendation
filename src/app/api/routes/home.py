@@ -11,14 +11,10 @@ import yaml
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from modules.services.data_access import get_data_stats, load_all_data, load_cast_data, search_movies_cached
-from modules.services.recommender_service import (
+from app.services.data_access import get_data_stats, load_movie_data, load_cast_data, search_movies_cached, user_exists, get_sample_user_ids
+from app.services.recommender_service import (
     get_recommender_service,
-)
-from modules.services.recommender_service import (
     recommend_for_user as recommend_for_user_func,
-)
-from modules.services.recommender_service import (
     similar_movies as similar_movies_func,
 )
 
@@ -27,14 +23,7 @@ from app.api.utils import _safe_year, from_dataframe, get_current_user_from_cook
 
 logger = logging.getLogger(__name__)
 
-# Firebase 관련 import (선택적)
-try:
-    from user_system.firebase_config import get_firebase_manager
-    from user_system.firebase_firestore import FirestoreManager
-
-    FIREBASE_AVAILABLE = True
-except ImportError:
-    FIREBASE_AVAILABLE = False
+from core.user_system.db_manager import get_user_manager
 
 router = APIRouter()
 
@@ -121,7 +110,6 @@ def home(
         errors.append(f"모델 로드 중 오류가 발생했습니다: {str(exc)}")
 
     df_movies = None
-    df_ratings = None
 
     # Cast 데이터 로드 (캐시됨, 한 번만 로드)
     try:
@@ -160,7 +148,7 @@ def home(
 
         if needs_full_data:
             logger.info(f"데이터 로드 시작... (페이지: {current_page})")
-            df_movies, df_ratings, _ = load_all_data()
+            df_movies = load_movie_data()
             logger.info(f"✅ 데이터 로드 완료: {time.time() - data_load_start:.3f}초")
         else:
             logger.debug(f"데이터 로드 스킵 (필요 없음, 페이지: {current_page})")
@@ -173,13 +161,7 @@ def home(
     current_user = get_current_user_from_cookies(request)
     logger.info(f"현재 사용자 상태: is_logged_in={current_user is not None}, current_user={current_user}")
 
-    if FIREBASE_AVAILABLE:
-        try:
-            firebase_available = get_firebase_manager().initialized
-        except Exception:
-            firebase_available = False
-    else:
-        firebase_available = False
+    firebase_available = True  # PostgreSQL 기반으로 항상 사용 가능
     is_logged_in = current_user is not None
 
     # 영화 기반 추천: 영화 검색 및 선택
@@ -208,9 +190,8 @@ def home(
         if user_option == "me" and is_logged_in and current_user:
             user_id = current_user.get("uid")
 
-        if user_id and recommender_service is not None and df_ratings is not None:
-            if user_id not in df_ratings["user_id"].values:
-                # Firebase 사용자일 경우 데이터 없을 수 있음
+        if user_id and recommender_service is not None:
+            if not user_exists(user_id):
                 if user_option == "me":
                     errors.append("아직 학습되기 전입니다. 더 많은 평점을 입력해주세요.")
                 else:
@@ -310,7 +291,7 @@ def home(
                 # df_movies가 없으면 로드
                 if df_movies is None:
                     logger.info("검색 결과 메타데이터를 위해 영화 데이터 로드 중...")
-                    df_movies, _, _ = load_all_data()
+                    df_movies = load_movie_data()
 
                 # movie_id로 전체 영화 데이터 조인
                 df_search_movies = df_movies[df_movies["movie_id"].isin(search_movie_ids)].copy()
@@ -458,52 +439,49 @@ def home(
                     logger.error(f"탐색 영화 정보 조회 실패: {e}", exc_info=True)
 
             # 사용자 평점 목록
-            firestore_manager = FirestoreManager()
-            user_uid = current_user.get("uid")
+            user_uid = current_user.get("user_id")
             if user_uid:
-                user_ratings_df = firestore_manager.get_user_ratings(user_uid)
-                if not user_ratings_df.empty:
-                    # 영화 정보와 병합
-                    for _, rating_row in user_ratings_df.iterrows():
-                        movie_id = str(rating_row.get("movie_id", ""))
-                        rating = rating_row.get("rating", 0)
-                        movie_row = (
-                            df_movies[df_movies["movie_id"] == movie_id] if df_movies is not None else pd.DataFrame()
+                raw_ratings = get_user_manager().get_user_ratings(user_uid)
+                for rating_row in raw_ratings:
+                    movie_id = str(rating_row.get("movie_id", ""))
+                    rating = rating_row.get("rating", 0)
+                    movie_row = (
+                        df_movies[df_movies["movie_id"] == movie_id] if df_movies is not None else pd.DataFrame()
+                    )
+                    if not movie_row.empty:
+                        movie_data = movie_row.iloc[0]
+                        user_ratings_list.append(
+                            {
+                                "movie_id": movie_id,
+                                "title": movie_data.get("title") or movie_data.get("movie_title", "N/A"),
+                                "year": _safe_year(movie_data.get("year")),
+                                "genre": movie_data.get("genre"),
+                                "rating": rating,
+                                "created_at": "",
+                            }
                         )
-                        if not movie_row.empty:
-                            movie_data = movie_row.iloc[0]
-                            user_ratings_list.append(
-                                {
-                                    "movie_id": movie_id,
-                                    "title": movie_data.get("title") or movie_data.get("movie_title", "N/A"),
-                                    "year": _safe_year(movie_data.get("year")),
-                                    "genre": movie_data.get("genre"),
-                                    "rating": rating,
-                                    "created_at": rating_row.get("created_at", ""),
-                                }
-                            )
 
-                    # 평점 통계
-                    ratings_list = user_ratings_df["rating"].tolist()
-                    rating_stats = {
-                        "total": len(ratings_list),
-                        "avg": sum(ratings_list) / len(ratings_list) if ratings_list else 0,
-                        "high": len([r for r in ratings_list if r >= 4.0]),
-                        "low": len([r for r in ratings_list if r <= 2.0]),
-                    }
+                # 평점 통계
+                ratings_list = [r["rating"] for r in raw_ratings]
+                rating_stats = {
+                    "total": len(ratings_list),
+                    "avg": sum(ratings_list) / len(ratings_list) if ratings_list else 0,
+                    "high": len([r for r in ratings_list if r >= 4.0]),
+                    "low": len([r for r in ratings_list if r <= 2.0]),
+                }
         except Exception as e:
             errors.append(f"평점 데이터 로드 실패: {str(e)}")
 
     # 설정값 로드 (장르, 국가, 연도 옵션)
-    config_path = BASE_DIR / "config.yaml"
+    config_path = BASE_DIR.parent / "config" / "app.yaml"
     with open(config_path, "r", encoding="utf-8") as f:
         config_options = yaml.safe_load(f)
 
     # 사용 가능한 사용자 목록 (사용자 기반 추천용)
     available_users = []
-    if current_page == "user_based" and df_ratings is not None:
+    if current_page == "user_based":
         try:
-            available_users = sorted(df_ratings["user_id"].unique().tolist()[:100])
+            available_users = get_sample_user_ids(100)
         except Exception:
             pass
 

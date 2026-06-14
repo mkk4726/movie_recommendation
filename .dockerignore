@@ -1,0 +1,48 @@
+# 소스 코드 (런타임에 볼륨으로 마운트)
+src/
+
+# 가상환경
+.venv/
+
+# 캐시
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+*.pyo
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Git
+.git/
+.gitignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# 빌드 아티팩트
+*.egg-info/
+dist/
+build/
+
+# 환경변수 / 시크릿
+.env
+.env.*
+*firebase-adminsdk*.json
+
+# 개발 전용 파일
+notebooks/
+docs/
+tests/
+.claude/
+
+# Qdrant 데이터 (Docker 볼륨)
+qdrant_storage/
+
+# 로그
+*.log

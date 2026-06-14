@@ -5,10 +5,10 @@ Movie-related API endpoints: search and similar movies.
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from modules.services.data_access import load_all_data, load_cast_data, search_movies_cached
-from modules.services.recommender_service import similar_movies as similar_movies_func
+from app.services.data_access import load_movie_data, load_cast_data, search_movies_cached
+from app.services.recommender_service import similar_movies as similar_movies_func
 
-from app.api.models import SearchResponse, SimilarMoviesResponse
+from app.api.schemas import SearchResponse, SimilarMoviesResponse
 from app.api.utils import from_dataframe
 
 router = APIRouter()
@@ -48,7 +48,7 @@ def similar_movies(
 ):
     """Get similar movies for a given movie ID."""
     try:
-        df_movies, _, _ = load_all_data()
+        df_movies = load_movie_data()
         cast_df = load_cast_data() if include_cast else None
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -8,8 +8,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
-from app.api.models import ActivityStats, ClickEventRequest, CTRDataPoint
-from app.api.user_activity_logger import get_activity_logger
+from app.api.schemas import ActivityStats, ClickEventRequest, CTRDataPoint
+from app.services.activity_logger import get_activity_logger
 
 logger = logging.getLogger(__name__)
 

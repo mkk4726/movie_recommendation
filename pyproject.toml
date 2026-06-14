@@ -18,9 +18,6 @@ dependencies = [
     "playwright>=1.40.0",
     "beautifulsoup4>=4.12.0",
     "lxml>=4.9.0",
-    "firebase-admin>=6.0.0",
-    "google-cloud-firestore>=2.11.0",
-    "streamlit-cookies-manager>=0.2.0",
     "python-dotenv>=1.0.1",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -50,6 +47,8 @@ dependencies = [
     "langchain-community>=0.3.13",
     "lark>=1.2.2",
     "jupyter>=1.1.1",
+    "qdrant-client>=1.18.0",
+    "psycopg2-binary>=2.9",
 ]
 
 [project.optional-dependencies]
@@ -64,13 +63,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/app",
-    "src/cold_start",
-    "src/dataset_generation",
-    "src/modeling",
-    "src/user_system",
-    "src/vector_store",
-    "src/data_scraping",
-    "src/ab_testing"
+    "src/core",
 ]
 
 [tool.ruff]
@@ -121,4 +114,17 @@ dev = [
     "pytest>=9.0.1",
     "ruff>=0.14.6",
 ]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 

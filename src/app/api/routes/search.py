@@ -10,9 +10,9 @@ from typing import List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
-from modules.services.data_access import load_all_data, load_cast_data
+from app.services.data_access import load_movie_data, load_cast_data
 
-from app.api.models import CastMember, MovieCastInfo, QuerySearchResponse
+from app.api.schemas import CastMember, MovieCastInfo, QuerySearchResponse
 
 logger = logging.getLogger(__name__)
 
@@ -37,22 +37,22 @@ def get_search_pipeline():
     try:
         logger.info("🔄 QuerySearchPipeline 로딩 중...")
 
-        # modeling/models/config.yaml 경로 찾기
-        project_root = Path(__file__).parent.parent.parent.parent
-        config_path = project_root / "modeling" / "models" / "config.yaml"
+        # src/config/modeling.yaml 경로
+        src_root = Path(__file__).parent.parent.parent.parent
+        config_path = src_root / "config" / "modeling.yaml"
 
         if not config_path.exists():
             raise FileNotFoundError(f"검색 설정 파일을 찾을 수 없습니다: {config_path}")
 
         # QuerySearchPipeline import 및 초기화
-        query_search_path = str(project_root / "modeling" / "models")
+        query_search_path = str(src_root / "core" / "modeling" / "models")
         if query_search_path not in sys.path:
             sys.path.insert(0, query_search_path)
 
         from query_search import QuerySearchPipeline  # type: ignore
 
         # 영화 데이터 로드
-        df_movies, _, _ = load_all_data()
+        df_movies = load_movie_data()
         logger.info(f"📊 영화 데이터 로드 완료: {len(df_movies)}개")
 
         # 파이프라인 생성 및 학습
@@ -191,7 +191,7 @@ def natural_language_search(
             cast_df = get_cast_data()
             if cast_df is not None:
                 # 영화 데이터 로드하여 imdb_id 매핑
-                df_movies, _, _ = load_all_data()
+                df_movies = load_movie_data()
                 movie_id_to_imdb = dict(zip(df_movies["movie_id"].astype(str), df_movies["imdb_id"]))
 
                 # 각 검색 결과에 cast 정보 추가

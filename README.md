@@ -1,194 +1,289 @@
 # 볼거 없나?
 
 영화 추천 서비스를 개발하고 운영하고 있습니다.
-- [영화 추천 서비스 링크](https://movie.mingyuprojects.dev/)
 
-넷플릭스와 같은 OTT에서 뛰어난 추천 모델들을 사용하고 있지만, 막상 사용하다보면 "볼거 없나?"라는 의문과 함께 유튜브나 네이버 등을 통해 검색을 하곤 합니다.
-저뿐만 아니라 주변 지인들도 비슷한 경험을 했고, 이는 유튜브에 "넷플릭스 영화 추천"과 같은 동영상이 높은 조회수를 기록한 것을 통해 확인할 수 있습니다.
-이를 해결하기 위해 어떤 추천 서비스가 필요할지 고민하고 구현하고 있습니다.
+**[mingyuprojects.dev](https://mingyuprojects.dev/)**
 
-## 📚 프로젝트 진행상황
+넷플릭스 같은 OTT를 켜도 "볼 게 없다"는 느낌, 다들 한 번쯤 겪어봤을 겁니다. 추천 모델이 있는데도 불구하고 유튜브에서 "넷플릭스 영화 추천"을 검색하게 되는 이유를 고민하다 시작한 프로젝트입니다.
 
-프로젝트의 상세한 진행상황, 의사결정 과정, 개발 일지는 [`docs/`](docs/) 폴더를 참고해주세요.
+## 시스템 아키텍처
 
-- **개발 일지**: [`docs/JOURNAL.md`](docs/JOURNAL.md) - 날짜별 작업 내용과 배운 점
-- **의사결정 기록**: [`docs/decisions/`](docs/decisions/) - 주요 기술적 결정 사항들
-- **문서 가이드**: [`docs/README.md`](docs/README.md) - 문서화 구조 및 작성 가이드
+```mermaid
+graph TB
+    User([사용자]) -->|HTTPS| CF
 
+    subgraph Infra["인프라"]
+        CF[Cloudflare Tunnel\nmingyuprojects.dev]
+    end
 
----
+    CF -->|http://localhost:8501| App
 
-# 데이터셋
+    subgraph Docker["Docker Compose"]
+        App["FastAPI 앱\n:8501"]
 
-ML-32M (MovieLens 32M)데이터셋을 사용합니다.
-이 데이터셋에 TMDB API를 통해 메타 데이터를 추가해 사용하고 있습니다.
+        subgraph Storage["스토리지"]
+            PG[(PostgreSQL\n영화 데이터 + 사용자)]
+            QD[(Qdrant\nCLIP 벡터)]
+        end
 
-## 📊 전체 데이터 플로우
+        subgraph Core["src/core — 도메인 레이어"]
+            Modeling["modeling/\nSVD · Item-CF · BM25 · CLIP"]
+            VS["vector_store/\nQdrant 클라이언트"]
+            US["user_system/\n인증 · 활동 로그"]
+        end
 
-```
-(MovieLens)          (TMDB API)
-      │                   │
-      │                   │
-      ▼                   ▼
-유저-영화 평점 데이터      영화 메타데이터
-(user interactions)      (content metadata)
-      │                   │
-      │                   │
-      └─────────┬─────────┘
-                ▼
-         [조인 / 매핑]
-                ▼
-    풍부한 영화 데이터셋 생성
-    (Interaction + Metadata)
-                ▼
-    추천 모델 / 데이터 분석 / 시각화
+        App --> Core
+        App --> Storage
+        Core --> Storage
+    end
 ```
 
 ---
 
-# 프로젝트 구조
+## 추천 파이프라인
 
-1. 데이터 수집: ML-32M 데이터셋을 data_scraping 모듈에서 로딩 및 가공
-2. 모델링: modeling 모듈에서 추천 모델을 개발하고 학습
-3. 서비스 배포: app(FastAPI) 모듈로 웹 서비스 운영
+```mermaid
+flowchart TD
+    Input([사용자 입력]) --> Mode{추천 모드}
+
+    Mode -->|자연어 검색| Search
+    Mode -->|유사 영화| ItemCF
+    Mode -->|맞춤 추천| SVD
+    Mode -->|포스터 검색| CLIP
+
+    subgraph Search["자연어 검색 파이프라인"]
+        LangDet["언어 감지"] --> Trans["번역 (KO→EN)"]
+        Trans --> NER["NER\nGLiNER 개체명 인식"]
+        NER --> BM25["BM25\n필드별 가중치 검색"]
+        BM25 --> Filt["필터\n장르 · 언어 · 평점"]
+    end
+
+    subgraph ItemCF["아이템 기반 CF"]
+        IC["코사인 유사도\n영화↔영화 행렬"]
+    end
+
+    subgraph SVD["SVD 협업 필터링"]
+        SV["미감상 영화\n예측 평점 산출"]
+    end
+
+    subgraph CLIP["포스터 의미 검색"]
+        CE["CLIP 인코더\nJina-CLIP"] --> QD2["Qdrant\n벡터 유사도 검색"]
+    end
+
+    Filt --> Out([결과])
+    IC --> Out
+    SV --> Out
+    QD2 --> Out
+```
+
+---
+
+## 데이터 파이프라인
+
+```mermaid
+flowchart LR
+    subgraph Sources["데이터 소스"]
+        ML[(MovieLens 32M\n32M 평점 · 87k 영화)]
+        TMDB[TMDB API\n포스터 · 메타데이터]
+        Watcha[왓챠 데이터\n커스텀 평점]
+    end
+
+    subgraph PG["PostgreSQL"]
+        ml_movies[(ml_movies)]
+        ml_ratings[(ml_ratings\n32M rows)]
+        tmdb_movies[(tmdb_movies)]
+        tmdb_cast[(tmdb_cast)]
+        users[(users)]
+        logs[(user_activity_logs)]
+        custom[(custom_ratings)]
+    end
+
+    subgraph Models["학습된 모델"]
+        SVDm[SVD 모델\n.pkl]
+        ICm[Item-CF 행렬\n.pkl]
+        BM25m[BM25 인덱스]
+    end
+
+    subgraph VecStore["Qdrant"]
+        QD[(CLIP 임베딩\n79k 포스터)]
+    end
+
+    ML -->|migrate| ml_movies & ml_ratings
+    TMDB -->|migrate| tmdb_movies & tmdb_cast
+    Watcha -->|migrate| custom
+
+    ml_ratings --> SVDm & ICm & BM25m
+    tmdb_movies --> BM25m
+    TMDB -->|CLIP 인코딩| QD
+```
+
+---
+
+## 프로젝트 구조
 
 ```
 movie_recommendation/
-├── app/                    # FastAPI 웹 애플리케이션
-│   ├── api/               # FastAPI 애플리케이션
-│   │   ├── main.py        # FastAPI 메인 애플리케이션
-│   │   ├── models.py      # 데이터 모델
-│   │   ├── app_state.py   # 애플리케이션 상태 관리
-│   │   ├── utils.py       # 유틸리티 함수
-│   │   └── routes/        # API 라우트
-│   │       ├── auth.py    # 인증 라우트
-│   │       ├── health.py  # 헬스 체크
-│   │       ├── home.py    # 홈 라우트
-│   │       ├── movies.py  # 영화 관련 라우트
-│   │       ├── ratings.py # 평점 관련 라우트
-│   │       └── users.py   # 사용자 관련 라우트
-│   ├── main.py            # 실행 진입점
-│   ├── modules/           # 애플리케이션 모듈
-│   │   ├── config/        # 설정 관리
-│   │   ├── core/          # 경로 관리
-│   │   ├── data/          # 데이터 처리
-│   │   ├── services/      # 비즈니스 로직 서비스
-│   │   │   ├── data_access.py
-│   │   │   └── recommender_service.py
-│   │   └── ui/            # UI 관련 모듈
-│   ├── static/            # 정적 파일 (CSS)
-│   ├── templates/         # Jinja2 템플릿 (HTML)
-│   │   ├── pages/         # 페이지 템플릿
-│   │   └── partials/      # 부분 템플릿
-│   ├── legacy/            # 레거시 Streamlit 앱
-│   │   └── streamlit/     # Streamlit 관련 파일들
-│   ├── config.yaml        # 애플리케이션 설정
-│   └── README.md          # 앱 문서
-├── data_scraping/          # 데이터 스크래핑 및 로딩 모듈
-│   ├── common/            # 공통 유틸리티
-│   │   ├── data_loader.py      # 데이터 로더
-│   │   ├── ml_data_loader.py   # MovieLens 데이터 로더
-│   │   ├── tmdb_loader.py      # TMDB API 로더
-│   │   ├── omdb_loader.py      # OMDB API 로더
-│   │   └── logger.py           # 로깅 유틸리티
-│   ├── data/              # 수집된 데이터
-│   │   ├── ml-32m/        # MovieLens 32M 데이터셋
-│   │   └── tmdb/          # TMDB 메타데이터
-│   ├── legacy/            # 레거시 크롤링 코드
-│   │   ├── scrapers/      # 스크래퍼 클래스
-│   │   └── assets/        # 스크래핑 관련 자산
-│   └── README.md          # 스크래핑 상세 문서
-├── modeling/               # 모델링 및 분석
-│   ├── models/            # 추천 모델 구현
-│   │   ├── svd/           # SVD 모델
-│   │   ├── item_based/    # 아이템 기반 협업 필터링
-│   │   ├── recommender/   # 추천 시스템
-│   │   └── query_search/  # 쿼리 검색 모델
-│   ├── notebooks/         # Jupyter 노트북
-│   ├── utils/             # 모델링 유틸리티
-│   └── README.md          # 모델링 문서
-├── cold_start/            # 콜드 스타트 처리
-│   └── show_random_movies.py
-├── user_system/            # Firebase 사용자 인증 시스템
-│   ├── firebase_app.py    # Firebase 앱 초기화
-│   ├── firebase_auth.py   # 인증 관련
-│   ├── firebase_config.py # Firebase 설정
-│   ├── firebase_firestore.py # Firestore 관련
-│   ├── firebase_recommender.py # Firebase 기반 추천
-│   └── README.md
-├── pyproject.toml         # Poetry 의존성 관리
-├── poetry.lock            # Poetry 의존성 잠금 파일
-├── requirements.txt       # pip 의존성
-└── README.md             # 메인 문서
+├── src/
+│   ├── app/                        # FastAPI 웹 애플리케이션
+│   │   ├── api/
+│   │   │   ├── main.py             # 앱 생성 · lifespan
+│   │   │   ├── routes/             # auth · movies · ratings · search …
+│   │   │   └── models.py           # Pydantic 응답 모델
+│   │   ├── services/               # 서비스 레이어 (데이터 액세스 · 추천 · CLIP)
+│   │   └── templates/              # Jinja2 HTML 템플릿
+│   │
+│   ├── config/                     # 설정 파일 (중앙 관리)
+│   │   ├── modeling.yaml           # SVD · Item-CF · NER · BM25 하이퍼파라미터
+│   │   ├── vector_store.yaml       # Qdrant / FAISS 설정
+│   │   ├── app.yaml                # 앱 UI 옵션 (장르 · 언어 목록)
+│   │   └── data.yaml               # 데이터 필터링 설정 (최소 평점 수)
+│   │
+│   ├── assets/                     # 학습된 모델 바이너리 (중앙 관리, git 제외)
+│   │   ├── svd_params.npz
+│   │   └── item_based_model.pkl
+│   │
+│   └── core/                       # 도메인 로직 (앱에 독립적)
+│       ├── modeling/
+│       │   └── models/
+│       │       ├── svd/            # SVD 협업 필터링
+│       │       ├── item_based/     # 아이템 기반 CF
+│       │       ├── clip/           # CLIP 포스터 검색
+│       │       ├── query_search/   # BM25 + NER 검색
+│       │       └── language/       # 언어 감지 · 번역
+│       ├── vector_store/           # Qdrant 클라이언트
+│       ├── user_system/            # 인증 · 활동 로그 (PostgreSQL)
+│       ├── cold_start/             # 콜드 스타트 (인기 영화 랜덤)
+│       └── research/               # 오프라인 연구 도구
+│           ├── ab_testing/
+│           ├── dataset_generation/
+│           └── llm/                # Qwen LLM 래퍼
+│
+├── tests/
+│   ├── conftest.py
+│   ├── test_user_system.py
+│   ├── test_api.py
+│   ├── test_data_loader.py
+│   └── test_vector_search.py
+│
+├── compose.yaml                    # Docker Compose (app · postgres · qdrant)
+├── Dockerfile
+└── pyproject.toml
 ```
 
 ---
 
-# 제공하는 기능들
+## 배포
 
-제가 운영하고 있는 서비스에서 제공하는 기능들과 어떤 고민을 했는지에 대해 정리했습니다.
+서버에서 **Docker Compose + Cloudflare Tunnel** 조합으로 운영합니다.
 
+```mermaid
+flowchart LR
+    Browser -->|HTTPS| CF["Cloudflare\nedge network"]
+    CF -->|터널| CFD["cloudflared\nsystemd 서비스"]
+    CFD -->|http://localhost:8501| App["FastAPI\nDocker Container"]
+    App --- PG2[(PostgreSQL)]
+    App --- QD2[(Qdrant)]
+```
 
-## 검색 기능
+### 서버에서 실행
 
-자연어로 보고 싶은 영화를 검색할 수 있도록 구현했습니다.
+```bash
+# 이미지 빌드 후 백그라운드 실행
+docker compose up -d --build
 
-### 구현한 내용, 고민 중인 것
-가장 기본적으로 BM25를 통해 영화 검색.
-필드별로 가중치를 설정해서 사용 ([config.yaml](modeling/models/config.yaml) 참고)
+# 로그 확인
+docker compose logs -f app
+
+# 재시작
+docker compose restart app
+```
+
+### Cloudflare Tunnel 설정
+
+터널은 systemd 서비스로 관리됩니다.
+
+```bash
+# 상태 확인
+systemctl status cloudflared
+
+# 재시작 (config 변경 후)
+sudo systemctl restart cloudflared
+
+# config 위치
+cat /etc/cloudflared/config.yml
+```
+
+`/etc/cloudflared/config.yml` 구조:
 
 ```yaml
-field_weights:
-  title: 3.0          # 제목에 가장 높은 가중치
-  genres: 2.0         # 장르에 중간 가중치
-  # tags: 1.0           # 태그에 기본 가중치
-  overview: 1.5       # 줄거리/개요에 중간 가중치
-``` 
+tunnel: <TUNNEL_ID>
+credentials-file: /home/server/.cloudflared/<TUNNEL_ID>.json
 
-좋은 검색 파이프라인은 뭔지에 대해서 고민하고 있고, 이를 정량적으로 판단하기 위해서 데이터셋을 생성하는 시도를 하고 있습니다.
-자세한 내용은 [dataset_generation](dataset_generation/) 디렉토리를 참고해주세요.
-
-
-
-## 유사한 영화 추천
-
-영화를 재밌게 본 후에 이와 비슷한 영화가 뭐가 있을지 검색하고 싶을 떄가 있습니다.
-이때 사용할 수 있는 기능입니다.
-
-현 시점(25.11.05)에서는 유저의 평점/상호작용 데이터를 바탕으로 한 아이템 기반 협업 필터링(item-based collaborative filtering) 방식의 유사 영화 추천이 제공됩니다.
-
-## 사용자 기반 추천
-
-user_id, item_id가 주어졌을 때 예측평점을 구하는 모델을 통해 평점을 예측하고 높은 영화를 추천하는 구조입니다.
-
-### 구현되어있는 모델
-- svd
-
+ingress:
+  - hostname: ssh.mingyuprojects.dev
+    service: ssh://localhost:22
+  - hostname: mingyuprojects.dev
+    service: http://localhost:8501   # FastAPI 앱
+  - service: http_status:404
+```
 
 ---
 
-# 📜 Legacy: 과거 시도들
+## 로컬 개발
 
-현재 서비스에서 사용하지 않지만 과거에 했던 시도들을 정리해두었습니다.
+이 프로젝트는 [uv](https://docs.astral.sh/uv/)로 의존성을 관리합니다.
 
-## 🎬 왓챠피디아 크롤링 
+```bash
+# uv 설치
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-**시도 내용**:
-- 왓챠피디아에서 영화 정보, 코멘트, 평점 데이터를 크롤링하여 수집
-- Selenium 기반 브라우저 자동화로 110만건 이상의 고객-영화 평가 데이터 수집 성공
-- 한국어 영화 리뷰/평점 데이터로 콘텐츠 기반 추천 모델 구축 시도
+# 의존성 설치
+uv sync
 
-**중단 사유**:
-- 🚨 **법적 위험**: 웹 크롤링 시 이용약관 위반 및 저작권 문제 우려
-- ⚖️ **상업적 사용 제한**: 스크래핑 데이터를 상업적으로 활용하기 어려움 (학습용으로 사용하더라도 배포하는 과정에서 위험 요소가 있다고 보임)
-- 🔒 **서비스 안정성**: 데이터 소스 플랫폼의 정책 변경에 취약
+# 환경변수 설정
+cp .env.example .env
 
-**전환 결정**:
-- 공개 데이터셋인 **MovieLens ML-32M**으로 전환 (법적 리스크 제로)
-- 크롤링 코드는 `data_scraping/legacy/` 디렉토리로 이동 보관 (참고용)
-- TMDB API 같은 공식 API 활용으로 메타데이터 보강 방향 전환
+# 개발 서버 실행 (PostgreSQL · Qdrant는 Docker로)
+docker compose up -d postgres qdrant
+PYTHONPATH=src:src/app uv run uvicorn app.api.main:app --reload --port 8501
+```
 
-**교훈**:
-- 프로젝트 초기에는 빠른 프로토타이핑이 가능했지만, 스케일링 시 법적 이슈가 장벽
-- 추천 시스템 구축에는 안정적이고 합법적인 데이터 소스가 필수
-- 상업화를 고려한다면 처음부터 라이선스 정책을 면밀히 검토해야 함
+### 테스트
+
+```bash
+# 빠른 테스트 (DB 연결 필요)
+uv run pytest tests/test_user_system.py tests/test_api.py -v
+
+# 전체 (데이터 로드 포함, 느림)
+uv run pytest -v -m "not slow"
+uv run pytest -v  # slow 포함
+```
+
+### 플랫폼별 PyTorch
+
+| 플랫폼 | torch 소스 | 비고 |
+|--------|-----------|------|
+| Linux  | `download.pytorch.org/whl/cpu` | CPU 전용 |
+| macOS  | PyPI | MPS(Apple Silicon) 지원 |
+
+---
+
+## 데이터셋
+
+| 테이블 | 출처 | 행 수 |
+|--------|------|-------|
+| `ml_movies` | MovieLens 32M | 87,585 |
+| `ml_ratings` | MovieLens 32M | 32,000,204 |
+| `ml_links` | MovieLens 32M | 87,585 |
+| `ml_tags` | MovieLens 32M | 2,000,055 |
+| `tmdb_movies` | TMDB API | 79,093 |
+| `tmdb_cast` | TMDB API | 1,707,013 |
+| `custom_ratings` | 왓챠 / 사용자 | 11,639,311 |
+| `movie_comments` | 왓챠 | 1,318,238 |
+
+---
+
+## 개발 기록
+
+- **개발 일지**: [`docs/JOURNAL.md`](docs/JOURNAL.md)
+- **의사결정 기록**: [`docs/decisions/`](docs/decisions/)

@@ -8,10 +8,10 @@ from typing import List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
-from modules.services.data_access import load_all_data, load_cast_data
+from app.services.data_access import load_movie_data, load_cast_data
 
-from app.api.models import CastMember, MovieCastInfo, PosterSearchResponse, PosterSearchResultMovie
-from app.modules.services.clip_service import ClipServiceError, get_clip_search_service
+from app.api.schemas import CastMember, MovieCastInfo, PosterSearchResponse, PosterSearchResultMovie
+from app.services.clip_service import ClipServiceError, get_clip_search_service
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +213,7 @@ def poster_search_by_text(
     """
     try:
         # 1. 영화 데이터 로드 (필터링을 위해 먼저 로드)
-        df_movies, _, _ = load_all_data()
+        df_movies = load_movie_data()
 
         # 2. 메타데이터 필터링 (먼저 수행)
         filter_movie_ids = None

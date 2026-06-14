@@ -1,0 +1,39 @@
+# Vector Store Configuration
+
+# Qdrant 설정
+qdrant:
+  host: "localhost"
+  port: 6333
+  collection: "movie_posters"
+
+# 인덱스 파일 경로 (FAISS 레거시 / 마이그레이션 소스)
+index:
+  base_dir: "vector_store/indices"  # 기본 디렉토리
+  index_file: "movie_posters.index"
+  embeddings_file: "embeddings.npy"  # 백업용 (선택)
+
+# 벡터 설정
+vector:
+  dim: 768  # SigLIP base 기준
+  distance_metric: "cosine"  # cosine, l2, ip
+
+# CLIP / SigLIP 모델 설정
+clip:
+  model_key: "siglip-multilingual"  # google/siglip-base-patch16-256-multilingual
+  enable_translation: false         # 다국어 SigLIP은 한국어 쿼리 직접 지원
+
+# 검색 설정
+search:
+  default_k: 10  # 기본 검색 결과 수
+  search_multiplier: 10  # 필터링 시 추가 검색 배수
+
+# 빌드 설정
+build:
+  save_embeddings: true      # 임베딩 원본 저장 여부
+  save_versioned: true       # 버전별 파일 저장 여부
+  timeout: 10                # HTTP 요청 타임아웃 (초)
+  download_batch_size: 100   # 동시 다운로드할 이미지 수
+  encoding_batch_size: 32    # GPU 배치 인코딩 크기
+  max_workers: 20            # 다운로드 스레드 수
+  max_retries: 3             # 다운로드 재시도 횟수
+

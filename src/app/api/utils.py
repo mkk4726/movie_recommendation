@@ -9,79 +9,31 @@ import numpy as np
 import pandas as pd
 from fastapi import Request
 
-from app.api.models import CastMember, MovieCastInfo
-
-# Firebase 관련 import (선택적)
-try:
-    from user_system.firebase_config import get_firebase_manager
-
-    FIREBASE_AVAILABLE = True
-except ImportError:
-    FIREBASE_AVAILABLE = False
-    get_firebase_manager = None
+from app.api.schemas import CastMember, MovieCastInfo
+from core.user_system.db_manager import get_user_manager
 
 logger = logging.getLogger(__name__)
 
 
 def get_current_user_from_cookies(request: Request) -> Optional[Dict[str, Any]]:
     """쿠키에서 현재 사용자 정보 가져오기"""
-    if not FIREBASE_AVAILABLE or get_firebase_manager is None:
-        logger.debug("Firebase가 사용 불가능합니다.")
-        return None
 
     try:
-        # 모든 쿠키 확인
-        all_cookies = dict(request.cookies)
-        logger.info(f"모든 쿠키: {list(all_cookies.keys())}")
-
         auth_token = request.cookies.get("auth_token")
         user_uid = request.cookies.get("user_uid")
 
-        logger.info(f"쿠키 확인 - auth_token: {auth_token is not None}, user_uid: {user_uid is not None}")
-        if auth_token:
-            logger.info(f"auth_token 값: {auth_token[:30]}...")
-        if user_uid:
-            logger.info(f"user_uid 값: {user_uid}")
-
         if not auth_token or not user_uid:
-            logger.info("쿠키에 인증 정보가 없습니다.")
             return None
 
-        if not auth_token.startswith("demo_token_"):
-            logger.warning(f"잘못된 auth_token 형식: {auth_token[:20]}...")
+        if not auth_token.startswith("token_"):
             return None
 
-        firebase_manager = get_firebase_manager()
-        if not firebase_manager.initialized:
-            logger.warning("Firebase가 초기화되지 않았습니다.")
-            return None
-
-        db = firebase_manager.get_firestore()
-        user_doc = db.collection("users").document(user_uid).get()
-
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            logger.info(f"✅ 사용자 정보 로드 성공: {user_data.get('email', 'N/A')} (UID: {user_uid})")
-            return user_data
-        else:
-            # 기본 사용자 정보 (Firestore에 없어도 쿠키가 있으면 로그인된 것으로 간주)
-            logger.info(f"⚠️ Firestore에 사용자 문서가 없지만 쿠키가 있으므로 기본 정보 반환: {user_uid}")
-            # 실제 이메일 정보를 가져오기 위해 auth에서 확인
-            try:
-                auth = firebase_manager.get_auth()
-                user_record = auth.get_user(user_uid)
-                return {
-                    "uid": user_uid,
-                    "email": user_record.email or "user@example.com",
-                    "display_name": user_record.display_name or user_record.email.split("@")[0]
-                    if user_record.email
-                    else "User",
-                }
-            except Exception as e:
-                logger.warning(f"Auth에서 사용자 정보 가져오기 실패: {e}")
-                return {"uid": user_uid, "email": "user@example.com", "display_name": "User"}
+        user = get_user_manager().get_user_by_id(user_uid)
+        if user:
+            logger.debug(f"사용자 확인: {user.get('email')} ({user_uid})")
+        return user
     except Exception as e:
-        logger.error(f"쿠키에서 사용자 정보 가져오기 실패: {e}", exc_info=True)
+        logger.error(f"쿠키 사용자 조회 실패: {e}", exc_info=True)
         return None
 
 
