@@ -15,6 +15,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from dotenv import load_dotenv
+
 import numpy as np
 import requests
 import torch
@@ -142,6 +144,11 @@ class QdrantIndexRebuilder:
 
 
 def main() -> None:
+    project_root = Path(__file__).resolve().parents[3]
+    env_path = project_root / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
     try:
         rebuilder = QdrantIndexRebuilder(config=load_config())
         rebuilder.rebuild()
