@@ -41,7 +41,8 @@ env/
 *.log
 scraper.log
 
-# Data files (uncomment if you want to ignore data)
+# Data files
+data/
 data_scraping/data/
 data_scraping/data/*.csv
 data_scraping/data/*.txt

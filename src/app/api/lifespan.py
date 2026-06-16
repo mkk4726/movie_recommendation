@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 def _load_models_sync():
     set_loading(True, "📦 추천 모델 로딩 중...")
     logger.info("📦 추천 모델 사전 로드 시작...")
-    from app.services.recommender_service import get_recommender_service
+    from app.services.recommender_service import get_user_cf_pipeline, get_item_cf_pipeline
 
-    get_recommender_service()
+    get_user_cf_pipeline()._ensure_loaded()
+    get_item_cf_pipeline()._ensure_loaded()
     set_progress("model", True)
     logger.info("✅ 모든 모델 로드 완료")
 
@@ -26,8 +27,7 @@ def _load_models_sync():
 def _load_data_sync():
     set_loading(True, "📦 데이터 로딩 중...")
     logger.info("📦 데이터 사전 로드 시작...")
-    from app.services.data_access import load_movie_data, get_popular_movie_ids
-    from app.api.routes.poster_search import get_cast_data
+    from core.db.data_access import load_movie_data, get_popular_movie_ids, load_cast_data
 
     df_movies = load_movie_data()
     logger.info(f"✅ 영화 데이터 로드 완료: 영화 {len(df_movies)}개")
@@ -37,7 +37,7 @@ def _load_data_sync():
     logger.info("✅ 인기 영화 목록 캐싱 완료")
 
     try:
-        get_cast_data()
+        load_cast_data()
     except Exception as e:
         logger.warning(f"⚠️ Cast 데이터 로드 실패 (계속 진행): {e}")
 
@@ -51,7 +51,7 @@ def _load_search_pipeline_sync():
     from app.api.routes.search import get_search_pipeline
 
     try:
-        get_search_pipeline()
+        get_search_pipeline()._ensure_loaded()
         set_progress("search", True)
         logger.info("✅ 검색 파이프라인 로드 완료")
     except Exception as e:
@@ -61,17 +61,20 @@ def _load_search_pipeline_sync():
 def _load_poster_search_pipeline_sync():
     set_loading(True, "🖼️ 포스터 검색 파이프라인 로딩 중...")
     logger.info("🖼️ 포스터 검색 파이프라인 사전 로드 시작...")
-    from app.services.clip_service import get_clip_search_service
+    from app.services.clip_service import get_poster_search_pipeline
 
     try:
-        clip_service = get_clip_search_service()
-        clip_service._ensure_loaded()
-        if clip_service.pipeline is not None:
-            clip_service.pipeline._ensure_loaded()
-            logger.info("✅ CLIP 인코더, FAISS 인덱스, movie_ids 사전 로드 완료")
-            logger.info("🔄 언어 감지 및 번역 모듈 사전 로드 중...")
-            clip_service.pipeline._load_language_modules()
-            logger.info("✅ 언어 감지 및 번역 모듈 사전 로드 완료")
+        pipeline = get_poster_search_pipeline()
+        pipeline._ensure_clip_loaded()
+
+        # CLIP 내부 파이프라인 사전 로드 (언어 감지/번역 포함)
+        if pipeline._clip is not None:
+            if hasattr(pipeline._clip, "_ensure_loaded"):
+                pipeline._clip._ensure_loaded()
+            if hasattr(pipeline._clip, "_load_language_modules"):
+                logger.info("🔄 언어 감지 및 번역 모듈 사전 로드 중...")
+                pipeline._clip._load_language_modules()
+                logger.info("✅ 언어 감지 및 번역 모듈 사전 로드 완료")
 
         set_progress("poster_search", True)
         logger.info("✅ 포스터 검색 파이프라인 로드 완료")

@@ -3,8 +3,8 @@ User recommendation API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from app.services.data_access import load_movie_data, load_cast_data, user_exists
-from app.services.recommender_service import recommend_for_user as recommend_for_user_func
+from app.services.data_access import load_cast_data, user_exists
+from app.services.recommender_service import get_user_cf_pipeline
 
 from app.api.schemas import UserRecommendationResponse
 from app.api.utils import from_dataframe
@@ -19,12 +19,6 @@ def recommend_for_user(
     include_cast: bool = Query(True, description="출연진/제작진 정보 포함 여부"),
 ):
     """Get movie recommendations for a specific user."""
-    try:
-        df_movies = load_movie_data()
-        cast_df = load_cast_data() if include_cast else None
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
     if not user_exists(user_id):
         raise HTTPException(
             status_code=404,
@@ -32,11 +26,13 @@ def recommend_for_user(
         )
 
     try:
-        top_watched_df, recommendations_df = recommend_for_user_func(
+        cast_df = load_cast_data() if include_cast else None
+        top_watched_df, recommendations_df = get_user_cf_pipeline().recommend(
             user_id=user_id,
-            df_movies=df_movies,
-            n=top_n,
+            top_n=top_n,
         )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

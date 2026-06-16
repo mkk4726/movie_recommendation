@@ -12,11 +12,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.services.data_access import get_data_stats, load_movie_data, load_cast_data, search_movies_cached, user_exists, get_sample_user_ids
-from app.services.recommender_service import (
-    get_recommender_service,
-    recommend_for_user as recommend_for_user_func,
-    similar_movies as similar_movies_func,
-)
+from app.services.recommender_service import get_user_cf_pipeline, get_item_cf_pipeline
 
 from app.api.app_state import get_loading_state
 from app.api.utils import _safe_year, from_dataframe, get_current_user_from_cookies, log_search_activity
@@ -92,22 +88,10 @@ def home(
     movie_search_results = []
     selected_movie_info = None
 
-    # 모델 로드 상태 확인 (사이드바 표시용)
-    # 캐시되어 있으므로 빠르게 반환됨
-    model_load_start = time.time()
-    model_loaded = False
-    recommender_service = None
-    try:
-        # 이미 로드되어 있으면 로그 없이 빠르게 반환
-        recommender_service = get_recommender_service()
-        model_loaded = True
-        logger.debug(f"모델 서비스 가져오기: {time.time() - model_load_start:.3f}초")
-    except FileNotFoundError as exc:
-        logger.warning(f"⚠️ 모델 파일을 찾을 수 없습니다: {exc}")
-        errors.append(str(exc))
-    except Exception as exc:
-        logger.error(f"❌ 모델 로드 실패: {type(exc).__name__}: {exc}", exc_info=True)
-        errors.append(f"모델 로드 중 오류가 발생했습니다: {str(exc)}")
+    # 파이프라인 인스턴스 (lazy load — 모델 파일은 실제 호출 시 로드됨)
+    model_loaded = True
+    user_cf = get_user_cf_pipeline()
+    item_cf = get_item_cf_pipeline()
 
     df_movies = None
 
@@ -135,13 +119,8 @@ def home(
     # 실제 데이터는 필요한 경우에만 로드 (지연 로딩)
     data_load_start = time.time()
     try:
-        # 현재 페이지에 따라 필요한 데이터만 로드
-        # 영화 기반: 검색이나 선택된 영화가 있을 때
-        # 사용자 기반: 사용자 ID가 있을 때
-        # 평점 관리: 항상 필요
         needs_full_data = (
             (current_page == "movie_based" and (selected_movie_id or movie_search_query))
-            or (current_page == "user_based" and (user_id or user_option == "me"))
             or (current_page == "search" and search_query)
             or current_page == "rating_management"
         )
@@ -185,11 +164,10 @@ def home(
     user_recommendations = None
     # 사용자 기반 추천: 로그인된 사용자 또는 선택된 사용자
     if current_page == "user_based":
-        # 로그인된 사용자 선택 옵션
         if user_option == "me" and is_logged_in and current_user:
             user_id = current_user.get("uid")
 
-        if user_id and recommender_service is not None:
+        if user_id:
             if not user_exists(user_id):
                 if user_option == "me":
                     errors.append("아직 학습되기 전입니다. 더 많은 평점을 입력해주세요.")
@@ -197,45 +175,42 @@ def home(
                     errors.append(f"사용자 '{user_id}'를 평점 데이터에서 찾을 수 없습니다.")
             else:
                 try:
-                    top_watched_df, recommendations_df = recommend_for_user_func(
+                    top_watched_df, recommendations_df = user_cf.recommend(
                         user_id=user_id,
-                        df_movies=df_movies,
-                        n=user_top_n,
+                        top_n=user_top_n,
                     )
                     user_recommendations = {
                         "user_id": user_id,
                         "top_watched": from_dataframe(top_watched_df, include_rating=True, cast_df=cast_df),
                         "recommendations": from_dataframe(recommendations_df, include_predicted=True, cast_df=cast_df),
                     }
-                except ValueError as exc:
+                except (ValueError, FileNotFoundError) as exc:
                     errors.append(str(exc))
 
     # Similar movies (영화 기반 추천 결과)
     similar_movies = None
-    if selected_movie_id and recommender_service is not None and df_movies is not None:
-        if selected_movie_id not in df_movies["movie_id"].values:
-            errors.append(f"영화 ID '{selected_movie_id}'를 영화 데이터에서 찾을 수 없습니다.")
-        else:
-            try:
-                # 필터 구성
-                filters = {}
-                if movie_genre:
-                    filters["genre"] = movie_genre
-                if movie_language:
-                    filters["language"] = movie_language
+    if selected_movie_id:
+        try:
+            filters = {}
+            if movie_genre:
+                filters["genre"] = movie_genre
+            if movie_language:
+                filters["language"] = movie_language
 
-                similar_df = similar_movies_func(
-                    movie_id=selected_movie_id,
-                    df_movies=df_movies,
-                    n_recommendations=similar_top_n,
-                    filters=filters if filters else None,
-                )
+            similar_df = item_cf.search(
+                movie_id=selected_movie_id,
+                top_n=similar_top_n,
+                filters=filters or None,
+            )
+            if not similar_df.empty:
                 similar_movies = {
                     "movie_id": selected_movie_id,
                     "items": from_dataframe(similar_df, include_similarity=True, cast_df=cast_df),
                 }
-            except ValueError as exc:
-                errors.append(str(exc))
+            else:
+                errors.append(f"영화 ID '{selected_movie_id}'를 영화 데이터에서 찾을 수 없습니다.")
+        except (ValueError, FileNotFoundError) as exc:
+            errors.append(str(exc))
 
     # 자연어 검색 결과
     search_results = None
@@ -243,20 +218,16 @@ def home(
         try:
             from app.api.routes.search import get_search_pipeline
 
-            search_pipeline = get_search_pipeline()
-
-            # 검색 실행 (필터를 파이프라인에 전달)
-            search_response = search_pipeline.search_to_response(
+            search_response = get_search_pipeline().search(
                 query=search_query,
                 top_k=limit,
-                min_score=0.0,
                 min_rating=min_rating,
                 min_vote_count=min_vote_count,
                 genre_filter=search_genre,
                 language_filter=search_language,
+                include_cast=True,
             )
 
-            # 활동 로깅 추가
             result_movie_ids = [r.movie_id for r in search_response.results]
             session_id = log_search_activity(
                 request,
@@ -266,50 +237,33 @@ def home(
                 search_type="natural_language",
             )
             search_response.session_id = session_id
-            if session_id:
-                logger.info(f"✅ 검색 로깅 완료: session_id={session_id}")
 
-            # 검색 결과를 DataFrame으로 변환하고 영화 메타데이터와 조인
             if search_response.results:
-                # 검색 결과에서 movie_id와 score 추출
-                search_movie_ids = []
-                search_scores = {}
-                for result in search_response.results:
-                    search_movie_ids.append(result.movie_id)
-                    search_scores[result.movie_id] = result.score
+                search_scores = {r.movie_id: r.score for r in search_response.results}
+                search_movie_ids = [r.movie_id for r in search_response.results]
 
-                # df_movies가 없으면 로드
                 if df_movies is None:
-                    logger.info("검색 결과 메타데이터를 위해 영화 데이터 로드 중...")
                     df_movies = load_movie_data()
 
-                # movie_id로 전체 영화 데이터 조인
-                df_search_movies = df_movies[df_movies["movie_id"].isin(search_movie_ids)].copy()
-
-                if not df_search_movies.empty:
-                    # 검색 결과 순서 유지
-                    df_search_movies["movie_id_str"] = df_search_movies["movie_id"].astype(str)
-                    search_movie_ids_str = [str(mid) for mid in search_movie_ids]
-                    df_search_movies = (
-                        df_search_movies.set_index("movie_id_str").reindex(search_movie_ids_str).reset_index(drop=True)
+                df_search = df_movies[df_movies["movie_id"].isin(search_movie_ids)].copy()
+                if not df_search.empty:
+                    df_search["movie_id_str"] = df_search["movie_id"].astype(str)
+                    df_search = (
+                        df_search.set_index("movie_id_str")
+                        .reindex([str(mid) for mid in search_movie_ids])
+                        .reset_index(drop=True)
                     )
-                    # NaN 행 제거
-                    df_search_movies = df_search_movies.dropna(subset=["movie_id"])
-
-                    # from_dataframe으로 표준 형식 변환
-                    search_movies = from_dataframe(df_search_movies, cast_df=cast_df)
-
-                    # 검색 점수 추가
-                    for movie in search_movies:
+                    df_search = df_search.dropna(subset=["movie_id"])
+                    movies_list = from_dataframe(df_search, cast_df=cast_df)
+                    for movie in movies_list:
                         movie["score"] = search_scores.get(movie["movie_id"], 0.0)
-
                     search_results = {
                         "query": search_query,
-                        "total_results": len(search_movies),
-                        "results": search_movies,
-                        "session_id": search_response.session_id,
+                        "total_results": len(movies_list),
+                        "results": movies_list,
+                        "session_id": session_id,
                     }
-                    logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(search_movies)}개 결과 (필터 적용됨)")
+                    logger.info(f"🔍 자연어 검색 완료: '{search_query}' -> {len(movies_list)}개 결과")
                 else:
                     search_results = {"query": search_query, "total_results": 0, "results": []}
             else:
@@ -322,52 +276,50 @@ def home(
     poster_search_results = None
     if current_page == "poster_search" and poster_query and poster_query.strip():
         try:
-            from app.api.routes.poster_search import poster_search_by_text
+            from app.services.clip_service import get_poster_search_pipeline
 
-            # 포스터 검색 실행 (이미 모든 메타데이터 포함)
-            poster_response = poster_search_by_text(
-                request=request,
+            filters = {}
+            if min_rating > 0:
+                filters["min_rating"] = min_rating
+            if min_vote_count > 0:
+                filters["min_vote_count"] = min_vote_count
+            if poster_genre:
+                filters["genre"] = poster_genre
+            if poster_language:
+                filters["language"] = poster_language
+
+            raw = get_poster_search_pipeline().search(
                 query=poster_query,
-                limit=limit,
+                top_k=limit,
+                filters=filters or None,
                 include_cast=True,
-                min_rating=min_rating,
-                min_vote_count=min_vote_count,
-                genre=poster_genre,
-                language=poster_language,
             )
 
-            # 검색 결과를 표준 형식으로 변환
-            if poster_response.results:
-                # PosterSearchResultMovie를 딕셔너리로 변환 (이미 모든 메타데이터 포함)
-                poster_movies = []
-                for result in poster_response.results:
-                    movie_dict = {
-                        "movie_id": result.movie_id,
-                        "title": result.title,
-                        "total_title": result.title,  # 호환성을 위해
-                        "genres": result.genres,
-                        "genres_tmdb": result.genres,  # 호환성을 위해
-                        "year": result.year,
-                        "overview": result.overview,
-                        "poster_url": result.poster_url,
-                        "similarity": result.score,  # 유사도로 표시
-                        "cast_info": result.cast_info,
-                        # 추가 메타데이터
-                        "imdb_id": result.imdb_id,
-                        "release_date": result.release_date,
-                        "vote_average": result.vote_average,
-                        "vote_count": result.vote_count,
-                        "adult": result.adult,
-                        "language": result.language,
+            if raw:
+                poster_movies = [
+                    {
+                        **item,
+                        "total_title": item.get("title"),
+                        "genres_tmdb": item.get("genres"),
+                        "similarity": item.get("score"),
                     }
-                    poster_movies.append(movie_dict)
-
+                    for item in raw
+                ]
+                result_ids = [m["movie_id"] for m in poster_movies]
+                session_id = log_search_activity(
+                    request,
+                    query=poster_query,
+                    result_count=len(poster_movies),
+                    result_movie_ids=result_ids,
+                    search_type="poster",
+                    filters=filters,
+                )
                 poster_search_results = {
                     "query": poster_query,
                     "query_type": "text",
                     "total_results": len(poster_movies),
                     "results": poster_movies,
-                    "session_id": poster_response.session_id,
+                    "session_id": session_id,
                 }
                 logger.info(f"🖼️ 포스터 검색 완료: '{poster_query}' -> {len(poster_movies)}개 결과")
             else:
