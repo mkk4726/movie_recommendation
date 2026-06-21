@@ -291,6 +291,46 @@ docker compose logs -f app
 docker compose restart app
 ```
 
+### 자동 배포 (CD)
+
+`main` 브랜치에 새 커밋이 push되면 서버가 5분 안에 자동으로 감지하고 배포합니다.
+
+```
+main에 push
+    └─▶ movie-deploy.timer (5분 간격)
+            └─▶ deploy-if-updated.sh
+                    ├─ git fetch → 변경 없으면 종료
+                    ├─ git pull
+                    ├─ docker compose up -d --build
+                    └─ Slack 알림 (시작 / 완료 / 실패)
+```
+
+**구성 파일**
+
+| 파일 | 역할 |
+|------|------|
+| `~/deploy-if-updated.sh` | 변경 감지 · 배포 · Slack 알림 스크립트 |
+| `/etc/systemd/system/movie-deploy.service` | 스크립트를 실행하는 oneshot 서비스 |
+| `/etc/systemd/system/movie-deploy.timer` | 5분마다 서비스를 트리거하는 타이머 |
+
+**타이머 관리**
+
+```bash
+# 상태 확인
+systemctl status movie-deploy.timer
+
+# 다음 실행 시각 확인
+systemctl list-timers movie-deploy.timer
+
+# 즉시 수동 실행
+sudo systemctl start movie-deploy.service
+
+# 로그 확인
+journalctl -u movie-deploy.service -n 20
+```
+
+---
+
 ### Cloudflare Tunnel 설정
 
 터널은 systemd 서비스로 관리됩니다.
