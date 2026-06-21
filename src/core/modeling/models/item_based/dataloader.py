@@ -4,25 +4,14 @@ PostgreSQL 기반, 캐시 기능 포함
 """
 
 import hashlib
-import os
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-import psycopg2
 import yaml
 
+from core.db.loader import load_ml_ratings
 from core.modeling.utils.data import filter_by_min_counts
-
-
-def _connect():
-    return psycopg2.connect(
-        host=os.environ.get("POSTGRES_HOST", "localhost"),
-        port=int(os.environ.get("POSTGRES_PORT", 5432)),
-        dbname=os.environ.get("POSTGRES_DB", "movie_recommendation"),
-        user=os.environ.get("POSTGRES_USER", "movie_user"),
-        password=os.environ.get("POSTGRES_PASSWORD", "movie_pass"),
-    )
 
 
 def load_data(refresh: bool = False, data_config_path: Optional[str] = None) -> pd.DataFrame:
@@ -62,14 +51,11 @@ def load_data(refresh: bool = False, data_config_path: Optional[str] = None) -> 
         print(f"  - 캐시된 데이터: {len(filtered_data):,}개 평점\n")
         return filtered_data
 
-    print("\n📥 PostgreSQL에서 평점 데이터 로드 중...")
-    conn = _connect()
-    try:
-        df_ratings = pd.read_sql_query(
-            "SELECT user_id::text, movie_id::text, rating FROM ml_ratings", conn
-        )
-    finally:
-        conn.close()
+    print("\n📥 평점 데이터 로드 중...")
+    raw = load_ml_ratings()
+    df_ratings = raw[["user_id", "movie_id", "rating"]].copy()
+    df_ratings["user_id"] = df_ratings["user_id"].astype(str)
+    df_ratings["movie_id"] = df_ratings["movie_id"].astype(str)
     print(f"  - 데이터: {len(df_ratings):,}개 평점")
 
     print(f"🔍 필터링: 사용자 최소 {min_user_ratings}개, 영화 최소 {min_movie_ratings}개")

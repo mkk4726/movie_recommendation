@@ -1,25 +1,14 @@
 import hashlib
-import os
 from pathlib import Path
 from typing import List, Tuple
 
 import pandas as pd
-import psycopg2
 import yaml
 from surprise import Dataset, Reader
 from surprise.trainset import Trainset
 
+from core.db.loader import load_ml_ratings
 from core.modeling.utils.train import optimize_dataframe_for_surprise, split_train_test
-
-
-def _connect():
-    return psycopg2.connect(
-        host=os.environ.get("POSTGRES_HOST", "localhost"),
-        port=int(os.environ.get("POSTGRES_PORT", 5432)),
-        dbname=os.environ.get("POSTGRES_DB", "movie_recommendation"),
-        user=os.environ.get("POSTGRES_USER", "movie_user"),
-        password=os.environ.get("POSTGRES_PASSWORD", "movie_pass"),
-    )
 
 
 def _load_data_config() -> dict:
@@ -28,14 +17,12 @@ def _load_data_config() -> dict:
         return yaml.safe_load(f)
 
 
-def _load_ratings_from_pg() -> pd.DataFrame:
-    """PostgreSQL ml_ratings에서 평점 로드."""
-    sql = "SELECT user_id::text, movie_id::text, rating FROM ml_ratings"
-    conn = _connect()
-    try:
-        df = pd.read_sql_query(sql, conn)
-    finally:
-        conn.close()
+def _load_ratings_as_strings() -> pd.DataFrame:
+    """ml_ratings를 문자열 ID로 변환하여 로드합니다."""
+    df = load_ml_ratings()
+    df = df[["user_id", "movie_id", "rating"]].copy()
+    df["user_id"] = df["user_id"].astype(str)
+    df["movie_id"] = df["movie_id"].astype(str)
     return df
 
 
@@ -70,9 +57,9 @@ def load_train_test_df(
         df_test = pd.read_csv(cache_test_path, dtype={"user_id": str, "movie_id": str})
         return df_train, df_test
 
-    print("\n📥 PostgreSQL에서 평점 데이터 로드 중...")
+    print("\n📥 평점 데이터 로드 중...")
     from core.modeling.utils.data import filter_by_min_counts
-    df_ratings = _load_ratings_from_pg()
+    df_ratings = _load_ratings_as_strings()
 
     print("\n🔍 데이터 필터링 중...")
     df_filtered = filter_by_min_counts(

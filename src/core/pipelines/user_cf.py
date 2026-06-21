@@ -24,7 +24,7 @@ class UserCFPipeline:
         if self._svd is not None:
             return
         logger.info("UserCFPipeline: SVD 모델 로딩 중...")
-        self._svd = SVDModel.load_model(use_total_data=True)
+        self._svd = SVDModel.load(use_total_data=True)
         trainset = self._svd.trainset
         self._df_trainset = pd.DataFrame(
             [

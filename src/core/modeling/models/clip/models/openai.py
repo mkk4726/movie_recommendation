@@ -7,6 +7,7 @@ from transformers import CLIPModel, CLIPProcessor
 
 from ..utils import make_square
 from . import MODEL_REGISTRY
+from .base import BaseClipEncoder
 
 # OpenAI CLIP 모델 스펙 요약
 #
@@ -41,12 +42,10 @@ from . import MODEL_REGISTRY
 # | clip-l14(ViT-L/14)| 428M   | 768  | 14x14| 224x224| SOTA, 리소스 많이 요구         |
 
 
-class OpenAICLIPEncoder:
-    """
-    Unified Encoder for OpenAI CLIP Models
-    - Supports image encoding
-    - Supports text encoding
-    - Returns L2-normalized embeddings (industry standard for retrieval)
+class OpenAICLIPEncoder(BaseClipEncoder):
+    """OpenAI CLIP 모델 인코더 (CLIPModel/CLIPProcessor 기반).
+
+    BaseClipEncoder와 달리 openai-b32/b16/l14 전용 클래스/프로세서를 사용합니다.
     """
 
     def __init__(
@@ -54,13 +53,11 @@ class OpenAICLIPEncoder:
         model_key: Literal["openai-b32", "openai-b16", "openai-l14"] | str = "openai-b32",
         device: str | None = None,
     ):
+        # BaseClipEncoder.__init__ 대신 OpenAI 전용 로딩 (CLIPModel 사용)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-
         resolved_model_name = MODEL_REGISTRY.get(model_key, model_key)
-
         self.model = CLIPModel.from_pretrained(resolved_model_name).to(self.device)
         self.processor = CLIPProcessor.from_pretrained(resolved_model_name)
-
         self.model.eval()
 
     @torch.no_grad()

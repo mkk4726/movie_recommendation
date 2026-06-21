@@ -9,8 +9,9 @@ from typing import List, Optional
 
 import pandas as pd
 
-from core.db.data_access import load_movie_data, load_cast_data
+from core.db.data_access import load_cast_data, load_movie_data
 from core.modeling.models.query_search.query_search import QuerySearchPipeline as _BM25Pipeline
+from core.modeling.utils.cast import build_cast_info
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class NaturalLanguageSearchPipeline:
     def search(
         self,
         query: str,
-        top_k: int = 20,
+        top_n: int = 20,
         min_score: float = 0.0,
         min_rating: float = 0.0,
         min_vote_count: int = 0,
@@ -64,7 +65,7 @@ class NaturalLanguageSearchPipeline:
         self._ensure_loaded()
         response = self._pipeline.search_to_response(
             query=query,
-            top_k=top_k,
+            top_k=top_n,
             min_score=min_score,
             min_rating=min_rating,
             min_vote_count=min_vote_count,
@@ -77,50 +78,7 @@ class NaturalLanguageSearchPipeline:
             for result in response.results:
                 imdb_id = self._movie_id_to_imdb.get(result.movie_id)
                 if imdb_id:
-                    result.cast_info = _get_cast_info(imdb_id, self._cast_df)
+                    movie_cast = self._cast_df[self._cast_df["imdb_id"] == imdb_id]
+                    result.cast_info = build_cast_info(movie_cast)
 
         return response
-
-
-def _get_cast_info(imdb_id: str, cast_df: pd.DataFrame):
-    """MovieCastInfo Pydantic 객체 반환 (lazy import)."""
-    from app.api.schemas import CastMember, MovieCastInfo
-
-    movie_cast = cast_df[cast_df["imdb_id"] == imdb_id]
-    if movie_cast.empty:
-        return MovieCastInfo()
-
-    actors_data = movie_cast[movie_cast["known_for_department"] == "Acting"].sort_values("cast_id").head(5)
-    actors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=row["character"] if pd.notna(row["character"]) else None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in actors_data.iterrows()
-    ]
-
-    directors_data = movie_cast[movie_cast["known_for_department"] == "Directing"].sort_values("cast_id")
-    directors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in directors_data.iterrows()
-    ]
-
-    writers_data = movie_cast[movie_cast["known_for_department"] == "Writing"].sort_values("cast_id")
-    writers = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in writers_data.iterrows()
-    ]
-
-    return MovieCastInfo(actors=actors, directors=directors, writers=writers)

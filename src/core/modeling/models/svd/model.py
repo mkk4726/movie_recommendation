@@ -167,19 +167,18 @@ class SVDModel:
         return self.model
 
     @classmethod
-    def load_model(
+    def load(
         cls, filepath: Optional[Path | str] = None, config_path: Optional[Path] = None, use_total_data: bool = True
     ) -> SVD:
-        """
-        저장된 파라미터를 로드하여 완전한 모델 객체 생성 (클래스 메서드)
+        """저장된 파라미터를 로드하여 완전한 SVD 모델 객체를 반환합니다.
 
         Args:
-            filepath: 파라미터 파일 경로 (.npz). None이면 기본 경로 사용 (svd/model-data/svd_params.npz)
+            filepath: 파라미터 파일 경로 (.npz). None이면 기본 경로 사용
             config_path: config.yaml 파일 경로 (None이면 기본 경로 사용)
             use_total_data: True면 전체 데이터셋 사용
 
         Returns:
-            파라미터가 로드된 완전한 SVD 모델 객체
+            파라미터가 로드된 Surprise SVD 모델 객체
         """
         if filepath is None:
             default_dir = Path(__file__).parent.parent.parent.parent.parent / "assets"
@@ -188,6 +187,23 @@ class SVDModel:
         svd_model = cls(config_path=config_path)
         svd_model.create_model(use_total_data=use_total_data)
         return svd_model.load_params(filepath)
+
+    @classmethod
+    def load_model(
+        cls, filepath: Optional[Path | str] = None, config_path: Optional[Path] = None, use_total_data: bool = True
+    ) -> SVD:
+        """load()의 별칭 (하위 호환)."""
+        return cls.load(filepath=filepath, config_path=config_path, use_total_data=use_total_data)
+
+    def save(self, filepath: Optional[Path | str] = None) -> None:
+        """학습된 모델 파라미터를 .npz로 저장합니다.
+
+        Args:
+            filepath: 저장할 파일 경로 (.npz). None이면 기본 경로 사용
+        """
+        if self.model is None:
+            raise ValueError("모델이 학습되지 않았습니다. fit()을 먼저 호출하세요.")
+        self.save_params(self.model, filepath=filepath)
 
     def fit(self, trainset: Optional[Trainset] = None) -> SVD:
         """

@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 from fastapi import Request
 
-from app.api.schemas import CastMember, MovieCastInfo
+from app.api.schemas import MovieCastInfo
+from core.modeling.utils.cast import build_cast_info
 from core.user_system.db_manager import get_user_manager
 
 logger = logging.getLogger(__name__)
@@ -126,62 +127,13 @@ def _safe_year(value) -> Optional[int]:
 
 
 def get_movie_cast_info(imdb_id: str, cast_df: pd.DataFrame) -> Optional[MovieCastInfo]:
-    """
-    특정 영화의 출연진 및 제작진 정보를 가져옵니다.
-
-    Args:
-        imdb_id: 영화 IMDB ID
-        cast_df: Cast 데이터프레임
-
-    Returns:
-        MovieCastInfo 객체 또는 None
-    """
+    """특정 영화의 출연진 및 제작진 정보를 가져옵니다."""
     if cast_df is None or cast_df.empty or imdb_id is None or pd.isna(imdb_id):
         return None
-
-    # 해당 영화의 cast 데이터 필터링
     movie_cast = cast_df[cast_df["imdb_id"] == imdb_id]
-
     if movie_cast.empty:
         return None
-
-    # 배우 정보 (Acting, cast_id로 정렬, 상위 5명)
-    actors_data = movie_cast[movie_cast["known_for_department"] == "Acting"].sort_values("cast_id").head(5)
-    actors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=row["character"] if pd.notna(row["character"]) else None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in actors_data.iterrows()
-    ]
-
-    # 감독 정보 (Directing, cast_id로 정렬)
-    directors_data = movie_cast[movie_cast["known_for_department"] == "Directing"].sort_values("cast_id")
-    directors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,  # 감독은 character 없음
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in directors_data.iterrows()
-    ]
-
-    # 작가 정보 (Writing, cast_id로 정렬)
-    writers_data = movie_cast[movie_cast["known_for_department"] == "Writing"].sort_values("cast_id")
-    writers = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,  # 작가는 character 없음
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in writers_data.iterrows()
-    ]
-
-    return MovieCastInfo(actors=actors, directors=directors, writers=writers)
+    return build_cast_info(movie_cast)
 
 
 def add_cast_info_to_results(results: List[dict], cast_df: Optional[pd.DataFrame] = None) -> List[dict]:

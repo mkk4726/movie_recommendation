@@ -230,29 +230,8 @@ class ItemBasedModel:
             return recommended_movie_ids
 
     def save_model(self, filepath: str = None):
-        """
-        학습된 모델 저장
-
-        Args:
-            filepath: 저장할 파일 경로 (.pkl). None이면 기본 경로 사용 (model-data/item_based_model.pkl)
-        """
-        if filepath is None:
-            default_dir = Path(__file__).parent.parent.parent.parent.parent / "assets"
-            filepath = default_dir / "item_based_model.pkl"
-
-        filepath = Path(filepath)
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-
-        model_data = {
-            "config": self.config,
-            "item_similarity_matrix": self.item_similarity_matrix,
-            "id_mapping": self.id_mapping,
-        }
-
-        logger.info(f"💾 모델 저장 시작: {filepath}")
-        with open(filepath, "wb") as f:
-            pickle.dump(model_data, f)
-        logger.info(f"✅ 모델 저장 완료: {filepath}")
+        """save()의 별칭 (하위 호환)."""
+        return self.save(filepath)
 
     @classmethod
     def load(cls, filepath: str = None, config: dict = None):
@@ -289,13 +268,28 @@ class ItemBasedModel:
         return instance
 
     def save(self, filepath: str = None):
-        """
-        학습된 모델 저장 (save_model 별칭)
+        """학습된 모델을 pickle로 저장합니다.
 
         Args:
             filepath: 저장할 파일 경로 (.pkl). None이면 기본 경로 사용
         """
-        return self.save_model(filepath)
+        if filepath is None:
+            default_dir = Path(__file__).parent.parent.parent.parent.parent / "assets"
+            filepath = default_dir / "item_based_model.pkl"
+
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        model_data = {
+            "config": self.config,
+            "item_similarity_matrix": self.item_similarity_matrix,
+            "id_mapping": self.id_mapping,
+        }
+
+        logger.info(f"💾 모델 저장 시작: {filepath}")
+        with open(filepath, "wb") as f:
+            pickle.dump(model_data, f)
+        logger.info(f"✅ 모델 저장 완료: {filepath}")
 
 
 if __name__ == "__main__":

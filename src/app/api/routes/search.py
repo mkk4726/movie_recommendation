@@ -42,7 +42,7 @@ def natural_language_search(
         logger.info(f"🔍 자연어 검색: '{query}'")
         response = pipeline.search(
             query=query,
-            top_k=limit,
+            top_n=limit,
             min_score=min_score,
             min_rating=min_rating,
             min_vote_count=min_vote_count,

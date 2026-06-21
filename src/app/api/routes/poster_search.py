@@ -44,7 +44,7 @@ def poster_search_by_text(
         logger.info(f"🔍 포스터 검색: '{query}' (limit={limit})")
         raw_results = pipeline.search(
             query=query,
-            top_k=limit,
+            top_n=limit,
             filters=filters or None,
             include_cast=include_cast,
         )

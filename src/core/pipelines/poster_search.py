@@ -8,7 +8,9 @@ from typing import List, Optional
 
 import pandas as pd
 
-from core.db.data_access import load_movie_data, load_cast_data
+from core.db.data_access import load_cast_data, load_movie_data
+from core.modeling.utils.cast import build_cast_info
+from core.modeling.utils.filters import apply_movie_filters
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class PosterSearchPipeline:
     def search(
         self,
         query: str,
-        top_k: int = 10,
+        top_n: int = 10,
         filters: Optional[dict] = None,
         include_cast: bool = True,
     ) -> List[dict]:
@@ -55,7 +57,7 @@ class PosterSearchPipeline:
 
         Args:
             query: 검색 텍스트 (한국어 자동 번역 지원)
-            top_k: 반환할 결과 수
+            top_n: 반환할 결과 수
             filters: {'min_rating', 'min_vote_count', 'genre', 'language'}
             include_cast: 출연진 정보 포함 여부
 
@@ -65,38 +67,26 @@ class PosterSearchPipeline:
         self._ensure_clip_loaded()
         df_movies = load_movie_data()
 
-        filter_ids = _build_filter_ids(df_movies, filters) if filters else None
-        if filter_ids is not None and len(filter_ids) == 0:
-            return []
+        if filters:
+            filtered_df = apply_movie_filters(
+                df_movies,
+                genre=filters.get("genre"),
+                language=filters.get("language"),
+                min_rating=filters.get("min_rating", 0.0),
+                min_vote_count=filters.get("min_vote_count", 0),
+            )
+            filter_ids = filtered_df["movie_id"].astype(str).tolist()
+            if not filter_ids:
+                return []
+        else:
+            filter_ids = None
 
-        raw = self._clip.search(query=query, top_k=top_k, filter_movie_ids=filter_ids)
+        raw = self._clip.search(query=query, top_k=top_n, filter_movie_ids=filter_ids)
 
         if include_cast:
             self._ensure_cast_loaded()
 
         return _enrich(raw, df_movies, self._cast_grouped if include_cast else None)
-
-
-def _build_filter_ids(df: pd.DataFrame, filters: dict) -> Optional[List[str]]:
-    if not filters:
-        return None
-    result = df.copy()
-
-    if filters.get("min_rating", 0) > 0 and "vote_average" in result.columns:
-        result = result[result["vote_average"] >= filters["min_rating"]]
-    if filters.get("min_vote_count", 0) > 0 and "vote_count" in result.columns:
-        result = result[result["vote_count"] >= filters["min_vote_count"]]
-    if filters.get("genre"):
-        genre_col = "genres_tmdb" if "genres_tmdb" in result.columns else "genres"
-        result = result[
-            result[genre_col].apply(
-                lambda x: any(g in str(x) for g in filters["genre"]) if pd.notna(x) else False
-            )
-        ]
-    if filters.get("language") and "language" in result.columns:
-        result = result[result["language"].isin(filters["language"])]
-
-    return result["movie_id"].astype(str).tolist()
 
 
 def _enrich(raw_results: list, df_movies: pd.DataFrame, cast_grouped) -> List[dict]:
@@ -121,7 +111,11 @@ def _enrich(raw_results: list, df_movies: pd.DataFrame, cast_grouped) -> List[di
         if cast_grouped is not None:
             imdb_id = data.get("imdb_id")
             if imdb_id and pd.notna(imdb_id):
-                cast_info = _get_cast_info(imdb_id, cast_grouped)
+                try:
+                    movie_cast = cast_grouped.get_group(imdb_id)
+                    cast_info = build_cast_info(movie_cast)
+                except KeyError:
+                    pass
 
         results.append({
             "movie_id": movie_id,
@@ -141,51 +135,3 @@ def _enrich(raw_results: list, df_movies: pd.DataFrame, cast_grouped) -> List[di
         })
 
     return results
-
-
-def _get_cast_info(imdb_id: str, cast_grouped):
-    """MovieCastInfo Pydantic 객체 반환 (lazy import)."""
-    from app.api.schemas import CastMember, MovieCastInfo
-
-    try:
-        movie_cast = cast_grouped.get_group(imdb_id)
-    except KeyError:
-        return MovieCastInfo()
-
-    if movie_cast.empty:
-        return MovieCastInfo()
-
-    actors_data = movie_cast[movie_cast["known_for_department"] == "Acting"].sort_values("cast_id").head(5)
-    actors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=row["character"] if pd.notna(row["character"]) else None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in actors_data.iterrows()
-    ]
-
-    directors_data = movie_cast[movie_cast["known_for_department"] == "Directing"].sort_values("cast_id")
-    directors = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in directors_data.iterrows()
-    ]
-
-    writers_data = movie_cast[movie_cast["known_for_department"] == "Writing"].sort_values("cast_id")
-    writers = [
-        CastMember(
-            name=row["name"],
-            original_name=row["original_name"],
-            character=None,
-            profile_path=row["profile_path"] if pd.notna(row["profile_path"]) else None,
-        )
-        for _, row in writers_data.iterrows()
-    ]
-
-    return MovieCastInfo(actors=actors, directors=directors, writers=writers)

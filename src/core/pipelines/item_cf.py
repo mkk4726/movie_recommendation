@@ -9,6 +9,7 @@ import pandas as pd
 
 from core.db.data_access import load_movie_data
 from core.modeling.models.item_based.model import ItemBasedModel
+from core.modeling.utils.filters import apply_movie_filters
 
 logger = logging.getLogger(__name__)
 
@@ -60,42 +61,16 @@ class ItemCFPipeline:
         result = result.rename(columns={"similarity_score": "similarity"})
 
         if filters:
-            result = _apply_filters(result, filters)
+            result = apply_movie_filters(
+                result,
+                genre=filters.get("genre"),
+                language=filters.get("language"),
+                min_year=filters.get("min_year"),
+                max_year=filters.get("max_year"),
+            )
 
         return (
             result.sort_values("similarity", ascending=False)
             .head(top_n)
             .reset_index(drop=True)
         )
-
-
-def _apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
-    if "genre" in filters and filters["genre"]:
-        genre_list = filters["genre"]
-        if isinstance(genre_list, str):
-            genre_list = [genre_list]
-        if "genres_tmdb" in df.columns:
-            mask = df["genres_tmdb"].apply(
-                lambda x: any(g in str(x) for g in genre_list) if pd.notna(x) else False
-            )
-            df = df[mask]
-
-    if "min_year" in filters and filters["min_year"] is not None:
-        if "year" in df.columns:
-            df = df[df["year"] >= filters["min_year"]]
-
-    if "max_year" in filters and filters["max_year"] is not None:
-        if "year" in df.columns:
-            df = df[df["year"] <= filters["max_year"]]
-
-    if "language" in filters and filters["language"]:
-        lang_list = filters["language"]
-        if isinstance(lang_list, str):
-            lang_list = [lang_list]
-        if "language" in df.columns:
-            mask = df["language"].apply(
-                lambda x: any(lang in str(x) for lang in lang_list) if pd.notna(x) else False
-            )
-            df = df[mask]
-
-    return df
