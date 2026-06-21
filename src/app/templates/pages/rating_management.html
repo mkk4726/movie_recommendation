@@ -132,9 +132,9 @@
       {% if explored_movies_list and explored_movies_list|length > 0 %}
       <div style="margin-top: 1.5rem;">
         <h4 style="margin-bottom: 1rem;">탐색된 영화 ({{ explored_movies_list|length }}개)</h4>
-        <div class="movie-grid">
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
           {% for movie in explored_movies_list %}
-          <div style="margin-bottom: 2rem;">
+          <div>
             {{ movie_metadata_card(movie, show_index=True, index=loop.index, overview_id_prefix='explore-movie-overview') }}
             <!-- 평점 입력 폼 -->
             <form method="post" action="/rating/add" class="rating-form-row">

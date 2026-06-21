@@ -59,7 +59,7 @@ def load_movie_data() -> pd.DataFrame:
             m.movie_id,
             m.title,
             m.genres,
-            l.imdb_id,
+            COALESCE(t.imdb_id, l.imdb_id) AS imdb_id,
             l.tmdb_id,
             t.title          AS title_tmdb,
             t.original_title,
