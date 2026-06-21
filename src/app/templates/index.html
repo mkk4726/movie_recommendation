@@ -7,7 +7,7 @@
 {% block content %}
   {% if errors and errors|length > 0 %}
     <section class="card error-card">
-      <h2>⚠️ 오류</h2>
+      <h3 class="page-heading">오류</h3>
       <ul>
         {% for message in errors %}
           <li>{{ message }}</li>

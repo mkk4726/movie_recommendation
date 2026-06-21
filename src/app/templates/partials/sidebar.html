@@ -1,160 +1,77 @@
-<div class="sidebar-section">
-  <h3>🎯 추천 방식</h3>
-  <div class="sidebar-radio-group">
-    <label class="sidebar-radio-label">
-      <input 
-        type="radio" 
-        name="page" 
-        value="search" 
-        class="page-radio"
-        {% if current_page == "search" %}checked{% endif %}
-      />
-      <span>🔍 검색</span>
-    </label>
-    <label class="sidebar-radio-label">
-      <input 
-        type="radio" 
-        name="page" 
-        value="poster_search" 
-        class="page-radio"
-        {% if current_page == "poster_search" %}checked{% endif %}
-      />
-      <span>🖼️ 포스터 검색</span>
-    </label>
-    <label class="sidebar-radio-label">
-      <input 
-        type="radio" 
-        name="page" 
-        value="movie_based" 
-        class="page-radio"
-        {% if current_page == "movie_based" %}checked{% endif %}
-      />
-      <span>🎞️ 영화 기반 추천</span>
-    </label>
-    <label class="sidebar-radio-label">
-      <input 
-        type="radio" 
-        name="page" 
-        value="user_based" 
-        class="page-radio"
-        {% if current_page == "user_based" %}checked{% endif %}
-      />
-      <span>👤 사용자 기반 추천</span>
-    </label>
-    {% if is_logged_in %}
-    <label class="sidebar-radio-label">
-      <input 
-        type="radio" 
-        name="page" 
-        value="rating_management" 
-        class="page-radio"
-        {% if current_page == "rating_management" %}checked{% endif %}
-      />
-      <span>⭐ 내 평점 관리</span>
-    </label>
-    {% endif %}
-  </div>
-</div>
-
-<div class="sidebar-section">
-  <div class="divider"></div>
-</div>
-
-<div class="sidebar-section">
-  <h3>🔐 로그인 / 회원가입</h3>
-  {% if is_logged_in and current_user %}
-    <div class="user-info">
-      <p style="margin: 0.5rem 0; font-weight: 600;">👤 {{ current_user.get('display_name', 'User') }}</p>
-      <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--muted-text);">📧 {{ current_user.get('email', 'N/A') }}</p>
+{% if is_logged_in and current_user %}
+  <div class="auth-user-panel">
+    <div class="user-avatar">{{ current_user.get('display_name', 'U')[0] | upper }}</div>
+    <div>
+      <p class="user-name">{{ current_user.get('display_name', 'User') }}</p>
+      <p class="user-email">{{ current_user.get('email', '') }}</p>
     </div>
-    <form method="post" action="/auth/logout" style="margin-top: 1rem;">
-      <button type="submit" class="logout-btn">로그아웃</button>
-    </form>
-  {% else %}
-    <div class="auth-tabs">
-      <input type="radio" id="tab-login" name="auth-tab" checked>
-      <input type="radio" id="tab-signup" name="auth-tab">
-      
-      <div class="tab-labels">
-        <label for="tab-login" class="tab-label">로그인</label>
-        <label for="tab-signup" class="tab-label">회원가입</label>
+  </div>
+
+  <hr class="divider" />
+
+  <form method="post" action="/auth/logout">
+    <button type="submit" class="btn-primary" style="width: 100%;">로그아웃</button>
+  </form>
+
+{% else %}
+  <div class="auth-panel">
+    <div class="auth-tabs-header">
+      <button class="auth-tab-btn active" id="tab-login-btn" onclick="switchAuthTab('login')">로그인</button>
+      <button class="auth-tab-btn" id="tab-signup-btn" onclick="switchAuthTab('signup')">회원가입</button>
+    </div>
+
+    <div id="auth-tab-login">
+      {% if errors and errors | length > 0 %}
+      <div class="auth-errors">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
       </div>
-      
-      <div class="tab-content" id="login-content">
-        {% if errors and errors|length > 0 %}
-        <div style="padding: 0.75rem; background-color: var(--error-bg); color: var(--error-text); border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.85rem;">
-          {% for error in errors %}
-          <p style="margin: 0;">⚠️ {{ error }}</p>
-          {% endfor %}
+      {% endif %}
+      <form method="post" action="/auth/login" class="auth-form">
+        <div class="form-group">
+          <label>이메일</label>
+          <input type="email" name="email" placeholder="name@example.com" required />
         </div>
-        {% endif %}
-        <form method="post" action="/auth/login" class="auth-form">
-          <input type="email" name="email" placeholder="이메일" required>
-          <input type="password" name="password" placeholder="비밀번호" required>
-          <button type="submit" class="auth-btn">로그인</button>
-        </form>
-      </div>
-      
-      <div class="tab-content" id="signup-content">
-        <form method="post" action="/auth/signup" class="auth-form">
-          <input type="email" name="email" placeholder="이메일" required>
-          <input type="password" name="password" placeholder="비밀번호 (6자 이상)" required minlength="6">
-          <input type="text" name="display_name" placeholder="닉네임 (선택)">
-          <button type="submit" class="auth-btn">회원가입</button>
-        </form>
-      </div>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input type="password" name="password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="auth-btn">로그인</button>
+      </form>
     </div>
-  {% endif %}
-</div>
 
-<div class="sidebar-section">
-  <div class="divider"></div>
-</div>
-
-<div class="sidebar-section">
-  <h3>📊 데이터 통계</h3>
-  <div class="sidebar-stats">
-    <div class="sidebar-stat-item">
-      <span class="sidebar-stat-label">전체 영화 수</span>
-      <span class="sidebar-stat-value">{{ stats.total_movies | default("0") }}</span>
+    <div id="auth-tab-signup" style="display:none">
+      <form method="post" action="/auth/signup" class="auth-form">
+        <div class="form-group">
+          <label>이메일</label>
+          <input type="email" name="email" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input type="password" name="password" placeholder="6자 이상" required minlength="6" />
+        </div>
+        <div class="form-group">
+          <label>닉네임 <span style="color:var(--muted)">(선택)</span></label>
+          <input type="text" name="display_name" placeholder="닉네임" />
+        </div>
+        <button type="submit" class="auth-btn">회원가입</button>
+      </form>
     </div>
-    <div class="sidebar-stat-item">
-      <span class="sidebar-stat-label">전체 평점 수</span>
-      <span class="sidebar-stat-value">{{ stats.total_ratings | default("0") }}</span>
-    </div>
-    <div class="sidebar-stat-item">
-      <span class="sidebar-stat-label">사용자 수</span>
-      <span class="sidebar-stat-value">{{ stats.total_users | default("0") }}</span>
-    </div>
-    {% if stats.avg_rating %}
-    <div class="sidebar-stat-item">
-      <span class="sidebar-stat-label">평균 평점</span>
-      <span class="sidebar-stat-value">{{ "%.2f"|format(stats.avg_rating) }}/5.0</span>
-    </div>
-    {% endif %}
   </div>
-</div>
 
-<div class="sidebar-section">
-  <div class="divider"></div>
-</div>
+  <script>
+  function switchAuthTab(tab) {
+    document.getElementById('auth-tab-login').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('auth-tab-signup').style.display = tab === 'signup' ? 'block' : 'none';
+    document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
+  }
+  </script>
+{% endif %}
 
-<div class="sidebar-section">
-  <h3>🤖 모델 상태</h3>
-  {% if model_loaded %}
-  <div class="sidebar-status success">
-    ✅ 모델 로드 완료
-  </div>
-  <p style="font-size: 0.85rem; color: var(--muted-text); margin: 0.5rem 0 0 0;">
-    추천 시스템이 준비되었습니다.
-  </p>
-  {% else %}
-  <div class="sidebar-status info">
-    ⚠️ 모델 미로드
-  </div>
-  <p style="font-size: 0.85rem; color: var(--muted-text); margin: 0.5rem 0 0 0;">
-    추천 기능을 사용하려면 모델이 필요합니다.
-  </p>
-  {% endif %}
+<div class="modal-stats">
+  <div>영화 <strong>{{ stats.total_movies | default(0) }}</strong></div>
+  <div>평점 <strong>{{ stats.total_ratings | default(0) }}</strong></div>
+  <div>사용자 <strong>{{ stats.total_users | default(0) }}</strong></div>
 </div>
-

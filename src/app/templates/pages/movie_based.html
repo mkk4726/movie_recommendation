@@ -1,142 +1,277 @@
-  {% from "partials/movie_card.html" import movie_metadata_card %}
-  <div class="page-content" id="page-movie_based" style="display: {% if current_page == 'movie_based' %}block{% else %}none{% endif %};">
-    <section class="card">
-      <h2>🎞️ 영화 기반 추천</h2>
-      <p class="muted">좋아하는 영화와 비슷한 영화를 찾아드립니다. (Item-Based CF 사용)</p>
+{% from "partials/movie_card.html" import movie_metadata_card, movie_grid_card %}
 
-      <!-- 영화 검색 -->
-      <form method="get" action="/" style="margin-bottom: 1.5rem;">
-        <input type="hidden" name="page" value="movie_based" />
-        <label for="movie_search_query">영화 제목을 검색하세요</label>
-        <div style="display: flex; gap: 0.5rem;">
-          <input
-            type="text"
-            id="movie_search_query"
-            name="movie_search_query"
-            placeholder="예: 타이타닉, 어벤져스, 기생충..."
-            value="{{ movie_search_query }}"
-            style="flex: 1;"
-          />
-          <button type="submit">🔍 검색</button>
-        </div>
-      </form>
+<div class="page-content" id="page-movie_based" style="display: {% if current_page == 'movie_based' %}block{% else %}none{% endif %};">
 
-      {% if movie_search_results and movie_search_results|length > 0 %}
-        <!-- 영화 선택 -->
-        <div id="movie-search-results">
-        <form method="get" action="/" style="margin-bottom: 1.5rem;">
-          <input type="hidden" name="page" value="movie_based" />
-          <input type="hidden" name="movie_search_query" value="{{ movie_search_query }}" />
-          <label for="selected_movie_id">영화를 선택하세요</label>
-          <select 
-            id="selected_movie_id" 
-            name="selected_movie_id" 
-            data-auto-submit="true"
-            style="width: 100%; padding: 0.5rem;"
-          >
-            <option value="">-- 영화를 선택하세요 --</option>
-            {% for movie in movie_search_results %}
-            <option value="{{ movie.movie_id }}" {% if selected_movie_id == movie.movie_id %}selected{% endif %}>
-              {{ movie.total_title or movie.title }}{% if movie.year %} ({{ movie.year }}){% endif %}
-            </option>
-            {% endfor %}
-            </select>
-        </form>
-        </div>
-      {% elif movie_search_query %}
-        <div class="card error-card" style="margin-bottom: 1.5rem;">
-          <p>검색 결과가 없습니다. 다른 키워드로 검색해보세요.</p>
-        </div>
-      {% endif %}
-
-      {% if selected_movie_info %}
-        <!-- 선택한 영화 정보 -->
-        <div style="margin-bottom: 1.5rem;">
-          <h3 style="margin-bottom: 1rem;">📽️ 선택한 영화</h3>
-          {{ movie_metadata_card(selected_movie_info, show_index=False, overview_id_prefix='selected-movie-overview') }}
-        </div>
-
-        <!-- 필터 및 추천 폼 -->
-        <form method="get" action="/" id="movie-recommend-form">
-          <input type="hidden" name="page" value="movie_based" />
-          <input type="hidden" name="selected_movie_id" value="{{ selected_movie_id }}" />
-          <input type="hidden" name="movie_search_query" value="{{ movie_search_query }}" />
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-            <div>
-              <label for="similar_top_n" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">추천 개수</label>
-              <input
-                type="range"
-                id="similar_top_n"
-                name="similar_top_n"
-                min="5"
-                max="15"
-                value="{{ similar_top_n }}"
-                oninput="document.getElementById('similar_top_n_value').textContent = this.value"
-                style="width: 100%;"
-              />
-              <div style="text-align: center; margin-top: 0.5rem;">
-                <span id="similar_top_n_value">{{ similar_top_n }}</span> 개
-              </div>
-            </div>
-
-            <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">장르 선택</label>
-              <div style="border: 1px solid var(--border-color, #ddd); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto; background: var(--card-bg, #fff);">
-                {% for genre in config_options.genres %}
-                <label style="display: flex; align-items: center; padding: 0.4rem 0; cursor: pointer; user-select: none;">
-                  <input 
-                    type="checkbox" 
-                    name="movie_genre" 
-                    value="{{ genre }}" 
-                    {% if genre in movie_genre %}checked{% endif %}
-                    style="margin-right: 0.5rem; cursor: pointer;"
-                  />
-                  <span>{{ genre }}</span>
-                </label>
-                {% endfor %}
-              </div>
-            </div>
-
-            <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">언어 선택</label>
-              <div style="border: 1px solid var(--border-color, #ddd); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto; background: var(--card-bg, #fff);">
-                {% for language in config_options.languages %}
-                <label style="display: flex; align-items: center; padding: 0.4rem 0; cursor: pointer; user-select: none;">
-                  <input 
-                    type="checkbox" 
-                    name="movie_language" 
-                    value="{{ language }}" 
-                    {% if language in movie_language %}checked{% endif %}
-                    style="margin-right: 0.5rem; cursor: pointer;"
-                  />
-                  <span>{{ language }}</span>
-                </label>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-
-          <button type="submit" class="auth-btn" style="width: 100%;">🎬 비슷한 영화 찾기</button>
-        </form>
-      {% endif %}
-
-      {% if similar_movies and similar_movies.get('items') and similar_movies['items']|length > 0 %}
-        <div style="margin-top: 2rem;">
-          <div class="divider" style="margin: 1.5rem 0;"></div>
-          <h3 style="margin-bottom: 1rem;">🎁 비슷한 영화 추천</h3>
-          <p class="muted" style="margin-bottom: 1.5rem;">
-            평점 패턴 기반으로 찾은 유사한 영화 {{ similar_movies['items']|length }}개
-          </p>
-
-          {% for movie in similar_movies['items'] %}
-          {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=True, overview_id_prefix='movie-overview') }}
-          {% endfor %}
-        </div>
-      {% elif selected_movie_id %}
-        <div class="card error-card" style="margin-top: 1.5rem;">
-          <p>유사한 영화를 찾을 수 없습니다.</p>
-        </div>
-      {% endif %}
-    </section>
+  {# ── Page header ─────────────────────────────────────────────── #}
+  <div class="page-section">
+    <h2 class="page-heading">영화 기반 추천</h2>
+    <p class="page-subtext">좋아하는 영화와 비슷한 영화를 찾아드립니다. (Item-Based CF 사용)</p>
   </div>
+
+  {# ── Movie search form ────────────────────────────────────────── #}
+  <div class="page-section">
+    <form method="get" action="/" class="mb-search-form">
+      <input type="hidden" name="page" value="movie_based" />
+      <label for="movie_search_query">영화 제목 검색</label>
+      <div class="search-row">
+        <input
+          type="text"
+          id="movie_search_query"
+          name="movie_search_query"
+          placeholder="예: 타이타닉, 어벤져스, 기생충…"
+          value="{{ movie_search_query }}"
+          class="form-input"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn-primary">검색</button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Movie select dropdown ────────────────────────────────────── #}
+  {% if movie_search_results and movie_search_results|length > 0 %}
+  <div class="page-section" id="movie-search-results">
+    <form method="get" action="/" class="mb-select-form">
+      <input type="hidden" name="page" value="movie_based" />
+      <input type="hidden" name="movie_search_query" value="{{ movie_search_query }}" />
+      <label for="selected_movie_id">검색 결과 — 영화를 선택하세요</label>
+      <select
+        id="selected_movie_id"
+        name="selected_movie_id"
+        class="form-select"
+        data-auto-submit="true"
+      >
+        <option value="">-- 영화를 선택하세요 --</option>
+        {% for movie in movie_search_results %}
+        <option value="{{ movie.movie_id }}" {% if selected_movie_id == movie.movie_id %}selected{% endif %}>
+          {{ movie.total_title or movie.title }}{% if movie.year %} ({{ movie.year }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  {% elif movie_search_query %}
+  <div class="page-section">
+    <div class="card error-card">
+      <p>검색 결과가 없습니다. 다른 키워드로 검색해보세요.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Selected movie detail ────────────────────────────────────── #}
+  {% if selected_movie_info %}
+  <div class="page-section">
+    <p class="section-eyebrow">선택한 영화</p>
+    {{ movie_metadata_card(selected_movie_info, show_index=False, overview_id_prefix='selected-movie-overview') }}
+  </div>
+
+  {# ── Filters + recommend form ─────────────────────────────────── #}
+  <div class="page-section">
+    <form method="get" action="/" id="movie-recommend-form" class="mb-recommend-form">
+      <input type="hidden" name="page" value="movie_based" />
+      <input type="hidden" name="selected_movie_id" value="{{ selected_movie_id }}" />
+      <input type="hidden" name="movie_search_query" value="{{ movie_search_query }}" />
+
+      <div class="filter-grid">
+
+        {# Count slider #}
+        <div>
+          <label for="similar_top_n">추천 개수</label>
+          <input
+            type="range"
+            id="similar_top_n"
+            name="similar_top_n"
+            min="5"
+            max="15"
+            value="{{ similar_top_n }}"
+            oninput="document.getElementById('similar_top_n_value').textContent = this.value"
+          />
+          <p class="range-readout">
+            <span id="similar_top_n_value">{{ similar_top_n }}</span>편
+          </p>
+        </div>
+
+        {# Genre checkboxes #}
+        <div>
+          <label>장르 선택</label>
+          <div class="checkbox-list">
+            {% for genre in config_options.genres %}
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                name="movie_genre"
+                value="{{ genre }}"
+                {% if genre in movie_genre %}checked{% endif %}
+              />
+              <span>{{ genre }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# Language checkboxes #}
+        <div>
+          <label>언어 선택</label>
+          <div class="checkbox-list">
+            {% for language in config_options.languages %}
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                name="movie_language"
+                value="{{ language }}"
+                {% if language in movie_language %}checked{% endif %}
+              />
+              <span>{{ language }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>{# /filter-grid #}
+
+      <button type="submit" class="btn-primary btn-full">비슷한 영화 찾기</button>
+
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Similar movies grid ──────────────────────────────────────── #}
+  {% if similar_movies and similar_movies.get('items') and similar_movies['items']|length > 0 %}
+  <div class="page-section">
+    <p class="section-eyebrow">비슷한 영화 {{ similar_movies['items']|length }}편</p>
+    <div class="movie-grid">
+      {% for movie in similar_movies['items'] %}
+      {{ movie_grid_card(movie) }}
+      {% endfor %}
+    </div>
+  </div>
+  {% elif selected_movie_id %}
+  <div class="page-section">
+    <div class="card error-card">
+      <p>유사한 영화를 찾을 수 없습니다.</p>
+    </div>
+  </div>
+  {% endif %}
+
+</div>{# /page-content #}
+
+<style>
+  /* ── movie_based.html — scoped overrides ────────────────────────
+     Only fills gaps not covered by styles.css.
+     Uses the same tokens; never redefines them.
+     ──────────────────────────────────────────────────────────── */
+
+  /* Search row: text input + submit button side-by-side.
+     Scoped to avoid colliding with the global `form { display: grid }` reset. */
+  .search-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .search-row .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-row .btn-primary {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Prevent the global `form { display: grid }` from breaking single-item forms */
+  .mb-search-form,
+  .mb-select-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+
+  /* Recommend form: no grid on the outer form, grid only inside filter-grid */
+  .mb-recommend-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 0;
+  }
+
+  /* Range value readout — centered, small, muted */
+  .range-readout {
+    margin: 6px 0 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Full-width primary button (submit) */
+  .btn-full {
+    width: 100%;
+  }
+
+  /* form-input and form-select: alias for the global element selectors */
+  .form-input {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .form-input::placeholder {
+    color: var(--muted-2);
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    outline: none;
+  }
+
+  .form-select {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 10px 36px 10px 14px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7070' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+
+  .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    outline: none;
+  }
+
+  @media (max-width: 768px) {
+    .form-input,
+    .form-select {
+      font-size: 16px; /* prevent iOS zoom */
+      min-height: 44px;
+    }
+
+    .search-row {
+      flex-direction: column;
+    }
+
+    .search-row .btn-primary {
+      width: 100%;
+    }
+  }
+</style>

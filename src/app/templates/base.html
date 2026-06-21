@@ -3,48 +3,140 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-  <meta name="format-detection" content="telephone=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>{{ title or "볼거 없나?" }}</title>
+  <!-- Film-strip favicon: dark #141010 bg, amber #e8a838 perforations and frame -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='12' fill='%23141010'/%3E%3Crect x='8' y='30' width='84' height='40' rx='3' fill='none' stroke='%23e8a838' stroke-width='5'/%3E%3Crect x='8' y='8' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3Crect x='41' y='8' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3Crect x='74' y='8' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3Crect x='8' y='74' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3Crect x='41' y='74' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3Crect x='74' y='74' width='18' height='18' rx='3' fill='%23e8a838'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}" />
 </head>
 
 <body>
-  <header class="app-header">
-    <div class="container">
-      <div class="header-title-row">
-        <h1><a href="/" style="color: inherit; text-decoration: none; cursor: pointer;">🎬 볼거 없나?</a></h1>
-        <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 토글">
-          <span class="sidebar-toggle-icon">☰</span>
+
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">볼거<em>없나?</em></a>
+
+      <!-- Page tabs — hidden radio inputs + styled labels -->
+      <div class="nav-tabs">
+        <label class="nav-tab {{ 'active' if current_page == 'search' else '' }}">
+          <input type="radio" name="page" value="search" class="page-radio" {{ 'checked' if current_page == 'search' else '' }} />
+          자연어 검색
+        </label>
+        <label class="nav-tab {{ 'active' if current_page == 'poster_search' else '' }}">
+          <input type="radio" name="page" value="poster_search" class="page-radio" {{ 'checked' if current_page == 'poster_search' else '' }} />
+          포스터 검색
+        </label>
+        <label class="nav-tab {{ 'active' if current_page == 'movie_based' else '' }}">
+          <input type="radio" name="page" value="movie_based" class="page-radio" {{ 'checked' if current_page == 'movie_based' else '' }} />
+          영화 기반
+        </label>
+        <label class="nav-tab {{ 'active' if current_page == 'user_based' else '' }}">
+          <input type="radio" name="page" value="user_based" class="page-radio" {{ 'checked' if current_page == 'user_based' else '' }} />
+          사용자 추천
+        </label>
+        {% if is_logged_in %}
+        <label class="nav-tab {{ 'active' if current_page == 'rating_management' else '' }}">
+          <input type="radio" name="page" value="rating_management" class="page-radio" {{ 'checked' if current_page == 'rating_management' else '' }} />
+          평점 관리
+        </label>
+        {% endif %}
+      </div>
+
+      <div class="nav-right">
+        <div class="nav-stats">
+          <span><strong>{{ stats.total_movies }}</strong> 영화</span>
+          <span><strong>{{ stats.total_ratings }}</strong> 평점</span>
+        </div>
+        {% if is_logged_in and current_user %}
+          <button class="btn-user" onclick="openAuthModal()" aria-label="사용자 메뉴">
+            {{ current_user.get('display_name', 'U')[:1] | upper }}
+          </button>
+        {% else %}
+          <button class="btn-login" onclick="openAuthModal()">로그인</button>
+        {% endif %}
+        <!-- Mobile hamburger -->
+        <button class="mobile-menu-btn" onclick="openMobileDrawer()" aria-label="메뉴">
+          <span></span><span></span><span></span>
         </button>
       </div>
-      <p class="subtitle">
-        보고 싶은 영화를 검색을 통해 추천 받아 보세요!
-      </p>
     </div>
-  </header>
-  <div class="sidebar-overlay" id="sidebar-overlay"></div>
-  <main class="container sidebar-container">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <h3 style="margin: 0;">메뉴</h3>
-        <button id="sidebar-close" class="sidebar-close-btn" aria-label="사이드바 닫기">
-          ✕
-        </button>
-      </div>
+  </nav>
+
+  <!-- AUTH MODAL -->
+  <div class="auth-modal" id="auth-modal" role="dialog" aria-modal="true">
+    <div class="auth-modal-overlay" onclick="closeAuthModal()"></div>
+    <div class="auth-modal-box">
+      <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="닫기">✕</button>
       {% block sidebar %}{% endblock %}
-    </aside>
-    <div class="main-content">
-      {% block content %}{% endblock %}
     </div>
+  </div>
+
+  <!-- MOBILE DRAWER (page nav on small screens) -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobile-drawer">
+    <div class="drawer-header">
+      <span class="nav-logo">볼거<em>없나?</em></span>
+      <button class="drawer-close" onclick="closeMobileDrawer()">✕</button>
+    </div>
+    <div class="drawer-nav">
+      <label class="drawer-nav-item {{ 'active' if current_page == 'search' else '' }}">
+        <input type="radio" name="page" value="search" class="page-radio" {{ 'checked' if current_page == 'search' else '' }} />
+        자연어 검색
+      </label>
+      <label class="drawer-nav-item {{ 'active' if current_page == 'poster_search' else '' }}">
+        <input type="radio" name="page" value="poster_search" class="page-radio" {{ 'checked' if current_page == 'poster_search' else '' }} />
+        포스터 검색
+      </label>
+      <label class="drawer-nav-item {{ 'active' if current_page == 'movie_based' else '' }}">
+        <input type="radio" name="page" value="movie_based" class="page-radio" {{ 'checked' if current_page == 'movie_based' else '' }} />
+        영화 기반 추천
+      </label>
+      <label class="drawer-nav-item {{ 'active' if current_page == 'user_based' else '' }}">
+        <input type="radio" name="page" value="user_based" class="page-radio" {{ 'checked' if current_page == 'user_based' else '' }} />
+        사용자 추천
+      </label>
+      {% if is_logged_in %}
+      <label class="drawer-nav-item {{ 'active' if current_page == 'rating_management' else '' }}">
+        <input type="radio" name="page" value="rating_management" class="page-radio" {{ 'checked' if current_page == 'rating_management' else '' }} />
+        평점 관리
+      </label>
+      {% endif %}
+    </div>
+  </div>
+
+  <main class="main">
+    {% block content %}{% endblock %}
   </main>
+
   <footer class="app-footer">
-    <div class="container">
-      <p>데이터: MovieLens ML-32M · 메타데이터 확장 준비 중</p>
-      <p>FastAPI + Jinja2 템플릿 예제</p>
+    <div class="footer-inner">
+      <span>데이터: MovieLens 32M · TMDB API</span>
+      <span>볼거없나? &copy; 2025</span>
     </div>
   </footer>
+
+  <script>
+    function openAuthModal() {
+      document.getElementById('auth-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function openMobileDrawer() {
+      document.getElementById('mobile-drawer').classList.add('open');
+      document.getElementById('drawer-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMobileDrawer() {
+      document.getElementById('mobile-drawer').classList.remove('open');
+      document.getElementById('drawer-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  </script>
+
 </body>
 
 </html>

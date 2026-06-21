@@ -1,23 +1,33 @@
-{% from "partials/movie_card.html" import movie_metadata_card %}
+{% from "partials/movie_card.html" import movie_metadata_card, movie_grid_card %}
 {% from "partials/search_filters.html" import search_filters %}
-<div class="page-content" id="page-search"
-  style="display: {% if current_page == 'search' %}block{% else %}none{% endif %};">
-  <section class="card">
-    <h2>🔍 자연어 검색</h2>
-    <p class="muted">자연어로 영화를 검색해보세요. 예: "장난감이 나오는 영화"</p>
 
-    <!-- 자연어 검색 입력 -->
-    <form method="get" action="/" style="margin-bottom: 1.5rem;">
+<div class="page-content" id="page-search"
+     style="display: {% if current_page == 'search' %}block{% else %}none{% endif %};">
+
+  <section class="card">
+
+    {# ── Page heading ─────────────────────────────────────────────── #}
+    <h2 class="page-heading">자연어 검색</h2>
+    <p class="page-subtext">배우, 장르, 연도 등을 자유롭게 조합해서 검색할 수 있습니다.</p>
+
+    {# ── Search form ──────────────────────────────────────────────── #}
+    <form method="get" action="/">
       <input type="hidden" name="page" value="search" />
-      <label for="search_query"
-        style="color: var(--text-color); font-weight: 600; margin-bottom: 0.5rem; display: block;">검색어를 입력하세요</label>
-      <div style="display: flex; gap: 0.5rem;">
-        <input type="text" id="search_query" name="search_query" placeholder="예: 액션 영화 추천해줘, 감동적인 영화 찾아줘..."
-          value="{{ search_query }}" style="flex: 1; background-color: var(--card-bg); color: var(--text-color);" />
-        <button type="submit" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔍 검색</button>
+
+      <label for="search_query">검색어를 입력하세요</label>
+      <div class="search-row">
+        <input
+          class="form-input"
+          type="text"
+          id="search_query"
+          name="search_query"
+          placeholder="예: 장난감이 나오는 영화, 90년대 홍콩 액션..."
+          value="{{ search_query }}"
+        />
+        <button type="submit" class="btn-primary">검색</button>
       </div>
 
-      <!-- 필터링 옵션 (접을 수 있는 섹션) -->
+      {# ── Advanced filters ─────────────────────────────────────── #}
       {{ search_filters(
         genre_name='search_genre',
         language_name='search_language',
@@ -29,57 +39,55 @@
       ) }}
     </form>
 
+    {# ── Results / states ─────────────────────────────────────────── #}
     {% if search_results %}
-    <!-- 검색 결과 표시 -->
-    <div style="margin-top: 2rem;">
-      <div class="divider" style="margin: 1.5rem 0;"></div>
-      <h3 style="margin-bottom: 1rem;">🎬 검색 결과</h3>
-      <p class="muted" style="margin-bottom: 1.5rem;">
-        검색어와 관련된 영화 {{ search_results.total_results }}개
-      </p>
 
-      {% if search_results.results %}
-      {% for movie in search_results.results %}
-      {{ movie_metadata_card(movie, show_index=True, index=loop.index, show_similarity=False, show_score=True,
-      overview_id_prefix='search-overview') }}
-      {% endfor %}
-      {% else %}
-      <div class="card error-card">
-        <p>⚠️ 검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
-      </div>
-      {% endif %}
-    </div>
-    {% elif search_query %}
-    <!-- 검색 중이거나 오류 발생 -->
-    <div style="margin-top: 2rem;">
-      <div class="divider" style="margin: 1.5rem 0; height: 1px; background-color: var(--border-color);"></div>
-      <div
-        style="padding: 2rem; text-align: center; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
-        <p style="margin: 0; color: var(--text-color);">
-          🔍 검색 중입니다...
+      <div class="results-header">
+        <p class="results-title">
+          <span class="section-eyebrow">검색 결과</span>
+          <strong>{{ search_results.total_results }}</strong>편이 검색되었습니다
         </p>
       </div>
-    </div>
+
+      {% if search_results.results %}
+        {% for movie in search_results.results %}
+          {{ movie_metadata_card(
+            movie,
+            show_index=True,
+            index=loop.index,
+            show_similarity=False,
+            show_score=True,
+            overview_id_prefix='search-overview'
+          ) }}
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <p>검색 결과가 없습니다. 다른 검색어를 시도해보세요.</p>
+        </div>
+      {% endif %}
+
+    {% elif search_query %}
+
+      <div class="divider"></div>
+      <div class="empty-state">
+        <p>검색 중입니다…</p>
+      </div>
+
     {% else %}
-    <!-- 검색 전 안내 메시지 -->
-    <div
-      style="margin-top: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border-radius: 12px; text-align: center; border: 2px dashed rgba(59, 130, 246, 0.3);">
-      <p style="font-size: 1.15rem; color: var(--text-color); margin: 0 0 0.5rem 0; font-weight: 600;">
-        위의 검색창에 자연어로 검색어를 입력해보세요! 🎬
-      </p>
-      <p style="font-size: 0.95rem; color: var(--muted-text); margin: 0;">
-        배우, 장르, 연도 등을 자유롭게 조합하여 검색할 수 있습니다.
-      </p>
-    </div>
+
+      <div class="search-prompt">
+        <p class="search-prompt-primary">위 검색창에 자연어로 검색어를 입력해보세요.</p>
+        <p class="search-prompt-secondary">배우 이름, 분위기, 줄거리 키워드 모두 동작합니다.</p>
+      </div>
+
     {% endif %}
+
   </section>
 </div>
 
 
 {% if search_results and search_results.session_id %}
 <script>
-  // 검색 세션 ID 설정 (클릭 트래킹용)
-  // setSearchSession 함수가 로드될 때까지 대기
   setTimeout(function () {
     if (typeof setSearchSession === 'function') {
       setSearchSession('{{ search_results.session_id }}', '{{ search_query }}');
@@ -90,3 +98,106 @@
   }, 100);
 </script>
 {% endif %}
+
+<style>
+  /* ── search.html local styles ───────────────────────────────────────
+     All colors derive from :root tokens in styles.css.
+     These classes are scoped to this page's unique patterns only.
+     ──────────────────────────────────────────────────────────────── */
+
+  /* Search input + button row — overrides the generic `form > div`
+     mobile rule that stacks flex children; we want the button to
+     stay inline until the screen is very narrow. */
+  .search-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .search-row .form-input,
+  .search-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-row .btn-primary {
+    flex-shrink: 0;
+    padding: 0 20px;
+  }
+
+  /* Aesthetic risk: a single amber underline shelf on the page heading.
+     The heading itself already has meaning (page title); the line
+     below it anchors the eye toward the input that follows — one
+     deliberate stroke, nothing else. */
+  .page-heading {
+    position: relative;
+    display: inline-block;
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+  }
+
+  .page-heading::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(
+      to right,
+      var(--accent) 0%,
+      rgba(232, 168, 56, 0.0) 100%
+    );
+    border-radius: 1px;
+  }
+
+  /* Results header: eyebrow sits above the count on small screens */
+  .results-header .section-eyebrow {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .results-header .results-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Space detail cards apart */
+  .detail-card + .detail-card {
+    margin-top: 16px;
+  }
+
+  /* Pre-search prompt — centred, restrained */
+  .search-prompt {
+    margin-top: 28px;
+    padding: 28px 24px;
+    border-radius: var(--radius);
+    border: 1px dashed var(--border-2);
+    text-align: center;
+  }
+
+  .search-prompt-primary {
+    margin: 0 0 6px 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .search-prompt-secondary {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Mobile: stack search row only below 480 px */
+  @media (max-width: 480px) {
+    .search-row {
+      flex-direction: column;
+    }
+
+    .search-row .btn-primary {
+      width: 100%;
+    }
+  }
+</style>

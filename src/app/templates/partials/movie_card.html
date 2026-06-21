@@ -1,267 +1,338 @@
-{% macro movie_metadata_card(movie, show_index=False, index=None, show_similarity=False, show_score=False,
-overview_id_prefix='movie-overview') %}
-<div class="movie-card" data-movie-id="{{ movie.movie_id }}"
-  style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;">
-  {% if movie.poster_url %}
-  <div style="flex-shrink: 0;">
-    <img src="{{ movie.poster_url }}" alt="{{ movie.title }}"
-      style="width: 150px; height: 225px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+{#
+  movie_card.html — Jinja2 macros for movie display
+  Tokens: styles.css :root — never override, only extend here.
+  New utility classes are scoped inside a <style> block so this
+  partial is self-contained.
+#}
+
+<style>
+  /* ── Utility classes added by movie_card.html ──────────────────
+     These fill gaps not in styles.css. Do not duplicate tokens.
+     ──────────────────────────────────────────────────────────── */
+
+  /* Adult chip — absolute over poster or inline in detail header */
+  .adult-chip {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--danger);
+    color: var(--text);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    line-height: 1.5;
+    z-index: 2;
+  }
+
+  /* Detail-card vertical divider between score blocks */
+  .detail-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border-2);
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+
+  /* Cast section eyebrow labels (감독 / 출연) */
+  .cast-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px 0;
+  }
+
+  /* Cast avatar fallback circle */
+  .cast-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--surface-2);
+  }
+
+  /* Cast item container */
+  .cast-item {
+    flex-shrink: 0;
+    width: 56px;
+    text-align: center;
+  }
+
+  /* Character / role under actor name */
+  .cast-role {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.2;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    margin: 2px 0 0 0;
+  }
+
+  /* Cast section wrapper */
+  .detail-cast-section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* "더보기" inline text button */
+  .btn-text {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0;
+    min-height: 0;
+    font-family: var(--font-body);
+    font-weight: 500;
+    border-radius: 0;
+    transition: color 0.15s ease;
+    transform: none;
+    box-shadow: none;
+    display: inline-block;
+    text-align: left;
+  }
+
+  .btn-text:hover {
+    color: var(--accent);
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+  }
+</style>
+
+
+{# ═══════════════════════════════════════════════════════════════
+   MACRO 1 — movie_grid_card
+   Compact poster-first card for .movie-grid layouts.
+   ═══════════════════════════════════════════════════════════════ #}
+{% macro movie_grid_card(movie) %}
+<div class="movie-grid-card" data-movie-id="{{ movie.movie_id }}">
+  <div class="poster-wrap">
+
+    {% if movie.poster_url %}
+    <img class="poster-img"
+         src="{{ movie.poster_url }}"
+         alt="{{ movie.title }}"
+         loading="lazy" />
+    {% else %}
+    <div class="poster-placeholder"
+         style="background: linear-gradient(160deg,
+           hsl({{ (movie.movie_id | int % 60) + 200 }}, 18%, 22%) 0%,
+           hsl({{ (movie.movie_id | int % 60) + 200 }}, 10%, 14%) 100%);
+           position:absolute;inset:0;"></div>
+    {% endif %}
+
+    <div class="poster-hover-overlay">
+      <p class="overlay-title">{{ movie.total_title or movie.title }}</p>
+      <div class="overlay-meta">
+        <span>{{ movie.year or '' }}</span>
+        {% if movie.vote_average %}
+        <span class="rating-badge">★ {{ '%.1f' | format(movie.vote_average) }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if movie.adult %}
+    <span class="adult-chip">19+</span>
+    {% endif %}
+
   </div>
-  {% endif %}
-  <div style="flex: 1; min-width: 0; max-width: 100%; overflow: hidden;">
-    <!-- 제목 및 adult 등급 -->
-    <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0;">
-      <h4
-        style="margin: 0; font-size: clamp(1rem, 4vw, 1.3rem); word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; line-height: 1.4;">
-        {% if show_index and index is not none %}{{ index }}. {% endif %}{{ movie.total_title or movie.title }}
-      </h4>
-      {% if movie.adult %}
-      <span
-        style="background: #ff4444; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">19+</span>
-      {% endif %}
-    </div>
 
-    <!-- 개봉일/개봉년도 -->
-    {% if movie.year or movie.release_date %}
-    <p style="margin: 0.25rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-      {% if movie.release_date %}
-      📅 개봉일: {{ movie.release_date }}
-      {% elif movie.year %}
-      📅 개봉년도: {{ movie.year }}
-      {% endif %}
-    </p>
-    {% endif %}
-
-    <!-- 장르 -->
-    {% if movie.genres_tmdb %}
-    <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
-      {% for genre in movie.genres_tmdb.split() %}
-      <span
-        style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{
-        genre }}</span>
-      {% endfor %}
-    </div>
-    {% elif movie.genre %}
-    <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-width: 100%;">
-      <span
-        style="background: rgba(255,255,255,0.2); color: white; padding: 0.25rem 0.6rem; border-radius: 12px; font-size: clamp(0.75rem, 2vw, 0.85rem); font-weight: 500; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{
-        movie.genre }}</span>
-    </div>
-    {% endif %}
-
-    <!-- 언어 -->
-    {% if movie.language %}
-    <p style="margin: 0.5rem 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;">
-      🌍 언어: {{ movie.language }}
-    </p>
-    {% endif %}
-
-    <!-- 평점 -->
-    {% if movie.vote_average is not none or movie.vote_count is not none %}
-    <div style="margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center;">
-      {% if movie.vote_average is not none %}
-      <span style="color: #FFD700; font-weight: 600; font-size: 0.95rem;">
-        ⭐ {{ '%.1f'|format(movie.vote_average) }}/10
-      </span>
-      {% endif %}
-      {% if movie.vote_count is not none %}
-      <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">
-        ({{ movie.vote_count|int }}명 평가)
-      </span>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- IMDB 링크 및 보는 곳 검색 -->
-    {% if movie.imdb_id or movie.title %}
-    <div style="margin: 0.75rem 0;">
-      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        {% if movie.imdb_id %}
-        <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/" target="_blank" rel="noopener noreferrer"
-          class="movie-link-btn imdb-link" data-link-type="imdb" style="display: inline-block; 
-                  background: linear-gradient(135deg, #F5C518 0%, #E6B800 100%); 
-                  color: #000000; 
-                  text-decoration: none; 
-                  font-weight: 700; 
-                  font-size: 0.95rem; 
-                  padding: 0.65rem 1.25rem; 
-                  border-radius: 8px; 
-                  transition: all 0.2s ease;
-                  box-shadow: 0 4px 12px rgba(245, 197, 24, 0.3);"
-          onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(245, 197, 24, 0.5)';"
-          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(245, 197, 24, 0.3)';">
-          🎬 IMDb에서 더 알아보기
-        </a>
-        {% endif %}
-
-        {% if movie.title or movie.total_title %}
-        <a href="https://www.google.com/search?q={{ (movie.total_title or movie.title) | urlencode }}+보는+곳"
-          target="_blank" rel="noopener noreferrer" class="movie-link-btn google-search-link"
-          data-link-type="google_search" style="display: inline-block; 
-                  background: linear-gradient(135deg, #4285F4 0%, #3367D6 100%); 
-                  color: #ffffff; 
-                  text-decoration: none; 
-                  font-weight: 700; 
-                  font-size: 0.95rem; 
-                  padding: 0.65rem 1.25rem; 
-                  border-radius: 8px; 
-                  transition: all 0.2s ease;
-                  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);"
-          onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(66, 133, 244, 0.5)';"
-          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(66, 133, 244, 0.3)';">
-          🔍 보는 곳 검색
-        </a>
-        {% endif %}
-      </div>
-      <p style="margin: 0.5rem 0 0 0; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-style: italic;">
-        💡 더 궁금하다면 클릭해서 자세한 정보를 확인해보세요!
-      </p>
-    </div>
-    {% endif %}
-
-    <!-- 유사도 (선택적) -->
-    {% if show_similarity and movie.similarity %}
-    <p style="margin: 0.5rem 0;">
-      <span
-        style="font-weight: 600; color: #FFD700; background: rgba(255,255,255,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem;">
-        유사도: {{ '%.3f'|format(movie.similarity) }}
-      </span>
-    </p>
-    {% endif %}
-
-    <!-- 검색 점수 (선택적) -->
-    {% if show_score and movie.score is not none %}
-    <p style="margin: 0.5rem 0;">
-      <span
-        style="font-weight: 600; color: #FFD700; background: rgba(255,255,255,0.15); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem;">
-        검색 점수: {{ '%.2f'|format(movie.score) }}
-      </span>
-    </p>
-    {% endif %}
-
-    <!-- Cast 정보 (배우, 감독, 작가) -->
-    {% if movie.cast_info %}
-    <div style="margin: 0.75rem 0;">
-      <!-- 감독 -->
-      {% if movie.cast_info.directors %}
-      <div style="margin-bottom: 0.75rem;">
-        <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
-          🎬 감독
-        </p>
-        <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
-          {% for director in movie.cast_info.directors %}
-          <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
-            {% if director.profile_path %}
-            <img src="https://image.tmdb.org/t/p/w185{{ director.profile_path }}" alt="{{ director.name }}"
-              style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
-            {% else %}
-            <div
-              style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-              👤</div>
-            {% endif %}
-            <p
-              style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
-              {{ director.name }}
-            </p>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- 배우 -->
-      {% if movie.cast_info.actors %}
-      <div style="margin-bottom: 0.75rem;">
-        <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
-          🎭 출연
-        </p>
-        <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
-          {% for actor in movie.cast_info.actors %}
-          <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
-            {% if actor.profile_path %}
-            <img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}" alt="{{ actor.name }}"
-              style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
-            {% else %}
-            <div
-              style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-              👤</div>
-            {% endif %}
-            <p
-              style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
-              {{ actor.name }}
-            </p>
-            {% if actor.character %}
-            <p
-              style="margin: 0.2rem 0 0 0; font-size: 0.7rem; color: rgba(255,255,255,0.7); line-height: 1.2; word-wrap: break-word;">
-              ({{ actor.character }})
-            </p>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- 작가 -->
-      {% if movie.cast_info.writers %}
-      <div style="margin-bottom: 0.75rem;">
-        <p style="margin: 0 0 0.4rem 0; color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.9rem;">
-          ✍️ 작가
-        </p>
-        <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
-          {% for writer in movie.cast_info.writers %}
-          <div style="flex-shrink: 0; text-align: center; max-width: 80px;">
-            {% if writer.profile_path %}
-            <img src="https://image.tmdb.org/t/p/w185{{ writer.profile_path }}" alt="{{ writer.name }}"
-              style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 6px rgba(0,0,0,0.3);" />
-            {% else %}
-            <div
-              style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-              👤</div>
-            {% endif %}
-            <p
-              style="margin: 0.3rem 0 0 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); line-height: 1.2; word-wrap: break-word;">
-              {{ writer.name }}
-            </p>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- 줄거리 -->
-    {% if movie.overview %}
-    <div style="margin: 0.75rem 0 0 0;">
-      {% if index is not none %}
-      {% set unique_overview_id = overview_id_prefix ~ '-' ~ index %}
-      {% else %}
-      {% set unique_overview_id = overview_id_prefix %}
-      {% endif %}
-      <p id="{{ unique_overview_id }}"
-        style="margin: 0 0 0.5rem 0; color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 0.9rem; max-height: 4.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-        {{ movie.overview }}
-      </p>
-      <button onclick="toggleOverview('{{ unique_overview_id }}', '{{ unique_overview_id }}-btn')"
-        id="{{ unique_overview_id }}-btn"
-        style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;">
-        더보기
-      </button>
-    </div>
-    {% endif %}
-
-    <!-- 비슷한 영화 추천 버튼 (검색 결과에서만 표시) -->
-    {% if overview_id_prefix == 'search-overview' %}
-    <div style="margin: 0.75rem 0 0 0;">
-      <a href="/?page=movie_based&selected_movie_id={{ movie.movie_id }}&similar_top_n=10"
-        style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);"
-        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.5)';"
-        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';">
-        🎬 비슷한 영화 추천
-      </a>
-    </div>
+  <p class="card-title">{{ movie.total_title or movie.title }}</p>
+  <div class="card-sub">
+    <span>{{ movie.year or '' }}</span>
+    {% if movie.vote_average %}
+    <span class="rating-badge">★ {{ '%.1f' | format(movie.vote_average) }}</span>
     {% endif %}
   </div>
 </div>
+{% endmacro %}
+
+
+{# ═══════════════════════════════════════════════════════════════
+   MACRO 2 — movie_metadata_card
+   Full detail card — selected movie or prominent result display.
+
+   Parameters:
+     movie               — movie object (required)
+     show_index          — prepend index number to title (bool, default False)
+     index               — the index value (int or None)
+     show_similarity     — show movie.similarity score (bool, default False)
+     show_score          — show movie.score search score (bool, default False)
+     overview_id_prefix  — DOM id prefix for overview paragraph (str,
+                           default 'movie-overview')
+   ═══════════════════════════════════════════════════════════════ #}
+{% macro movie_metadata_card(movie,
+                              show_index=False,
+                              index=None,
+                              show_similarity=False,
+                              show_score=False,
+                              overview_id_prefix='movie-overview') %}
+<div class="detail-card" data-movie-id="{{ movie.movie_id }}">
+
+  {# ── Poster column ──────────────────────────────────────────── #}
+  <div class="detail-poster-col">
+    {% if movie.poster_url %}
+    <img src="{{ movie.poster_url }}"
+         alt="{{ movie.title }}"
+         style="width:100%;height:100%;object-fit:cover;" />
+    {% else %}
+    <div class="poster-placeholder" style="width:100%;height:100%;position:relative;"></div>
+    {% endif %}
+  </div>
+
+  {# ── Body ───────────────────────────────────────────────────── #}
+  <div class="detail-body">
+
+    {# Title + adult badge #}
+    <div>
+      <h3 class="detail-title">
+        {% if show_index and index is not none %}{{ index }}. {% endif %}
+        {{ movie.total_title or movie.title }}
+      </h3>
+      {% if movie.adult %}
+      <span class="adult-chip" style="position:static;display:inline-block;">19+</span>
+      {% endif %}
+    </div>
+
+    {# Metadata tags: year, language, genres #}
+    <div class="detail-tags">
+      {% if movie.year %}<span class="tag">{{ movie.year }}</span>{% endif %}
+      {% if movie.language %}<span class="tag">{{ movie.language }}</span>{% endif %}
+      {% if movie.genres_tmdb %}
+        {% for genre in movie.genres_tmdb.split()[:4] %}
+        <span class="tag">{{ genre }}</span>
+        {% endfor %}
+      {% elif movie.genre %}
+        <span class="tag">{{ movie.genre }}</span>
+      {% endif %}
+    </div>
+
+    {# Score row: TMDB rating + optional similarity / search score / user ratings #}
+    {% if movie.vote_average is not none or movie.vote_count is not none %}
+    <div class="detail-rating-row">
+
+      {% if movie.vote_average is not none %}
+      <div>
+        <p class="detail-score">{{ '%.1f' | format(movie.vote_average) }}</p>
+        <p class="detail-score-label">TMDB 평점{% if movie.vote_count %}<br>{{ '{:,}'.format(movie.vote_count | int) }}명{% endif %}</p>
+      </div>
+      <div class="detail-divider"></div>
+      {% endif %}
+
+      {% if show_similarity and movie.similarity %}
+      <div>
+        <p class="detail-score" style="font-size:1.3rem;">{{ '%.3f' | format(movie.similarity) }}</p>
+        <p class="detail-score-label">유사도</p>
+      </div>
+      {% endif %}
+
+      {% if show_score and movie.score is not none %}
+      <div>
+        <p class="detail-score" style="font-size:1.3rem;">{{ '%.2f' | format(movie.score) }}</p>
+        <p class="detail-score-label">검색 점수</p>
+      </div>
+      {% endif %}
+
+      {% if movie.rating is defined and movie.rating %}
+      <div>
+        <p class="detail-score" style="font-size:1.3rem;">{{ '%.1f' | format(movie.rating) }}</p>
+        <p class="detail-score-label">내 평점</p>
+      </div>
+      {% endif %}
+
+      {% if movie.predicted_rating is defined and movie.predicted_rating %}
+      <div>
+        <p class="detail-score" style="font-size:1.3rem;">{{ '%.2f' | format(movie.predicted_rating) }}</p>
+        <p class="detail-score-label">예측 평점</p>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+
+    {# Cast: directors then actors #}
+    {% if movie.cast_info %}
+    <div class="detail-cast-section">
+
+      {% if movie.cast_info.directors %}
+      <p class="cast-section-label">감독</p>
+      <div class="detail-cast-row">
+        {% for person in movie.cast_info.directors %}
+        <div class="cast-item">
+          <div class="cast-avatar">
+            {% if person.profile_path %}
+            <img src="https://image.tmdb.org/t/p/w185{{ person.profile_path }}"
+                 alt="{{ person.name }}" />
+            {% else %}
+            <div class="cast-avatar-placeholder"></div>
+            {% endif %}
+          </div>
+          <p class="cast-name">{{ person.name }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if movie.cast_info.actors %}
+      <p class="cast-section-label" style="margin-top:12px;">출연</p>
+      <div class="detail-cast-row">
+        {% for actor in movie.cast_info.actors[:5] %}
+        <div class="cast-item">
+          <div class="cast-avatar">
+            {% if actor.profile_path %}
+            <img src="https://image.tmdb.org/t/p/w185{{ actor.profile_path }}"
+                 alt="{{ actor.name }}" />
+            {% else %}
+            <div class="cast-avatar-placeholder"></div>
+            {% endif %}
+          </div>
+          <p class="cast-name">{{ actor.name }}</p>
+          {% if actor.character %}<p class="cast-role">{{ actor.character }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+
+    {# Overview with togglable clamp #}
+    {% if movie.overview %}
+    {% set uid = overview_id_prefix ~ ('-' ~ index if index is not none else '') %}
+    <div>
+      <p id="{{ uid }}" class="detail-overview">{{ movie.overview }}</p>
+      <button onclick="toggleOverview('{{ uid }}', '{{ uid }}-btn')"
+              id="{{ uid }}-btn"
+              class="btn-text">더보기</button>
+    </div>
+    {% endif %}
+
+    {# Action links #}
+    <div class="detail-actions">
+      {% if movie.imdb_id %}
+      <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="btn-primary">IMDb</a>
+      {% endif %}
+
+      {% if overview_id_prefix == 'search-overview' %}
+      <a href="/?page=movie_based&selected_movie_id={{ movie.movie_id }}&similar_top_n=10"
+         class="btn-secondary">비슷한 영화</a>
+      {% endif %}
+
+      {% if movie.title or movie.total_title %}
+      <a href="https://www.google.com/search?q={{ (movie.total_title or movie.title) | urlencode }}+보는+곳"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="btn-secondary">보는 곳 검색</a>
+      {% endif %}
+    </div>
+
+  </div>{# /detail-body #}
+</div>{# /detail-card #}
 {% endmacro %}
