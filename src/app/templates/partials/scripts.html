@@ -4,17 +4,8 @@
     const overview = document.getElementById(overviewId);
     const btn = document.getElementById(btnId);
 
-    if (overview.style.maxHeight === 'none' || overview.style.maxHeight === '') {
-      // 접기: 3줄까지만 보이도록
-      overview.style.maxHeight = '4.8em';
-      overview.style.display = '-webkit-box';
-      overview.style.webkitLineClamp = '3';
-      overview.style.webkitBoxOrient = 'vertical';
-      overview.style.overflow = 'hidden';
-      overview.style.textOverflow = 'ellipsis';
-      btn.textContent = '더보기';
-    } else {
-      // 더보기: 전체 내용 보이도록
+    if (btn.textContent === '더보기') {
+      // 펼치기
       overview.style.maxHeight = 'none';
       overview.style.display = 'block';
       overview.style.setProperty('-webkit-line-clamp', 'none');
@@ -22,6 +13,15 @@
       overview.style.overflow = 'visible';
       overview.style.textOverflow = 'initial';
       btn.textContent = '접기';
+    } else {
+      // 접기
+      overview.style.maxHeight = '4.8em';
+      overview.style.display = '-webkit-box';
+      overview.style.webkitLineClamp = '3';
+      overview.style.webkitBoxOrient = 'vertical';
+      overview.style.overflow = 'hidden';
+      overview.style.textOverflow = 'ellipsis';
+      btn.textContent = '더보기';
     }
   }
 
