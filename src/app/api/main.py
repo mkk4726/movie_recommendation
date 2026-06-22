@@ -19,6 +19,7 @@ else:
     print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 from app.api.lifespan import lifespan
+from app.api.middleware import StartupReadinessMiddleware
 from app.api.routes import activity, auth, health, home, movies, poster_search, ratings, search, users
 
 logging.basicConfig(
@@ -32,6 +33,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(StartupReadinessMiddleware)
 
 BASE_DIR = Path(__file__).parent.parent
 static_dir = BASE_DIR / "static"
